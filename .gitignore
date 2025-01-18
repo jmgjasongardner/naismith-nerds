@@ -26,3 +26,4 @@ __pycache__/
 *.xlsm
 *.DS_Store
 .idea/.gitignore
+*.csv
