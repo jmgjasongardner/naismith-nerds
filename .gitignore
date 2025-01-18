@@ -1,0 +1,28 @@
+# Virtual environment
+.venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# PDM files
+.pdm-python
+
+# Environment variables
+.env
+*.env
+
+# macOS specific
+.DS_Store
+
+# IDE and Editor files
+.idea/
+.vscode/
+*.swp
+
+# Manually added by Jason
+*.xml
+*.iml
+*.xlsm
+*.DS_Store
+.idea/.gitignore
