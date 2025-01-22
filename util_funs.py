@@ -61,3 +61,17 @@ def player_data(df: pl.DataFrame) -> pl.DataFrame:
         )
         .with_columns((pl.col("team_score") - pl.col("opponent_score")).alias("point_diff"))
     )
+
+def sub_tier_data(df: pl.DataFrame, tiers: pl.DataFrame, include_commons: False) -> pl.DataFrame:
+    if not include_commons:
+        tiers = tiers.filter(pl.col('uncommon') == 1)
+    tiers_dict = dict(zip(tiers["player"].to_list(), tiers["tier"].to_list()))
+    # Columns to replace
+    player_columns = [f"A{i}" for i in range(1, 6)] + [f"B{i}" for i in range(1, 6)]
+
+    # Replace values in the specified columns
+    df = df.with_columns([
+        pl.col(col).replace(tiers_dict, default=pl.col(col)).alias(col) for col in player_columns
+    ])
+
+    return df
