@@ -6,28 +6,41 @@ import scipy.sparse as sp
 from sklearn.linear_model import Ridge
 from typing import Tuple, List
 
-def preprocess(df: pl.DataFrame, players: pl.DataFrame) -> Tuple[np.ndarray, sp.coo_matrix, np.ndarray]:
+
+def preprocess(
+    df: pl.DataFrame, players: pl.DataFrame
+) -> Tuple[np.ndarray, sp.coo_matrix, np.ndarray]:
     # Prepare your data (same preprocessing steps)
     game_to_idx = {game: idx for idx, game in enumerate(df["GameId"])}
-    player_to_idx = {player: idx for idx, player in enumerate(players["player"].unique().sort())}
+    player_to_idx = {
+        player: idx for idx, player in enumerate(players["player"].unique().sort())
+    }
 
     row_indices = np.array([game_to_idx[game] for game in players["GameId"]])
     col_indices = np.array([player_to_idx[player] for player in players["player"]])
     data = players["effect"].to_numpy()
-    sparse_matrix = sp.coo_matrix((data, (row_indices, col_indices)),
-                                  shape=(len(df["GameId"].unique()), len(players["player"].unique())))
-    y = df.sort("GameId").with_columns((pl.col('A_SCORE') - pl.col('B_SCORE')).alias("point_diff")).select(
-        "point_diff").to_numpy()
+    sparse_matrix = sp.coo_matrix(
+        (data, (row_indices, col_indices)),
+        shape=(len(df["GameId"].unique()), len(players["player"].unique())),
+    )
+    y = (
+        df.sort("GameId")
+        .with_columns((pl.col("A_SCORE") - pl.col("B_SCORE")).alias("point_diff"))
+        .select("point_diff")
+        .to_numpy()
+    )
 
-
-    dense_matrix = sparse_matrix.toarray()  # Not used, but can be viewed to confirm correct state of inputs
+    dense_matrix = (
+        sparse_matrix.toarray()
+    )  # Not used, but can be viewed to confirm correct state of inputs
 
     return y, sparse_matrix, dense_matrix
 
 
-
 # Define a function for hyperparameter tuning using cross-validation
-def tune_alpha(df: pl.DataFrame, players: pl.DataFrame, alpha_values: List[float], n_splits=10) -> Tuple[List[Tuple[float, float]], float]:
+def tune_alpha(
+    df: pl.DataFrame, players: pl.DataFrame, alpha_values: List[float], n_splits=10
+) -> Tuple[List[Tuple[float, float]], float]:
     # Initialize k-fold cross-validation
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
 
@@ -67,7 +80,9 @@ def tune_alpha(df: pl.DataFrame, players: pl.DataFrame, alpha_values: List[float
 
 
 def train_final_model(df: pl.DataFrame, players: pl.DataFrame, best_alpha=1):
-    player_to_idx = {player: idx for idx, player in enumerate(players["player"].unique().sort())}
+    player_to_idx = {
+        player: idx for idx, player in enumerate(players["player"].unique().sort())
+    }
     y, sparse_matrix = preprocess(df=df, players=players)[0:2]
 
     # Train final model on all data with the best alpha
@@ -79,6 +94,8 @@ def train_final_model(df: pl.DataFrame, players: pl.DataFrame, best_alpha=1):
 
     # Convert ratings to a DataFrame
     ratings_list = [(player, rating) for player, rating in ratings.items()]
-    ratings_df = pl.DataFrame(ratings_list, schema=["player", "rating"], orient='row').sort("rating", descending=True)
+    ratings_df = pl.DataFrame(
+        ratings_list, schema=["player", "rating"], orient="row"
+    ).sort("rating", descending=True)
 
     return ratings_df

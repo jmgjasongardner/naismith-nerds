@@ -82,6 +82,6 @@ x = players.to_pandas()
 y = df.to_pandas()
 z = player_stats.to_pandas()
 
-z.to_csv(f'CollectiveBball/PlayerStats-{date.today()}.csv', index=False)
+z.to_csv(f"CollectiveBball/PlayerStats-{date.today()}.csv", index=False)
 
 print(z)

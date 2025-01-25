@@ -1,15 +1,22 @@
 import polars as pl
 import pandas as pd
 
+
 def pull_in_data() -> tuple[pl.DataFrame, pl.DataFrame]:
     data = "CollectiveBball/GameResults.xlsm"
-    df = pl.from_pandas(pd.read_excel(data, sheet_name="GameResults", engine="openpyxl"))
-    tiers = pl.from_pandas(pd.read_excel(data, sheet_name="PlayerTiers", engine="openpyxl"))
+    df = pl.from_pandas(
+        pd.read_excel(data, sheet_name="GameResults", engine="openpyxl")
+    )
+    tiers = pl.from_pandas(
+        pd.read_excel(data, sheet_name="PlayerTiers", engine="openpyxl")
+    )
 
     return df, tiers
 
+
 def clean_data(df: pl.DataFrame) -> pl.DataFrame:
-    return (df.with_columns(
+    return (
+        df.with_columns(
             pl.when(pl.col("B_SCORE") > pl.col("A_SCORE"))
             .then(pl.lit("B"))
             .when(pl.col("B_SCORE") < pl.col("A_SCORE"))
@@ -30,10 +37,14 @@ def clean_data(df: pl.DataFrame) -> pl.DataFrame:
             .alias("GameNum")  # Sequential count per Date
         )
         .with_columns(
-            (pl.col("GameDate") + "-" + (pl.col("GameNum")).cast(pl.Utf8)).alias("GameId")
+            (pl.col("GameDate") + "-" + (pl.col("GameNum")).cast(pl.Utf8)).alias(
+                "GameId"
+            )
         )
         .drop("GameDate")
-        .filter(pl.col("A_SCORE").is_not_nan()))
+        .filter(pl.col("A_SCORE").is_not_nan())
+    )
+
 
 def player_data(df: pl.DataFrame) -> pl.DataFrame:
     # Reshape the dataframe with unpivot
@@ -59,20 +70,28 @@ def player_data(df: pl.DataFrame) -> pl.DataFrame:
             .alias("opponent_score"),
             (pl.col("team") == pl.col("Winner")).cast(pl.Int8).alias("GameWon"),
         )
-        .with_columns((pl.col("team_score") - pl.col("opponent_score")).alias("point_diff"),
-                      pl.when(pl.col("team") == "A").then(1).otherwise(-1).alias("effect"))
+        .with_columns(
+            (pl.col("team_score") - pl.col("opponent_score")).alias("point_diff"),
+            pl.when(pl.col("team") == "A").then(1).otherwise(-1).alias("effect"),
+        )
     )
 
-def sub_tier_data(df: pl.DataFrame, tiers: pl.DataFrame, include_commons: False) -> pl.DataFrame:
+
+def sub_tier_data(
+    df: pl.DataFrame, tiers: pl.DataFrame, include_commons: False
+) -> pl.DataFrame:
     if not include_commons:
-        tiers = tiers.filter(pl.col('uncommon') == 1)
+        tiers = tiers.filter(pl.col("uncommon") == 1)
     tiers_dict = dict(zip(tiers["player"].to_list(), tiers["tier"].to_list()))
     # Columns to replace
     player_columns = [f"A{i}" for i in range(1, 6)] + [f"B{i}" for i in range(1, 6)]
 
     # Replace values in the specified columns
-    df = df.with_columns([
-        pl.col(col).replace(tiers_dict, default=pl.col(col)).alias(col) for col in player_columns
-    ])
+    df = df.with_columns(
+        [
+            pl.col(col).replace(tiers_dict, default=pl.col(col)).alias(col)
+            for col in player_columns
+        ]
+    )
 
     return df
