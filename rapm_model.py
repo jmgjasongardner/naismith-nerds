@@ -7,6 +7,9 @@ from datetime import date
 import argparse
 from util_funs import sub_tier_data
 
+pl.Config.set_tbl_rows(n=50)
+pl.Config.set_tbl_cols(n=8)
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--use_tier_data", help="Replace data with tiered players for small sample",
                     action="store_true")

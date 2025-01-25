@@ -1,8 +1,9 @@
 import polars as pl
 import pandas as pd
+from datetime import date
 
-pl.Config.set_tbl_rows(n=20)
-pl.Config.set_tbl_cols(n=20)
+pl.Config.set_tbl_rows(n=50)
+pl.Config.set_tbl_cols(n=8)
 
 data = "CollectiveBball/GameResults.xlsm"
 df = pl.from_pandas(pd.read_excel(data, sheet_name="GameResults", engine="openpyxl"))
@@ -81,4 +82,6 @@ x = players.to_pandas()
 y = df.to_pandas()
 z = player_stats.to_pandas()
 
-z.to_csv("CollectiveBball/PlayerStats.csv", index=False)
+z.to_csv(f'CollectiveBball/PlayerStats-{date.today()}.csv', index=False)
+
+print(z)
