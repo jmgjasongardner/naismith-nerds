@@ -59,7 +59,8 @@ def player_data(df: pl.DataFrame) -> pl.DataFrame:
             .alias("opponent_score"),
             (pl.col("team") == pl.col("Winner")).cast(pl.Int8).alias("GameWon"),
         )
-        .with_columns((pl.col("team_score") - pl.col("opponent_score")).alias("point_diff"))
+        .with_columns((pl.col("team_score") - pl.col("opponent_score")).alias("point_diff"),
+                      pl.when(pl.col("team") == "A").then(1).otherwise(-1).alias("effect"))
     )
 
 def sub_tier_data(df: pl.DataFrame, tiers: pl.DataFrame, include_commons: False) -> pl.DataFrame:
