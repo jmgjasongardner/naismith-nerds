@@ -1,7 +1,6 @@
 import util_funs
 import model_funs_rapm
 import polars as pl
-from datetime import date
 import argparse
 
 pl.Config.set_tbl_rows(n=50)
@@ -19,6 +18,11 @@ parser.add_argument(
     action="store_true",
 )
 parser.add_argument(
+    "--min_games_to_not_tier",
+    help="Number of games to not have your data replaced with tiering",
+    default=20
+)
+parser.add_argument(
     "--run_in_sample",
     help="Run the model without hyperparameter tuning and cross-validating",
     action="store_true",
@@ -34,12 +38,13 @@ args = parser.parse_args()
 # Pull in data
 df, tiers = util_funs.pull_in_data()
 df = util_funs.clean_data(df=df)
+games_played = util_funs.played_games(df=df)
+tiers = tiers.join(games_played, on="player")
 if (
     args.use_tier_data
 ):  # TODO: Improve this logic for setting case of min number of games played to not be replaced
-    # TODO: And perhaps more urgent, make sure if we have Tier guys on opposite sides that's not an issue
     df = util_funs.sub_tier_data(
-        df=df, tiers=tiers, include_commons=args.include_common_player_tiers
+        df=df, tiers=tiers, include_commons=args.include_common_player_tiers, min_games=args.min_games_to_not_tier
     )
 players = util_funs.player_data(df=df)
 
@@ -47,7 +52,7 @@ players = util_funs.player_data(df=df)
 if args.run_in_sample:  # With default value scikit-learn 1 for alpha value
     print("in-sample")
     ratings_df = model_funs_rapm.train_final_model(df=df, players=players)
-else:
+else: #TODO: Set logical to maintain a consistent best_alpha value
     print("out-of-sample")
     alphas, best_alpha = model_funs_rapm.tune_alpha(
         df=df, players=players, alpha_values=args.alpha_params

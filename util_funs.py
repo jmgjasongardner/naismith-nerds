@@ -45,6 +45,18 @@ def clean_data(df: pl.DataFrame) -> pl.DataFrame:
         .filter(pl.col("A_SCORE").is_not_nan())
     )
 
+def played_games(df: pl.DataFrame) -> pl.DataFrame:
+
+    player_columns = [f"A{i}" for i in range(1, 6)] + [f"B{i}" for i in range(1, 6)]
+    return (
+        df.select(player_columns)  # Select all player columns
+        .unpivot(on=player_columns, value_name='player')  # Use unpivot instead of melt
+        .filter(pl.col("player").is_not_null())  # Remove any null player values
+        .group_by("player")  # Group by player
+        .agg(pl.len().alias("games_played"))  # Count how many times each player appears
+        .sort(pl.col("games_played"))
+    )
+
 
 def player_data(df: pl.DataFrame) -> pl.DataFrame:
     # Reshape the dataframe with unpivot
@@ -78,8 +90,9 @@ def player_data(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def sub_tier_data(
-    df: pl.DataFrame, tiers: pl.DataFrame, include_commons: False
+    df: pl.DataFrame, tiers: pl.DataFrame, include_commons: False, min_games: int
 ) -> pl.DataFrame:
+    tiers = tiers.filter(pl.col('games_played') < min_games)
     if not include_commons:
         tiers = tiers.filter(pl.col("uncommon") == 1)
     tiers_dict = dict(zip(tiers["player"].to_list(), tiers["tier"].to_list()))
