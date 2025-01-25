@@ -58,14 +58,9 @@ else:
 
 ratings_pd = ratings_df.to_pandas()
 
-used_tiers = (
-    "-all_tiers"
-    if args.use_tier_data and args.include_common_player_tiers
-    else "-uncommon_tiers" if args.use_tier_data else ""
-)
-sampling = "-in_sample" if args.run_in_sample else ""
+
 ratings_pd.to_csv(
-    f"ratings/{date.today()}-ratings{used_tiers}{sampling}.csv", index=False
+    util_funs.process_output_file(args=args, best_alpha=best_alpha), index=False
 )
 
 print(ratings_df)

@@ -1,6 +1,6 @@
 import polars as pl
 import pandas as pd
-
+from datetime import date
 
 def pull_in_data() -> tuple[pl.DataFrame, pl.DataFrame]:
     data = "CollectiveBball/GameResults.xlsm"
@@ -95,3 +95,14 @@ def sub_tier_data(
     )
 
     return df
+
+def process_output_file(args, best_alpha: int) -> str:
+    used_tiers = (
+        "-all_tiers"
+        if args.use_tier_data and args.include_common_player_tiers
+        else "-uncommon_tiers" if args.use_tier_data else ""
+    )
+    sampling = "-in_sample" if args.run_in_sample else ""
+    min_games = f"-min-tier-games={args.min_games_to_not_tier}" if args.use_tier_data else ""
+
+    return f"ratings/{date.today()}-ratings-alpha={best_alpha}{used_tiers}{min_games}{sampling}.csv"
