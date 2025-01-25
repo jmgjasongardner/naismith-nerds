@@ -2,6 +2,7 @@ import polars as pl
 import pandas as pd
 from datetime import date
 
+
 def pull_in_data() -> tuple[pl.DataFrame, pl.DataFrame]:
     data = "CollectiveBball/GameResults.xlsm"
     df = pl.from_pandas(
@@ -45,12 +46,13 @@ def clean_data(df: pl.DataFrame) -> pl.DataFrame:
         .filter(pl.col("A_SCORE").is_not_nan())
     )
 
+
 def played_games(df: pl.DataFrame) -> pl.DataFrame:
 
     player_columns = [f"A{i}" for i in range(1, 6)] + [f"B{i}" for i in range(1, 6)]
     return (
         df.select(player_columns)  # Select all player columns
-        .unpivot(on=player_columns, value_name='player')  # Use unpivot instead of melt
+        .unpivot(on=player_columns, value_name="player")  # Use unpivot instead of melt
         .filter(pl.col("player").is_not_null())  # Remove any null player values
         .group_by("player")  # Group by player
         .agg(pl.len().alias("games_played"))  # Count how many times each player appears
@@ -92,7 +94,7 @@ def player_data(df: pl.DataFrame) -> pl.DataFrame:
 def sub_tier_data(
     df: pl.DataFrame, tiers: pl.DataFrame, include_commons: False, min_games: int
 ) -> pl.DataFrame:
-    tiers = tiers.filter(pl.col('games_played') < min_games)
+    tiers = tiers.filter(pl.col("games_played") < min_games)
     if not include_commons:
         tiers = tiers.filter(pl.col("uncommon") == 1)
     tiers_dict = dict(zip(tiers["player"].to_list(), tiers["tier"].to_list()))
@@ -109,6 +111,7 @@ def sub_tier_data(
 
     return df
 
+
 def process_output_file(args, best_alpha: int) -> str:
     used_tiers = (
         "-all_tiers"
@@ -116,6 +119,8 @@ def process_output_file(args, best_alpha: int) -> str:
         else "-uncommon_tiers" if args.use_tier_data else ""
     )
     sampling = "-in_sample" if args.run_in_sample else ""
-    min_games = f"-min-tier-games={args.min_games_to_not_tier}" if args.use_tier_data else ""
+    min_games = (
+        f"-min-tier-games={args.min_games_to_not_tier}" if args.use_tier_data else ""
+    )
 
     return f"ratings/{date.today()}-ratings-alpha={best_alpha}{used_tiers}{min_games}{sampling}.csv"
