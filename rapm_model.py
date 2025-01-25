@@ -1,9 +1,6 @@
 import util_funs
 import model_funs_rapm
-import scipy.sparse as sp
 import polars as pl
-import numpy as np
-from sklearn.linear_model import Ridge
 from datetime import date
 import argparse
 
