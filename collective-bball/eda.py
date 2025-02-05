@@ -5,7 +5,7 @@ from datetime import date
 pl.Config.set_tbl_rows(n=50)
 pl.Config.set_tbl_cols(n=8)
 
-data = "CollectiveBball/GameResults.xlsm"
+data = "collective-bball/GameResults.xlsm"
 df = pl.from_pandas(pd.read_excel(data, sheet_name="GameResults", engine="openpyxl"))
 tiers = pl.from_pandas(pd.read_excel(data, sheet_name="PlayerTiers", engine="openpyxl"))
 
@@ -82,6 +82,6 @@ x = players.to_pandas()
 y = df.to_pandas()
 z = player_stats.to_pandas()
 
-z.to_csv(f"raw-stats/PlayerStats-{date.today()}.csv", index=False)
+z.to_csv(f"collective-bball/raw-stats/PlayerStats-{date.today()}.csv", index=False)
 
 print(z)
