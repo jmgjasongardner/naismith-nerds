@@ -5,6 +5,7 @@ import polars as pl
 import scipy.sparse as sp
 from sklearn.linear_model import Ridge
 from typing import Tuple, List
+import collective_bball.funs.util_funs as util_funs
 
 
 def preprocess(
@@ -79,7 +80,7 @@ def tune_alpha(
     return results, best_alpha[0]
 
 
-def train_final_model(df: pl.DataFrame, players: pl.DataFrame, best_alpha=1):
+def train_final_model(df: pl.DataFrame, players: pl.DataFrame, best_alpha=1) -> Tuple[pl.DataFrame, int]:
     player_to_idx = {
         player: idx for idx, player in enumerate(players["player"].unique().sort())
     }
@@ -98,4 +99,5 @@ def train_final_model(df: pl.DataFrame, players: pl.DataFrame, best_alpha=1):
         ratings_list, schema=["player", "rating"], orient="row"
     ).sort("rating", descending=True)
 
-    return ratings_df
+    return ratings_df, best_alpha
+

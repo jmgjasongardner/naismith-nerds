@@ -4,7 +4,7 @@ from datetime import date
 
 
 def pull_in_data() -> tuple[pl.DataFrame, pl.DataFrame]:
-    data = "collective-bball/GameResults.xlsm"
+    data = "collective_bball/GameResults.xlsm"
     df = pl.from_pandas(
         pd.read_excel(data, sheet_name="GameResults", engine="openpyxl")
     )
@@ -123,4 +123,4 @@ def process_output_file(args, best_alpha: int) -> str:
         f"-min-tier-games={args.min_games_to_not_tier}" if args.use_tier_data else ""
     )
 
-    return f"collective-bball/ratings/{date.today()}-ratings-alpha={best_alpha}{used_tiers}{min_games}{sampling}.csv"
+    return f"collective_bball/ratings/{date.today()}-ratings-alpha={best_alpha}{used_tiers}{min_games}{sampling}.csv"

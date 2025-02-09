@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basketball Stats</title>
+</head>
+<body>
+    <h1>Welcome to Naismith Nerds</h1>
+
+    <h2>Stats</h2>
+    <table border="1">
+        <tr>
+            {% for col in stats[0].keys() %}
+                <th>{{ col }}</th>
+            {% endfor %}
+        </tr>
+        {% for row in stats %}
+            <tr>
+                {% for value in row.values() %}
+                    <td>{{ value }}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h2>Player Ratings</h2>
+    <table border="1">
+        <tr>
+            {% for col in players[0].keys() %}
+                <th>{{ col }}</th>
+            {% endfor %}
+        </tr>
+        {% for row in players %}
+            <tr>
+                {% for value in row.values() %}
+                    <td>{{ value }}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
