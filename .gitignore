@@ -23,7 +23,6 @@ __pycache__/
 # Manually added by Jason
 *.xml
 *.iml
-*.xlsm
 *.DS_Store
 .idea/.gitignore
 *.csv
