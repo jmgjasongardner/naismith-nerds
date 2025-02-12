@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:b329a043df7195bdff7f665599a79370d4d29ce05550286e2ee3815b44e33a90"
+content_hash = "sha256:278df50f56465960110aea44fac708f36828f2fec994a284ba4feb7a031f2614"
 
 [[metadata.targets]]
 requires_python = "==3.11.*"
@@ -110,6 +110,21 @@ dependencies = [
 files = [
     {file = "flask-3.1.0-py3-none-any.whl", hash = "sha256:d667207822eb83f1c4b50949b1623c8fc8d51f2341d65f72e1a1815397551136"},
     {file = "flask-3.1.0.tar.gz", hash = "sha256:5f873c5184c897c8d9d1b05df1e3d01b14910ce69607a117bd3277098a5836ac"},
+]
+
+[[package]]
+name = "gunicorn"
+version = "23.0.0"
+requires_python = ">=3.7"
+summary = "WSGI HTTP Server for UNIX"
+groups = ["default"]
+dependencies = [
+    "importlib-metadata; python_version < \"3.8\"",
+    "packaging",
+]
+files = [
+    {file = "gunicorn-23.0.0-py3-none-any.whl", hash = "sha256:ec400d38950de4dfd418cff8328b2c8faed0edb0d517d3394e457c317908ca4d"},
+    {file = "gunicorn-23.0.0.tar.gz", hash = "sha256:f014447a0101dc57e294f6c18ca6b40227a4c90e9bdb586042628030cba004ec"},
 ]
 
 [[package]]
