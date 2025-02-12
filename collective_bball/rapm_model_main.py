@@ -1,6 +1,5 @@
 from collective_bball.funs import util_funs, model_funs_rapm
 import polars as pl
-import argparse
 from typing import Tuple
 
 pl.Config.set_tbl_rows(n=100)
@@ -20,8 +19,9 @@ def parse_args(args=None):
         default=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
     )
     parser.add_argument("--save_csv", action="store_true")
+    args, unknown = parser.parse_known_args()
 
-    return parser.parse_args(args)  # If args is None, it uses sys.argv
+    return args, unknown  # If args is None, it uses sys.argv
 
 
 def compute_ratings(args=None) -> Tuple[pl.DataFrame, int]:
@@ -62,7 +62,9 @@ def compute_ratings(args=None) -> Tuple[pl.DataFrame, int]:
 
 # ✅ Keeps script functionality when run directly
 if __name__ == "__main__":
-    args = parse_args()
+    import argparse
+
+    args, unknown = parse_args()
     ratings_df, best_alpha = compute_ratings(args)
     ratings_pd = ratings_df.to_pandas()
 

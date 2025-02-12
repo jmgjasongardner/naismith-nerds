@@ -24,7 +24,9 @@ def home():
     stats_data = get_stats()  # Pull stats dict
     players_data, best_alpha = get_ratings()
 
-    return render_template("index.html", stats=stats_data, players=players_data, best_alpha=best_alpha)
+    return render_template(
+        "index.html", stats=stats_data, players=players_data, best_alpha=best_alpha
+    )
 
 
 if __name__ == "__main__":
