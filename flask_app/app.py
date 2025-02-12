@@ -21,13 +21,13 @@ def run_rapm_model():
 def home():
     run_rapm_model()  # Run the model before fetching the data
 
-    stats_data = get_stats()  # Pull stats dict
+    stats_data, games_data = get_stats()  # Pull stats dict
     players_data, best_alpha = get_ratings()
 
     return render_template(
-        "index.html", stats=stats_data, players=players_data, best_alpha=best_alpha
+        "index.html", stats=stats_data, games=games_data, players=players_data, best_alpha=best_alpha
     )
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=4000, debug=True)
+    app.run(host="0.0.0.0", port=4010, debug=True)

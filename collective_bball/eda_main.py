@@ -82,7 +82,7 @@ def generate_stats(run_locally=False):
         player_stats.to_pandas().to_csv(f"collective_bball/raw-stats/PlayerStats-{date.today()}.csv", index=False)
         print(player_stats.to_pandas())
 
-    return player_stats.to_pandas()
+    return player_stats.to_pandas(), df.to_pandas()
 
 if __name__ == "__main__":
 
@@ -90,4 +90,4 @@ if __name__ == "__main__":
     parser.add_argument("--run_locally", action="store_true")
     args, unknown = parser.parse_known_args()
 
-    stats = generate_stats(run_locally=args.run_locally)
+    stats, games = generate_stats(run_locally=args.run_locally)
