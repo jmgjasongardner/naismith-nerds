@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
 
     <!-- Include Font Awesome for icons -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
 
 <style>
         body {
@@ -114,7 +114,7 @@
         <a href="https://github.com/jmgjasongardner/naismith-nerds" target="_blank"><i class="fab fa-github"></i></a>
         <a href="https://www.instagram.com/jmgjasongardner" target="_blank"><i class="fab fa-instagram"></i></a>
         <a href="https://twitter.com/jmgjasongardner" target="_blank"><i class="fab fa-twitter"></i></a>
-        <a href="https://bsky.app/profile/jmgard.bsky.social" target="_blank"><i class="fa-brands fa-bluesky"></i></a>
+        <a href="https://bsky.app/profile/jmgard.bsky.social" target="_blank"><i class="fab fa-bluesky"></i></a>
     </div>
 
     <!-- Image Container for Naismith and Collective -->
@@ -129,6 +129,7 @@
     <div class="tabs">
         <div class="tab active" data-target="stats">Stats</div>
         <div class="tab" data-target="ratings">Ratings</div>
+        <div class="tab" data-target="games">Games</div>
         <div class="tab" data-target="methodology">Methodology</div>
     </div>
 
@@ -183,6 +184,33 @@
         </table>
         {% else %}
             <p>No player ratings available.</p>
+        {% endif %}
+    </div>
+
+       <!-- Tab Content -->
+    <div class="tab-content games">
+        <h2>Games</h2>
+        {% if games %}
+        <table id="gamesTable">
+            <thead>
+                <tr>
+                    {% for col in games[0].keys() %}
+                        <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in games %}
+                    <tr>
+                        {% for value in row.values() %}
+                            <td>{{ value }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>No game data available.</p>
         {% endif %}
     </div>
 
