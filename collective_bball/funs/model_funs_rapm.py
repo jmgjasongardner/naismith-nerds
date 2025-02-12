@@ -5,7 +5,6 @@ import polars as pl
 import scipy.sparse as sp
 from sklearn.linear_model import Ridge
 from typing import Tuple, List
-import collective_bball.funs.util_funs as util_funs
 
 
 def preprocess(
@@ -33,7 +32,7 @@ def preprocess(
 
     dense_matrix = (
         sparse_matrix.toarray()
-    )  # Not used, but can be viewed to confirm correct state of inputs
+    )
 
     return y, sparse_matrix, dense_matrix
 
