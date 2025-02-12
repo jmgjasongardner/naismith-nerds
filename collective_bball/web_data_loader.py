@@ -1,4 +1,6 @@
-from collective_bball.eda import stats  # Importing z directly from eda.py
+from collective_bball.eda_main import (
+    generate_stats,
+)  # Importing stats directly from eda_main.py
 from collective_bball.rapm_model_main import compute_ratings
 
 
@@ -23,7 +25,7 @@ def format_stats(stats_df):
 
 def get_stats():
     """Return formatted stats with renamed columns and rounded values."""
-    return format_stats(stats)  # Apply formatting before sending
+    return format_stats(generate_stats())  # Apply formatting before sending
 
 
 def get_ratings():
