@@ -27,8 +27,7 @@ def parse_args(args=None):
 
 def compute_ratings(args=None) -> Tuple[pl.DataFrame, int]:
     """Compute player ratings and return the dataframe."""
-    if args is None:
-        args = parse_args([])  # Provide empty args for function calls
+    args, unknown = parse_args()  # Provide empty args for function calls
 
     # Pull in data
     df, tiers = util_funs.pull_in_data()
