@@ -78,10 +78,10 @@ player_stats = (
 )
 
 
-x = players.to_pandas()
-y = df.to_pandas()
-z = player_stats.to_pandas()
+player_games = players.to_pandas()
+games = df.to_pandas()
+stats = player_stats.to_pandas()
 
-z.to_csv(f"collective_bball/raw-stats/PlayerStats-{date.today()}.csv", index=False)
+stats.to_csv(f"collective_bball/raw-stats/PlayerStats-{date.today()}.csv", index=False)
 
-print(z)
+print(stats)
