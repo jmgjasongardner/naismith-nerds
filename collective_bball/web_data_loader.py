@@ -1,6 +1,7 @@
 from collective_bball.eda import stats  # Importing z directly from eda.py
 from collective_bball.rapm_model_main import compute_ratings
 
+
 def format_stats(stats_df):
     """Rename columns and round numeric values before passing to Jinja."""
     column_map = {
@@ -19,6 +20,7 @@ def format_stats(stats_df):
 
     return stats_df.to_dict(orient="records")  # Convert to list of dicts for Jinja
 
+
 def get_stats():
     """Return formatted stats with renamed columns and rounded values."""
     return format_stats(stats)  # Apply formatting before sending
@@ -26,11 +28,12 @@ def get_stats():
 
 def get_ratings():
     """Fetch ratings as a pandas dataframe."""
-    ratings_df = compute_ratings()[0].to_pandas()
+    ratings_df, best_alpha = compute_ratings()
+    ratings_df = ratings_df.to_pandas()
     ratings_df["rating"] = ratings_df["rating"].round(5)
     column_map = {
         "player": "Player",
         "rating": "Rating",
     }
     ratings_df = ratings_df.rename(columns=column_map)  # Rename columns
-    return ratings_df.to_dict(orient="records")
+    return ratings_df.to_dict(orient="records"), best_alpha

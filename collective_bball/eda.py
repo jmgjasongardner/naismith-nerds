@@ -1,9 +1,14 @@
 import polars as pl
 import pandas as pd
 from datetime import date
+import argparse
 
 pl.Config.set_tbl_rows(n=50)
 pl.Config.set_tbl_cols(n=8)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--run_locally", action="store_true")
+args = parser.parse_args()
 
 data = "collective_bball/GameResults.xlsm"
 df = pl.from_pandas(pd.read_excel(data, sheet_name="GameResults", engine="openpyxl"))
@@ -82,6 +87,7 @@ player_games = players.to_pandas()
 games = df.to_pandas()
 stats = player_stats.to_pandas()
 
-stats.to_csv(f"collective_bball/raw-stats/PlayerStats-{date.today()}.csv", index=False)
+if args.run_locally:
+    stats.to_csv(f"collective_bball/raw-stats/PlayerStats-{date.today()}.csv", index=False)
 
-print(stats)
+    print(stats)

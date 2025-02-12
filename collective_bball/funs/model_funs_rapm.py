@@ -30,9 +30,7 @@ def preprocess(
         .to_numpy()
     )
 
-    dense_matrix = (
-        sparse_matrix.toarray()
-    )
+    dense_matrix = sparse_matrix.toarray()
 
     return y, sparse_matrix, dense_matrix
 
@@ -79,7 +77,9 @@ def tune_alpha(
     return results, best_alpha[0]
 
 
-def train_final_model(df: pl.DataFrame, players: pl.DataFrame, best_alpha=1) -> Tuple[pl.DataFrame, int]:
+def train_final_model(
+    df: pl.DataFrame, players: pl.DataFrame, best_alpha=1
+) -> Tuple[pl.DataFrame, int]:
     player_to_idx = {
         player: idx for idx, player in enumerate(players["player"].unique().sort())
     }
@@ -99,4 +99,3 @@ def train_final_model(df: pl.DataFrame, players: pl.DataFrame, best_alpha=1) -> 
     ).sort("rating", descending=True)
 
     return ratings_df, best_alpha
-
