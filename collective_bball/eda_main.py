@@ -1,6 +1,7 @@
 import polars as pl
 import pandas as pd
 from datetime import date
+import argparse
 
 pl.Config.set_tbl_rows(n=50)
 pl.Config.set_tbl_cols(n=8)
@@ -84,7 +85,6 @@ def generate_stats(run_locally=False):
     return player_stats.to_pandas()
 
 if __name__ == "__main__":
-    import argparse
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--run_locally", action="store_true")
