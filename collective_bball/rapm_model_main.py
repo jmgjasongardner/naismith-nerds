@@ -1,6 +1,7 @@
 from collective_bball.funs import util_funs, model_funs_rapm
 import polars as pl
 from typing import Tuple
+import argparse
 
 pl.Config.set_tbl_rows(n=100)
 pl.Config.set_tbl_cols(n=8)
@@ -62,7 +63,6 @@ def compute_ratings(args=None) -> Tuple[pl.DataFrame, int]:
 
 # ✅ Keeps script functionality when run directly
 if __name__ == "__main__":
-    import argparse
 
     args, unknown = parse_args()
     ratings_df, best_alpha = compute_ratings(args)
