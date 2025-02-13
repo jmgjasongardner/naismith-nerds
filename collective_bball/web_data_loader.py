@@ -26,7 +26,7 @@ def format_stats(stats_df):
 def get_stats():
     """Return formatted stats with renamed columns and rounded values."""
     stats, games = generate_stats()
-    return format_stats(stats), games.to_dict(orient="records")  # Apply formatting before sending
+    return format_stats(stats), games.drop('Date', axis = 1).to_dict(orient="records")  # Apply formatting before sending
 
 
 def get_ratings():
