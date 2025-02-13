@@ -148,8 +148,14 @@
             <tbody>
                 {% for row in stats %}
                     <tr>
-                        {% for value in row.values() %}
-                            <td>{{ value }}</td>
+                        {% for key, value in row.items() %}
+                            <td>
+                                {% if key == "Player" %}
+                                    <a href="{{ url_for('player_page', player_name=row['Player']) }}">{{ value }}</a>
+                                {% else %}
+                                    {{ value }}
+                                {% endif %}
+                            </td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -159,7 +165,6 @@
             <p>No stats available.</p>
         {% endif %}
     </div>
-
     <div class="tab-content ratings">
         <h2>Player Ratings</h2>
         <h3>Best Lambda: {{ best_alpha }}</h3>  <!-- Display the best_alpha value -->
@@ -175,8 +180,16 @@
             <tbody>
                 {% for row in players %}
                     <tr>
-                        {% for value in row.values() %}
-                            <td>{{ value }}</td>
+                        {% for key, value in row.items() %}
+                            {% if key == "Player" %}
+                                <td>
+                                    <a href="{{ url_for('player_page', player_name=value) }}">
+                                        {{ value }}
+                                    </a>
+                                </td>
+                            {% else %}
+                                <td>{{ value }}</td>
+                            {% endif %}
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -186,6 +199,7 @@
             <p>No player ratings available.</p>
         {% endif %}
     </div>
+
 
        <!-- Tab Content -->
     <div class="tab-content games">
@@ -202,8 +216,14 @@
             <tbody>
                 {% for row in games %}
                     <tr>
-                        {% for value in row.values() %}
-                            <td>{{ value }}</td>
+                        {% for key, value in row.items() %}
+                            <td>
+                                {% if key in ['A1', 'A2', 'A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4', 'B5'] %}
+                                    <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
+                                {% else %}
+                                    {{ value }}
+                                {% endif %}
+                            </td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -236,6 +256,9 @@
             });
             $("#playersTable").DataTable({
                 "order": [[1, "desc"]]  // Sort by Ratings descending (second column)
+            });
+            $("#gamesTable").DataTable({
+                "order": [[14, "desc"]]  // Sort by GameId descending (first column)
             });
 
             // Tab functionality

@@ -13,6 +13,9 @@ def generate_stats(run_locally=False):
 
     df = (
         df.with_columns(
+            pl.col("A_SCORE").cast(pl.Int64),
+            pl.col("B_SCORE").cast(pl.Int64)
+        ).with_columns(
             pl.when(pl.col("B_SCORE") > pl.col("A_SCORE"))
             .then(pl.lit("B"))
             .when(pl.col("B_SCORE") < pl.col("A_SCORE"))
