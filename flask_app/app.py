@@ -1,6 +1,6 @@
 import subprocess
 from flask import Flask, render_template
-from utility_imports import tooltips
+from flask_app.utility_imports import tooltips
 
 from collective_bball.web_data_loader import get_stats, get_ratings
 
