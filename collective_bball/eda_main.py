@@ -35,15 +35,15 @@ def generate_stats(run_locally=False):
             .cast(pl.Int32)
             .alias("GameNum")  # Sequential count per Date
         )
-        .with_columns(
-            (pl.col("GameDate") + "-" + (pl.col("GameNum")).cast(pl.Utf8)).alias("GameId")
-        )
-        .drop("GameDate")
+        # .with_columns(
+        #     (pl.col("GameDate") + "-" + (pl.col("GameNum")).cast(pl.Utf8)).alias("GameId")
+        # )
+        # .drop("GameDate")
         .filter(pl.col("A_SCORE").is_not_nan())
     )
 
     team_cols = [f"A{i}" for i in range(1, 6)] + [f"B{i}" for i in range(1, 6)]
-    id_cols = ["GameId", "A_SCORE", "B_SCORE", "Winner"]
+    id_cols = ["GameDate", "GameNum", "A_SCORE", "B_SCORE", "Winner"]
 
     players = (
         df.select(id_cols + team_cols)

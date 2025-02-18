@@ -1,0 +1,45 @@
+.tooltip-icon {
+    display: inline-block;
+    margin-left: 5px;
+    color: #007bff;
+    font-weight: bold;
+    cursor: help;
+    position: relative;
+}
+
+.tooltip-icon:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    top: 120%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 5px 8px;
+    border-radius: 5px;
+    white-space: nowrap;
+    font-size: 12px;
+    z-index: 10;
+}
+
+.dataTables_length label {
+    display: flex;
+    align-items: center;
+    gap: 5px;  /* Adds spacing between text and dropdown */
+}
+
+.dataTables_length select {
+    appearance: auto;  /* Ensures dropdown is rendered properly */
+    padding: 5px;
+    margin-left: 5px;
+}
+
+/* Hide the default sort indicator (for both ascending and descending) */
+.dataTables_sort_icon {
+    display: none !important;
+}
+
+/* Optional: Hide additional sort arrows from custom CSS if applicable */
+th.sorting:after, th.sorting_asc:after, th.sorting_desc:after {
+    display: none !important;
+}
