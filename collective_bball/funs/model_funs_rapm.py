@@ -39,8 +39,6 @@ def preprocess(
 def tune_alpha(
     df: pl.DataFrame, players: pl.DataFrame, alpha_values: List[float], n_splits=10
 ) -> Tuple[List[Tuple[float, float]], float]:
-    # Initialize k-fold cross-validation
-    kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
 
     # Store results for each alpha
     results = []
@@ -50,21 +48,24 @@ def tune_alpha(
     # Iterate over different alpha values
     for alpha in alpha_values:
         fold_rmse = []  # To store RMSE for each fold
+        for random_state_val in [0, 11, 21, 42]:
+            # Initialize k-fold cross-validation
+            kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_state_val)
 
-        # Cross-validation loop
-        for train_idx, val_idx in kf.split(sparse_matrix):
-            X_train, X_val = dense_matrix[train_idx], dense_matrix[val_idx]
-            y_train, y_val = y[train_idx], y[val_idx]
+            # Cross-validation loop
+            for train_idx, val_idx in kf.split(sparse_matrix):
+                X_train, X_val = dense_matrix[train_idx], dense_matrix[val_idx]
+                y_train, y_val = y[train_idx], y[val_idx]
 
-            # Train Ridge model with current alpha
-            model = Ridge(alpha=alpha, fit_intercept=False)
-            model.fit(X_train, y_train)
+                # Train Ridge model with current alpha
+                model = Ridge(alpha=alpha, fit_intercept=False)
+                model.fit(X_train, y_train)
 
-            # Predict on validation set
-            y_pred = model.predict(X_val)
+                # Predict on validation set
+                y_pred = model.predict(X_val)
 
-            # Calculate RMSE for the fold
-            fold_rmse.append(np.sqrt(mean_squared_error(y_val, y_pred)))
+                # Calculate RMSE for the fold
+                fold_rmse.append(np.sqrt(mean_squared_error(y_val, y_pred)))
 
         # Calculate the average RMSE for this alpha
         avg_rmse = np.mean(fold_rmse)
