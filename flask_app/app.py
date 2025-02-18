@@ -1,5 +1,6 @@
 import subprocess
 from flask import Flask, render_template
+from directory_imports import tooltips
 
 from collective_bball.web_data_loader import get_stats, get_ratings
 
@@ -47,8 +48,9 @@ def home():
         "index.html",
         stats=stats_data,
         games=games_data,
-        players=ratings_data,
+        ratings=ratings_data,
         best_alpha=best_alpha,
+        main_tooltip=tooltips.main_tooltip
     )
 
 
@@ -71,6 +73,7 @@ def player_page(player_name):
         player_stats=filter_dictionary(stats_data, player_name),
         player_rating=filter_dictionary(ratings_data, player_name),
         player_games=filtered_games,
+        main_tooltip=tooltips.main_tooltip
     )
 
 

@@ -13,6 +13,14 @@
     <!-- Include Font Awesome for icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
 
+    <!-- Include Custom CSS Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+    <!-- Include Bootstrap CSS Styles -->
+    <!link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/dataTables.bootstrap5.min.css">
+    <!link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
+
 <style>
         body {
             font-family: Arial, sans-serif;
@@ -141,7 +149,8 @@
             <thead>
                 <tr>
                     {% for col in stats[0].keys() %}
-                        <th>{{ col }}</th>
+                        <th title="{{ main_tooltip.get(col, '') }}">
+                            {{ col }}</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -168,17 +177,18 @@
     <div class="tab-content ratings">
         <h2>Player Ratings</h2>
         <h3>Best Lambda: {{ best_alpha }}</h3>  <!-- Display the best_alpha value -->
-        {% if players %}
-        <table id="playersTable">
+        {% if ratings %}
+        <table id="ratingsTable">
             <thead>
                 <tr>
-                    {% for col in players[0].keys() %}
-                        <th>{{ col }}</th>
+                    {% for col in ratings[0].keys() %}
+                        <th title="{{ main_tooltip.get(col, '') }}">
+                            {{ col }}</th>
                     {% endfor %}
                 </tr>
             </thead>
             <tbody>
-                {% for row in players %}
+                {% for row in ratings %}
                     <tr>
                         {% for key, value in row.items() %}
                             {% if key == "Player" %}
@@ -209,7 +219,8 @@
             <thead>
                 <tr>
                     {% for col in games[0].keys() %}
-                        <th>{{ col }}</th>
+                        <th title="{{ main_tooltip.get(col, '') }}">
+                            {{ col }}</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -252,13 +263,25 @@
     <script>
         $(document).ready(function() {
             $("#statsTable").DataTable({
-                "order": [[2, "desc"]]  // Sort by Wins descending (third column)
+                "order": [[2, "desc"]],  // Sort by Wins descending (third column)
+                "language": {
+                    "info": "Showing _START_ to _END_ of _TOTAL_ players",
+                    "lengthMenu": "Show _MENU_ players"
+                }
             });
-            $("#playersTable").DataTable({
-                "order": [[1, "desc"]]  // Sort by Ratings descending (second column)
+            $("#ratingsTable").DataTable({
+                "order": [[1, "desc"]],  // Sort by Ratings descending (second column)
+                "language": {
+                    "info": "Showing _START_ to _END_ of _TOTAL_ players",
+                    "lengthMenu": "Show _MENU_ players"
+                }
             });
             $("#gamesTable").DataTable({
-                "order": [[14, "desc"]]  // Sort by GameId descending (first column)
+                "order": [[13, "desc"], [14, "desc"]],  // Sort by GameId descending (first column)
+                "language": {
+                    "info": "Showing _START_ to _END_ of _TOTAL_ games",
+                    "lengthMenu": 'Show <span>_MENU_</span> games'
+                }
             });
 
             // Tab functionality
@@ -271,5 +294,22 @@
             });
         });
     </script>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            var table = $('#statsTable').DataTable();
+
+            // Enable Bootstrap tooltips for column headers
+            $('#statsTable thead th').tooltip({
+                delay: 0,
+                track: true,
+                fade: 250
+            });
+        });
+    </script>
+
 </body>
 </html>
