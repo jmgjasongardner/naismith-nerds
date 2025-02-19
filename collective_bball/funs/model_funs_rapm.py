@@ -36,17 +36,17 @@ def preprocess(
 
 
 # Define a function for hyperparameter tuning using cross-validation
-def tune_alpha(
-    df: pl.DataFrame, players: pl.DataFrame, alpha_values: List[float], n_splits=10
+def tune_lambda(
+    df: pl.DataFrame, players: pl.DataFrame, lambda_values: List[float], n_splits=10
 ) -> Tuple[List[Tuple[float, float]], float]:
 
-    # Store results for each alpha
+    # Store results for each lambda
     results = []
 
     y, sparse_matrix, dense_matrix = preprocess(df=df, players=players)
 
-    # Iterate over different alpha values
-    for alpha in alpha_values:
+    # Iterate over different lambda values
+    for lambda_val in lambda_values:
         fold_rmse = []  # To store RMSE for each fold
         for random_state_val in [0, 11, 21, 42]:
             # Initialize k-fold cross-validation
@@ -57,8 +57,8 @@ def tune_alpha(
                 X_train, X_val = dense_matrix[train_idx], dense_matrix[val_idx]
                 y_train, y_val = y[train_idx], y[val_idx]
 
-                # Train Ridge model with current alpha
-                model = Ridge(alpha=alpha, fit_intercept=False)
+                # Train Ridge model with current lambda
+                model = Ridge(alpha=lambda_val, fit_intercept=False)
                 model.fit(X_train, y_train)
 
                 # Predict on validation set
@@ -67,27 +67,27 @@ def tune_alpha(
                 # Calculate RMSE for the fold
                 fold_rmse.append(np.sqrt(mean_squared_error(y_val, y_pred)))
 
-        # Calculate the average RMSE for this alpha
+        # Calculate the average RMSE for this lambda
         avg_rmse = np.mean(fold_rmse)
-        results.append((alpha, avg_rmse))
+        results.append((lambda_val, avg_rmse))
 
-    # Find the alpha with the lowest average RMSE
-    best_alpha = min(results, key=lambda x: x[1])
-    print(f"Best alpha: {best_alpha[0]} with RMSE: {best_alpha[1]}")
+    # Find the lambda with the lowest average RMSE
+    best_lambda = min(results, key=lambda x: x[1])
+    print(f"Best lambda: {best_lambda[0]} with RMSE: {best_lambda[1]}")
 
-    return results, best_alpha[0]
+    return results, best_lambda[0]
 
 
 def train_final_model(
-    df: pl.DataFrame, players: pl.DataFrame, best_alpha=1
+    df: pl.DataFrame, players: pl.DataFrame, best_lambda=1
 ) -> Tuple[pl.DataFrame, int]:
     player_to_idx = {
         player: idx for idx, player in enumerate(players["player"].unique().sort())
     }
     y, sparse_matrix = preprocess(df=df, players=players)[0:2]
 
-    # Train final model on all data with the best alpha
-    model = Ridge(alpha=best_alpha, fit_intercept=False)
+    # Train final model on all data with the best lambda
+    model = Ridge(alpha=best_lambda, fit_intercept=False)
     model.fit(sparse_matrix, y)
 
     # Get player ratings
@@ -99,4 +99,4 @@ def train_final_model(
         ratings_list, schema=["player", "rating"], orient="row"
     ).sort("rating", descending=True)
 
-    return ratings_df, best_alpha
+    return ratings_df, best_lambda

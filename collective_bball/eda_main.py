@@ -11,7 +11,7 @@ def generate_stats(run_locally=False):
     df = pl.from_pandas(pd.read_excel(data, sheet_name="GameResults", engine="openpyxl"))
     tiers = pl.from_pandas(pd.read_excel(data, sheet_name="PlayerTiers", engine="openpyxl"))
 
-    df = (
+    games = (
         df.with_columns(
             pl.col("A_SCORE").cast(pl.Int64),
             pl.col("B_SCORE").cast(pl.Int64)
@@ -46,7 +46,7 @@ def generate_stats(run_locally=False):
     id_cols = ["GameDate", "GameNum", "A_SCORE", "B_SCORE", "Winner"]
 
     players = (
-        df.select(id_cols + team_cols)
+        games.select(id_cols + team_cols)
         .unpivot(index=id_cols)
         .with_columns(
             pl.col("variable").str.extract(r"([AB])", 1).alias("team"),
@@ -85,7 +85,7 @@ def generate_stats(run_locally=False):
         player_stats.to_pandas().to_csv(f"collective_bball/raw-stats/PlayerStats-{date.today()}.csv", index=False)
         print(player_stats.to_pandas())
 
-    return player_stats.to_pandas(), df.to_pandas()
+    return player_stats, games
 
 if __name__ == "__main__":
 
