@@ -110,10 +110,10 @@ def sub_tier_data(
     return df
 
 
-def process_output_file(args, best_alpha: int) -> str:
+def process_output_file(args, best_lambda: int) -> str:
     used_tiers = "-all_tiers" if args.use_tier_data else ""
     min_games = (
         f"-min-tier-games={args.min_games_to_not_tier}" if args.use_tier_data else ""
     )
 
-    return f"collective_bball/ratings/{date.today()}-ratings-alpha={best_alpha}{used_tiers}{min_games}.csv"
+    return f"collective_bball/ratings/{date.today()}-ratings-lambda={best_lambda}{used_tiers}{min_games}.csv"

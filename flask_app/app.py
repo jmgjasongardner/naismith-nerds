@@ -1,8 +1,7 @@
-import subprocess
 from flask import Flask, render_template
 from flask_app.utility_imports import tooltips
-
-from collective_bball.web_data_loader import get_stats, get_ratings
+from collective_bball.eda_main import generate_stats
+from collective_bball.web_data_loader import format_stats_for_site, get_model_outputs, combine_tier_ratings, calculate_game_spreads
 
 app = Flask(__name__, static_folder="../static")
 
@@ -10,18 +9,7 @@ app = Flask(__name__, static_folder="../static")
 stats_data = None
 games_data = None
 ratings_data = None
-best_alpha = None
-
-
-def run_rapm_model():
-    subprocess.run(
-        [
-            "python",
-            "-m",
-            "collective_bball.rapm_model_main",
-        ],
-        check=True,
-    )
+best_lambda = None
 
 
 def filter_dictionary(dictionary, player_name):
@@ -29,27 +17,33 @@ def filter_dictionary(dictionary, player_name):
 
 
 def aggregate_data():
-    stats, games = get_stats()  # Pull stats dict
-    ratings, best_alpha = get_ratings()
+    stats, games = generate_stats(run_locally=False)
+    ratings, best_lambda, tiers = get_model_outputs()
+    ratings_with_small_samples = combine_tier_ratings(ratings=ratings, stats=stats, tiers=tiers)
 
-    return stats, games, ratings, best_alpha
+    games_with_spreads = calculate_game_spreads(games=games, ratings=ratings_with_small_samples)
+
+
+    stats_to_site = format_stats_for_site(stats.to_pandas())
+    games_to_site = games_with_spreads.to_pandas().drop('Date', axis = 1).to_dict(orient="records")
+    ratings_to_site = ratings.to_pandas().to_dict(orient="records")
+
+    return stats_to_site, games_to_site, ratings_to_site, best_lambda
 
 
 @app.route("/")
 def home():
-    global stats_data, games_data, ratings_data, best_alpha  # Use global variables
-
-    run_rapm_model()  # Run the model before fetching the data
+    global stats_data, games_data, ratings_data, best_lambda  # Use global variables
 
     # Store computed data in global variables
-    stats_data, games_data, ratings_data, best_alpha = aggregate_data()
+    stats_data, games_data, ratings_data, best_lambda = aggregate_data()
 
     return render_template(
         "index.html",
         stats=stats_data,
         games=games_data,
         ratings=ratings_data,
-        best_alpha=best_alpha,
+        best_lambda=best_lambda,
         main_tooltip=tooltips.main_tooltip
     )
 

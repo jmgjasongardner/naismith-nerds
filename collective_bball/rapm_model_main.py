@@ -12,9 +12,9 @@ def parse_args(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--use_tier_data", action="store_false")
     parser.add_argument("--min_games_to_not_tier", default=20, type=int)
-    parser.add_argument("--default_alpha", action="store_true")
+    parser.add_argument("--default_lambda", action="store_true")
     parser.add_argument(
-        "--alpha_params",
+        "--lambda_params",
         type=float,
         nargs="*",
         default=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
@@ -25,7 +25,7 @@ def parse_args(args=None):
     return args, unknown  # If args is None, it uses sys.argv
 
 
-def compute_ratings(args=None) -> Tuple[pl.DataFrame, int]:
+def run_rapm_model(args=None) -> Tuple[pl.DataFrame, int, pl.DataFrame]:
     """Compute player ratings and return the dataframe."""
     args, unknown = parse_args()  # Provide empty args for function calls
 
@@ -44,32 +44,32 @@ def compute_ratings(args=None) -> Tuple[pl.DataFrame, int]:
 
     players = util_funs.player_data(df=df)
 
-    if args.default_alpha:
-        best_alpha = 10 if args.use_tier_data else 100
-        ratings_df, best_alpha = model_funs_rapm.train_final_model(
-            df=df, players=players, best_alpha=best_alpha
+    if args.default_lambda:
+        best_lambda = 10 if args.use_tier_data else 100
+        ratings_df, best_lambda = model_funs_rapm.train_final_model(
+            df=df, players=players, best_lambda=best_lambda
         )
     else:
-        alphas, best_alpha = model_funs_rapm.tune_alpha(
-            df=df, players=players, alpha_values=args.alpha_params
+        lambdas, best_lambda = model_funs_rapm.tune_lambda(
+            df=df, players=players, lambda_values=args.lambda_params
         )
-        ratings_df, best_alpha = model_funs_rapm.train_final_model(
-            df=df, players=players, best_alpha=best_alpha
+        ratings_df, best_lambda = model_funs_rapm.train_final_model(
+            df=df, players=players, best_lambda=best_lambda
         )
 
-    return ratings_df, best_alpha
+    return ratings_df, best_lambda, tiers
 
 
 # ✅ Keeps script functionality when run directly
 if __name__ == "__main__":
 
     args, unknown = parse_args()
-    ratings_df, best_alpha = compute_ratings(args)
+    ratings_df, best_lambda, tiers = run_rapm_model(args)
     ratings_pd = ratings_df.to_pandas()
 
     if args.save_csv:
         ratings_pd.to_csv(
-            util_funs.process_output_file(args=args, best_alpha=best_alpha), index=False
+            util_funs.process_output_file(args=args, best_lambda=best_lambda), index=False
         )
 
     print(ratings_pd)
