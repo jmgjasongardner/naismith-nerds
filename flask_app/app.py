@@ -1,7 +1,8 @@
 from flask import Flask, render_template
 from flask_app.utility_imports import tooltips
 from collective_bball.eda_main import generate_stats
-from collective_bball.web_data_loader import format_stats_for_site, get_model_outputs, combine_tier_ratings, calculate_game_spreads
+from flask_app.web_data_loader import format_stats_for_site, get_model_outputs, combine_tier_ratings, calculate_game_spreads
+from flask_app.player_page_data_loader import create_player_games
 
 app = Flask(__name__, static_folder="../static")
 
@@ -25,10 +26,9 @@ def aggregate_data():
 
 
     stats_to_site = format_stats_for_site(stats.to_pandas())
-    games_to_site = games_with_spreads.to_pandas().drop('Date', axis = 1).to_dict(orient="records")
     ratings_to_site = ratings.to_pandas().to_dict(orient="records")
 
-    return stats_to_site, games_to_site, ratings_to_site, best_lambda
+    return stats_to_site, games_with_spreads, ratings_to_site, best_lambda
 
 
 @app.route("/")
@@ -41,7 +41,7 @@ def home():
     return render_template(
         "index.html",
         stats=stats_data,
-        games=games_data,
+        games=games_data.to_pandas().drop('Date', axis = 1).to_dict(orient="records"),
         ratings=ratings_data,
         best_lambda=best_lambda,
         main_tooltip=tooltips.main_tooltip
@@ -55,18 +55,18 @@ def player_page(player_name):
     if stats_data is None or games_data is None or ratings_data is None:
         return "Data not loaded. Please visit the homepage first.", 500
 
-    filtered_games = [
-        game for game in games_data
-        if player_name in {game["A1"], game["A2"], game["A3"], game["A4"], game["A5"],
-                           game["B1"], game["B2"], game["B3"], game["B4"], game["B5"]}
-    ]
+    player_rating = filter_dictionary(ratings_data, player_name)
+    if player_rating == []: # TODO: Fix with logic to calculate player rating overall for tiers calc
+        player_rating = [{'Player': player_name, 'Rating': 0}]
+
+    player_games = create_player_games(games_data=games_data, player_name=player_name, player_rating=list(player_rating[0].values())[1])
 
     return render_template(
         "player.html",
         player_name=player_name,
         player_stats=filter_dictionary(stats_data, player_name),
         player_rating=filter_dictionary(ratings_data, player_name),
-        player_games=filtered_games,
+        player_games=player_games.to_pandas().drop(['Date', 'Team'], axis = 1).to_dict(orient="records"),
         main_tooltip=tooltips.main_tooltip
     )
 

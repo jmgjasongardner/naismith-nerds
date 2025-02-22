@@ -20,13 +20,6 @@ def format_stats_for_site(stats_df):
 
     return stats_df.to_dict(orient="records")  # Convert to list of dicts for Jinja
 
-
-# def stats_to_dictionary():
-#     """Return formatted stats with renamed columns and rounded values."""
-#     stats, games = generate_stats()
-#     return format_stats_for_site(stats), games.drop('Date', axis = 1).to_dict(orient="records")  # Apply formatting before sending
-
-
 def get_model_outputs():
     """Fetch ratings as a pandas dataframe."""
     ratings_df, best_lambda, tiers = run_rapm_model()
