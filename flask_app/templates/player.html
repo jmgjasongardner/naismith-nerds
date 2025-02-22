@@ -73,7 +73,7 @@
                 <tr>
                     {% for key, value in row.items() %}
                         <td>
-                            {% if key in ['A1', 'A2', 'A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4', 'B5'] %}
+                            {% if key in ['T1', 'T2', 'T3', 'T4', 'O1', 'O2', 'O3', 'O4', 'O5'] %}
                                 <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
                             {% else %}
                                 {{ value }}
@@ -102,7 +102,7 @@
                 "paging": true,  // Enable pagination
                 "searching": true,  // Enable search bar
                 "ordering": true,  // Enable sorting
-                "order": [[13, "desc"], [14, "desc"]]
+                "order": [[0, "desc"], [1, "desc"]]
             });
         });
     </script>
