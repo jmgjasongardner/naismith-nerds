@@ -49,8 +49,9 @@ def convert_game_row_to_player_level(row: dict, player_name: str) -> dict:
     }
 
 
-def create_player_games(games_data: pl.DataFrame, player_name: str, player_rating: float) -> pl.DataFrame:
+def create_player_games(games_data: pl.DataFrame, player_name: str, player_ratings: pl.DataFrame) -> pl.DataFrame:
     """Creates a new dataframe with transformed data for the given player."""
+    player_rating = player_ratings.filter(pl.col('Player') == player_name)['Rating'].item()
     filtered_games = filter_player_games(games_data, player_name)
     transformed_data = [convert_game_row_to_player_level(row, player_name) for row in filtered_games.iter_rows(named=True)]
 
@@ -62,3 +63,21 @@ def create_player_games(games_data: pl.DataFrame, player_name: str, player_ratin
         (pl.col('Teammate_Quality') - pl.col('Opp_Quality')).round(3).alias('Other_Nine_Player_Quality_Diff')
     )
 
+def load_player_bio_data(bios: pl.DataFrame, player_name: str):
+
+    # Look up bio information
+    bio_row = bios.filter(pl.col("player") == player_name)
+
+    # Default to player_name if full_name is missing
+    full_name = bio_row["full_name"].item() if not bio_row.is_empty() else player_name
+
+    # Convert height from inches to "ft, in" format if available
+    if not bio_row.is_empty() and bio_row["height"].is_not_null().all():
+        height_in = int(bio_row["height"].item())
+        height_ft = height_in // 12
+        height_remain = height_in % 12
+        height_str = f"Height: {height_ft}'{height_remain}\""
+    else:
+        height_str = None  # No height available
+
+    return full_name, height_str

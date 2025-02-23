@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import date
 
 
-def pull_in_data() -> tuple[pl.DataFrame, pl.DataFrame]:
+def pull_in_data() -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     data = "collective_bball/GameResults.xlsm"
     df = pl.from_pandas(
         pd.read_excel(data, sheet_name="GameResults", engine="openpyxl")
@@ -11,8 +11,11 @@ def pull_in_data() -> tuple[pl.DataFrame, pl.DataFrame]:
     tiers = pl.from_pandas(
         pd.read_excel(data, sheet_name="PlayerTiers", engine="openpyxl")
     )
+    bios = pl.from_pandas(
+        pd.read_excel(data, sheet_name="Bios", engine="openpyxl")
+    )
 
-    return df, tiers
+    return df, tiers, bios
 
 
 def clean_data(df: pl.DataFrame) -> pl.DataFrame:
