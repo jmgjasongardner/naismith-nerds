@@ -25,12 +25,12 @@ def parse_args(args=None):
     return args, unknown  # If args is None, it uses sys.argv
 
 
-def run_rapm_model(args=None) -> Tuple[pl.DataFrame, int, pl.DataFrame]:
+def run_rapm_model(args=None) -> Tuple[pl.DataFrame, int, pl.DataFrame, pl.DataFrame]:
     """Compute player ratings and return the dataframe."""
     args, unknown = parse_args()  # Provide empty args for function calls
 
     # Pull in data
-    df, tiers = util_funs.pull_in_data()
+    df, tiers, bios = util_funs.pull_in_data()
     df = util_funs.clean_data(df=df)
     games_played = util_funs.played_games(df=df)
     tiers = tiers.join(games_played, on="player")
@@ -57,7 +57,7 @@ def run_rapm_model(args=None) -> Tuple[pl.DataFrame, int, pl.DataFrame]:
             df=df, players=players, best_lambda=best_lambda
         )
 
-    return ratings_df, best_lambda, tiers
+    return ratings_df, best_lambda, tiers, bios
 
 
 # ✅ Keeps script functionality when run directly

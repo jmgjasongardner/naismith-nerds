@@ -22,14 +22,14 @@ def format_stats_for_site(stats_df):
 
 def get_model_outputs():
     """Fetch ratings as a pandas dataframe."""
-    ratings_df, best_lambda, tiers = run_rapm_model()
+    ratings_df, best_lambda, tiers, bios = run_rapm_model()
     ratings_df = ratings_df.with_columns(
         pl.col("rating").round(5)
     ).rename({
         "player": "Player",
         "rating": "Rating"
     })
-    return ratings_df, best_lambda, tiers
+    return ratings_df, best_lambda, tiers, bios
 
 def combine_tier_ratings(stats, ratings, tiers) -> pl.DataFrame:
     combined_ratings = stats.join(
