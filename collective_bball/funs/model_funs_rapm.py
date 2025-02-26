@@ -10,21 +10,29 @@ from typing import Tuple, List
 def preprocess(
     df: pl.DataFrame, players: pl.DataFrame
 ) -> Tuple[np.ndarray, sp.coo_matrix, np.ndarray]:
-    # Prepare your data (same preprocessing steps)
-    game_to_idx = {game: idx for idx, game in enumerate(df["GameId"])}
+    game_to_idx = {
+        (date, num): idx for idx, (date, num) in enumerate(
+            df.select(["GameDate", "GameNum"]).unique().sort(["GameDate", "GameNum"]).iter_rows()
+        )
+    }
+
     player_to_idx = {
         player: idx for idx, player in enumerate(players["player"].unique().sort())
     }
 
-    row_indices = np.array([game_to_idx[game] for game in players["GameId"]])
+    row_indices = np.array(
+        [game_to_idx[(date, num)] for date, num in zip(players["GameDate"], players["GameNum"])]
+    )
     col_indices = np.array([player_to_idx[player] for player in players["player"]])
     data = players["effect"].to_numpy()
+
     sparse_matrix = sp.coo_matrix(
         (data, (row_indices, col_indices)),
-        shape=(len(df["GameId"].unique()), len(players["player"].unique())),
+        shape=(len(df.select(["GameDate", "GameNum"]).unique()), len(players["player"].unique())),
     )
+
     y = (
-        df.sort("GameId")
+        df.sort(["GameDate", "GameNum"], descending=[False, False])
         .with_columns((pl.col("A_SCORE") - pl.col("B_SCORE")).alias("point_diff"))
         .select("point_diff")
         .to_numpy()

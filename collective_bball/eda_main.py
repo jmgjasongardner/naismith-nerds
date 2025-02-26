@@ -35,10 +35,6 @@ def generate_stats(run_locally=False):
             .cast(pl.Int32)
             .alias("GameNum")  # Sequential count per Date
         )
-        # .with_columns(
-        #     (pl.col("GameDate") + "-" + (pl.col("GameNum")).cast(pl.Utf8)).alias("GameId")
-        # )
-        # .drop("GameDate")
         .filter(pl.col("A_SCORE").is_not_nan())
     )
 

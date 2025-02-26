@@ -45,7 +45,7 @@ def run_rapm_model(args=None) -> Tuple[pl.DataFrame, int, pl.DataFrame, pl.DataF
     players = util_funs.player_data(df=df)
 
     if args.default_lambda:
-        best_lambda = 10 if args.use_tier_data else 100
+        best_lambda = 25 if args.use_tier_data else 100
         ratings_df, best_lambda = model_funs_rapm.train_final_model(
             df=df, players=players, best_lambda=best_lambda
         )
@@ -64,7 +64,7 @@ def run_rapm_model(args=None) -> Tuple[pl.DataFrame, int, pl.DataFrame, pl.DataF
 if __name__ == "__main__":
 
     args, unknown = parse_args()
-    ratings_df, best_lambda, tiers = run_rapm_model(args)
+    ratings_df, best_lambda, tiers, bios = run_rapm_model(args)
     ratings_pd = ratings_df.to_pandas()
 
     if args.save_csv:

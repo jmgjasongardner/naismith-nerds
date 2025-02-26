@@ -40,12 +40,6 @@ def clean_data(df: pl.DataFrame) -> pl.DataFrame:
             .cast(pl.Int32)
             .alias("GameNum")  # Sequential count per Date
         )
-        .with_columns(
-            (pl.col("GameDate") + "-" + (pl.col("GameNum")).cast(pl.Utf8)).alias(
-                "GameId"
-            )
-        )
-        .drop("GameDate")
         .filter(pl.col("A_SCORE").is_not_nan())
     )
 
@@ -66,7 +60,7 @@ def played_games(df: pl.DataFrame) -> pl.DataFrame:
 def player_data(df: pl.DataFrame) -> pl.DataFrame:
     # Reshape the dataframe with unpivot
     team_cols = [f"A{i}" for i in range(1, 6)] + [f"B{i}" for i in range(1, 6)]
-    id_cols = ["GameId", "A_SCORE", "B_SCORE", "Winner"]
+    id_cols = ["GameDate", "GameNum", "A_SCORE", "B_SCORE", "Winner"]
 
     return (
         df.select(id_cols + team_cols)
