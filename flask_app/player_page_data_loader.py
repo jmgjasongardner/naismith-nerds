@@ -63,6 +63,85 @@ def create_player_games(games_data: pl.DataFrame, player_name: str, player_ratin
         (pl.col('Teammate_Quality') - pl.col('Opp_Quality')).round(3).alias('Other_Nine_Player_Quality_Diff')
     )
 
+def create_player_games_advanced(player_games: pl.DataFrame, games_data: pl.DataFrame):
+    num_games = len(player_games)
+    player_games = player_games.with_columns(
+        pl.when(pl.col('Proj_Score_Diff') > 0)
+        .then(1)
+        .otherwise(0)
+        .alias('Favorite')
+    )
+
+    player_games_advanced = pl.DataFrame(
+        {
+            "Pct Total Games Played": [round(len(player_games) / len(games_data), 3)],
+            "Pct Total Days Played": [round(len(player_games["Date"].unique()) / len(games_data["Date"].unique()), 3)],
+            "Pct First Games Played": [round(sum(player_games["GameNum"] == 1) / len(games_data["Date"].unique()), 3)],
+            "Pct Games w/ Positive Teammates": [round((player_games["Teammate_Quality"] > 0).sum() / num_games, 3)],
+            "Pct Games w/ Positive Opponents": [round((player_games["Opp_Quality"] > 0).sum() / num_games, 3)],
+            "Pct Games w/ Better Teammates": [
+                round((player_games["Other_Nine_Player_Quality_Diff"] > 0).sum() / num_games, 3)],
+            "Pct Games as Favorite": [round((player_games["Proj_Score_Diff"] > 0).sum() / num_games, 3)],
+            "Win Pct as Favorite": [
+                "N/A" if player_games["Favorite"].sum() == 0 else round(
+                    player_games.filter(pl.col("Favorite") == 1)["Winner"].sum()
+                    / player_games["Favorite"].sum(),
+                    3,
+                )
+            ],
+            "Win Pct as Underdog": [
+                "N/A" if (player_games["Favorite"] == 0).sum() == 0 else round(
+                    player_games.filter(pl.col("Favorite") == 0)["Winner"].sum()
+                    / (player_games["Favorite"] == 0).sum(),
+                    3,
+                )
+            ],
+        }
+    )
+
+    biggest_upset_win = (
+        player_games
+        .filter((pl.col("Winner") == 1) & (pl.col("Favorite") == 0))
+        .sort("Proj_Score_Diff")
+        .head(1)
+        .with_columns(pl.lit("Biggest Upset Win").alias("Game Type"))
+        .select(["Game Type", *player_games.columns])
+    )
+
+    biggest_upset_loss = (
+        player_games
+        .filter((pl.col("Winner") == 0) & (pl.col("Favorite") == 1))
+        .sort("Proj_Score_Diff", descending=True)
+        .head(1)
+        .with_columns(pl.lit("Biggest Upset Loss").alias("Game Type"))
+        .select(["Game Type", *player_games.columns])
+    )
+
+    most_impressive = (
+        player_games
+        .sort("Spread_Difference", descending=True)
+        .head(1)
+        .with_columns(pl.lit("Most Impressive").alias("Game Type"))
+        .select(["Game Type", *player_games.columns])
+    )
+
+    most_embarrassing = (
+        player_games
+        .sort("Spread_Difference")
+        .head(1)
+        .with_columns(pl.lit("Most Embarrassing").alias("Game Type"))
+        .select(["Game Type", *player_games.columns])
+    )
+
+    # Concatenate while ensuring only non-empty results are included
+    games_of_note = pl.concat(
+        [biggest_upset_win, biggest_upset_loss, most_impressive, most_embarrassing],
+        how="vertical"
+    ).drop_nulls(subset=["Game Type"])
+
+    return player_games_advanced, games_of_note
+
+
 def load_player_bio_data(bios: pl.DataFrame, player_name: str):
 
     # Look up bio information
