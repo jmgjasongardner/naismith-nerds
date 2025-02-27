@@ -41,10 +41,10 @@
         <h3>{{ values_list[1] }}</h3>
     {% else %}
         <p>No rating data available for {{ player_name }} (not yet played 20 games).</p>
-    {% endif %}`
+    {% endif %}
 
 
-    <h3>Stats</h3>
+    <h2>Stats</h2>
     {% if player_stats %}
     <table id="statsTable" class="display">
         <thead>
@@ -69,7 +69,65 @@
         <p>No stats available for {{ player_name }}.</p>
     {% endif %}
 
-    <h3>Games</h3>
+
+    {% if player_games_advanced %}
+    <table id="player_games_advancedTable" class="display">
+        <thead>
+            <tr>
+                {% for col in player_games_advanced[0].keys() %}
+                    <th title="{{ main_tooltip.get(col, '') }}">
+                        {{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in player_games_advanced %}
+                <tr>
+                    {% for value in row.values() %}
+                        <td>{{ value }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No stats available for {{ player_name }}.</p>
+    {% endif %}
+
+
+    <h3>Games of Note</h3>
+    {% if games_of_note %}
+    <table id="games_of_noteTable" class="display">
+        <thead>
+            <tr>
+                {% for col in games_of_note[0].keys() %}
+                    <th title="{{ main_tooltip.get(col, '') }}">
+                        {{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in games_of_note %}
+                <tr>
+                    {% for key, value in row.items() %}
+                        <td>
+                            {% if key in ['T1', 'T2', 'T3', 'T4', 'O1', 'O2', 'O3', 'O4', 'O5'] %}
+                                <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
+                            {% else %}
+                                {{ value }}
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No stats available for {{ player_name }}.</p>
+    {% endif %}
+
+
+    <h2>All Games</h2>
     {% if player_games %}
     <table id="gamesTable" class="display">
         <thead>
@@ -105,6 +163,18 @@
     <script>
         $(document).ready(function() {
              $('#statsTable').DataTable({
+                "paging": false,  // Enable pagination
+                "searching": false,  // Enable search bar
+                "ordering": false,  // Enable sorting
+                "info": false,  // Show table info (e.g., "Showing 1 to 10 of 50 entries")
+            });
+            $('#player_games_advancedTable').DataTable({
+                "paging": false,  // Enable pagination
+                "searching": false,  // Enable search bar
+                "ordering": false,  // Enable sorting
+                "info": false,  // Show table info (e.g., "Showing 1 to 10 of 50 entries")
+            });
+            $('#games_of_noteTable').DataTable({
                 "paging": false,  // Enable pagination
                 "searching": false,  // Enable search bar
                 "ordering": false,  // Enable sorting
