@@ -7,6 +7,7 @@ def format_stats_for_site(stats_df):
     column_map = {
         "player": "Player",
         "games_played": "Games Played",
+        "days_played": "Days Played",
         "wins": "Wins",
         "losses": "Losses",
         "win_pct": "Win Pct",

@@ -264,7 +264,7 @@
     <script>
         $(document).ready(function() {
             $("#statsTable").DataTable({
-                "order": [[2, "desc"]],  // Sort by Wins descending (third column)
+                "order": [[3, "desc"], [6, "desc"]],  // Sort by Wins descending (fourth column) and win pct (sixth)
                 "language": {
                     "info": "Showing _START_ to _END_ of _TOTAL_ players",
                     "lengthMenu": "Show _MENU_ players"
