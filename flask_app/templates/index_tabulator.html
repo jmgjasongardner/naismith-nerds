@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naismith Nerds</title>
+
+    <!-- Include jQuery and DataTables.js -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.11.6/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css">
+
+    <!-- Include Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+
+    <!-- Include Custom CSS Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+
+    <!-- Include Bootstrap CSS Styles -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
+    <!-- Tabulator CSS -->
+    <link href="https://unpkg.com/tabulator-tables@5.4.3/dist/css/tabulator.min.css" rel="stylesheet">
+    <!-- Tabulator JS -->
+    <script src="https://unpkg.com/tabulator-tables@5.4.3/dist/js/tabulator.min.js"></script>`
+    <!-- Luxon date time sorting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.3/luxon.min.js"></script>
+
+<style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        table {
+            width: 80%;
+            margin: auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid black;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 5px 5px 0 0;
+            margin: 0 10px;
+        }
+        .tab.active {
+            background-color: #007bff;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .credits {
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+        .credits a {
+            color: blue;
+            text-decoration: none;
+        }
+        .credits a:hover {
+            text-decoration: underline;
+        }
+        .social-icons {
+            margin-top: 20px;
+        }
+        .social-icons a {
+            font-size: 2em;
+            margin: 0 15px;
+            color: #333;
+            text-decoration: none;
+        }
+        .social-icons a:hover {
+            color: #0077b5;
+        }
+        .methodology {
+            font-size: 1.2em;
+            padding: 20px;
+            background-color: #f4f4f4;
+            margin-top: 20px;
+            text-align: left; /* Left justify methodology text */
+        }
+        .methodology h2 {
+            text-align: center; /* Keep h2 centered */
+        }
+        .images-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .images-container img {
+            width: 200px; /* Set a fixed width for both images */
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome, Naismith Nerds</h1>
+
+    <!-- Credits Section -->
+    <div class="credits">
+        <p>Created by Jason Gardner January 2025</p>
+        <p>Stats from thrice-weekly semi-formal pickup basketball at <a href="https://thecollectivedc.com/" target="_blank">The Collective</a> in SE Washington, DC beginning January 2025</p>
+        <p>Additional maintenance and tracking by Jack Stubblefield</p>
+    </div>
+
+    <!-- Social Media Icons -->
+    <div class="social-icons">
+        <a href="https://www.linkedin.com/in/jasonmgardner99" target="_blank"><i class="fab fa-linkedin"></i></a>
+        <a href="https://github.com/jmgjasongardner/naismith-nerds" target="_blank"><i class="fab fa-github"></i></a>
+        <a href="https://www.instagram.com/jmgjasongardner" target="_blank"><i class="fab fa-instagram"></i></a>
+        <a href="https://twitter.com/jmgjasongardner" target="_blank"><i class="fab fa-twitter"></i></a>
+        <a href="https://bsky.app/profile/jmgard.bsky.social" target="_blank"><i class="fab fa-bluesky"></i></a>
+    </div>
+
+    <!-- Image Container for Naismith and Collective -->
+    <div class="images-container">
+        <img src="{{ url_for('static', filename='naismith.jpeg') }}"
+             alt="Naismith Nerds">
+        <img src="{{ url_for('static', filename='nbamath.jpg') }}"
+             alt="NBA Math">
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+        <div class="tab active" data-target="stats">Stats</div>
+        <div class="tab" data-target="ratings">Ratings</div>
+        <div class="tab" data-target="games">Games</div>
+        <div class="tab" data-target="methodology">Methodology</div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content stats active">
+        <h2>Stats</h2>
+        <h3>From {{ num_days }} Runs Since January 11, 2025</h3>
+        {% if stats %}
+        <table id="statsTable">
+            <thead>
+                <tr>
+                    {% for col in stats[0].keys() %}
+                        <th title="{{ main_tooltip.get(col, '') }}">
+                            {{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in stats %}
+                    <tr>
+                        {% for key, value in row.items() %}
+                            <td>
+                                {% if key == "Player" %}
+                                    <a href="{{ url_for('player_page', player_name=row['Player']) }}">{{ value }}</a>
+                                {% else %}
+                                    {{ value }}
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>No stats available.</p>
+        {% endif %}
+    </div>
+    <div class="tab-content ratings">
+        <h2>Player Ratings</h2>
+        <h3>Best Lambda: {{ best_lambda }}</h3>  <!-- Display the best_lambda value -->
+        {% if ratings %}
+        <table id="ratingsTable">
+            <thead>
+                <tr>
+                    {% for col in ratings[0].keys() %}
+                        <th title="{{ main_tooltip.get(col, '') }}">
+                            {{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in ratings %}
+                    <tr>
+                        {% for key, value in row.items() %}
+                            {% if key == "Player" %}
+                                <td>
+                                    <a href="{{ url_for('player_page', player_name=value) }}">
+                                        {{ value }}
+                                    </a>
+                                </td>
+                            {% else %}
+                                <td>{{ value }}</td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>No player ratings available.</p>
+        {% endif %}
+    </div>
+
+    <div id="filters">
+        <label for="teamA-filter">Search Team A:</label>
+        <input id="teamA-filter" placeholder="Type to search...">
+
+        <label for="teamB-filter">Search Team B:</label>
+        <input id="teamB-filter" placeholder="Type to search...">
+
+        <label for="general-search">Search GameDate or others:</label>
+        <input id="general-search" placeholder="Type to search...">
+    </div>
+
+       <!-- Tab Content -->
+
+    <div class="tab-content games">
+        <h2>Games</h2>
+        <div id="gamesTable"></div>  <!-- Tabulator will populate this div -->
+    </div>
+
+    <div class="tab-content methodology">
+        <h2>Methodology</h2>
+        <p>Hello, my fellow hoops nerd!</p>
+        <p>This is my attempt at a very basic RAPM-model, the exact type of nerddom that appreciates my favorite athlete of all-time, <a href="https://www.youtube.com/watch?v=t65ZAGM_kSA"> someone for whom I offer my direct thanks to God</a> at least one or two mornings and evenings a week.</p>
+        <p>Anyway, <a href="https://jecutter.github.io/blog/rapm-model/" target="_blank">Jacob Cutter</a> does a remarkable job of explaining the math behind the NBA application of a RAPM model.</p>
+        <h2>Let's break RAPM down</h2>
+        <p> First, <a href="https://iscoresports.com/basketball/kb/faq_general/what_is_pm.php" target="_blank">plus-minus</a> is a well-known concept known in basketball (and other sports) that is simply a measure of the point-difference for a given player when they're on the court.</p>
+        <p> The problem with this, however, is that players are often at the mercy (detriment or benefit) of the other nine players on the court, and they might thus <a href="https://www.instagram.com/foreversnappnn2/" target="_blank">run the gym</a> despite not necessarily being the lead contributor.  To account for this, we create an adjustment, the "A" in RAPM, with a <a href="https://www.xlstat.com/en/solutions/features/ordinary-least-squares-regression-ols" target="_blank">linear regression</a> model that accounts for each of the ten players on the court, to solve for the relative contributions that each player made to the final score differential on an adjusted scale.</p>
+        <p> There are, however, problems with this as well, given that small sample sizes can lead to absurdly high or low coefficient values for a given player (their adjusted plus minus).  To account for this, we regularize the model, the "R" in RAPM, by adding an L2 regularization term to the OLS linear model to instead create a <a href="https://www.ibm.com/think/topics/ridge-regression" target="_blank">ridge regression model.</a>  This "penalizes" coefficient (read: adjusted plus-minus rating prediction) values that stray too far either side of zero with smaller samples.  What you get at the end is a:</p>
+        <h2>Regularized Adjusted Plus-Minus model to measure the relative point differential a player adds to their team over the course of one game!</h2>
+        <h3>Further resources:</h3>
+        <p><a href="https://www.youtube.com/watch?v=Mkgcln0rrxA" target="_blank">Video: How does regularized adjusted plus-minus ratings work?</a></p>
+        <p><a href="https://squared2020.com/2017/09/18/deep-dive-on-regularized-adjusted-plus-minus-i-introductory-example/" target="_blank">Deep Dive on Regularized Adjusted Plus-Minus I: Introductory Example</a></p>
+    </div>
+
+    <!-- Load necessary scripts first -->
+    <script>
+        $(document).ready(function() {
+            // Initialize DataTables
+            $("#statsTable").DataTable({
+                "order": [[3, "desc"], [6, "desc"]],  // Sort by Wins descending (fourth column) and win pct (sixth)
+                "language": {
+                    "info": "Showing _START_ to _END_ of _TOTAL_ players",
+                    "lengthMenu": "Show _MENU_ players"
+                }
+            });
+
+            $("#ratingsTable").DataTable({
+                "order": [[1, "desc"]],  // Sort by Ratings descending (second column)
+                "language": {
+                    "info": "Showing _START_ to _END_ of _TOTAL_ players",
+                    "lengthMenu": "Show _MENU_ players"
+                }
+            });
+            console.log("Checking Games Data:", {{ games | tojson | safe }});
+
+            // Initialize Tabulator for gamesTable
+            document.addEventListener("DOMContentLoaded", function () {
+                var table = new Tabulator("#gamesTable", {
+                    data: {{ games | tojson | safe }},
+                    layout: "fitDataFill",
+                    pagination: "local",
+                    paginationSize: 25,
+                    paginationSizeSelector: [10, 25, 50, 100],
+                    columns: [
+                        {% for col in games[0].keys() %}
+                        {
+                            title: "{{ col }}",
+                            field: "{{ col }}",
+                            {% if col.lower() == "gamedate" %}
+                            sorter: "date",
+                            sorterParams: { format: "yyyy-MM-dd" },
+                            hozAlign: "center",
+                            headerSortStartingDir: "desc",
+                            {% elif col.lower() == "gamenum" %}
+                            sorter: "number",
+                            hozAlign: "center",
+                            {% endif %}
+                            formatter: function (cell, formatterParams) {
+                                var value = cell.getValue();
+                                var key = cell.getColumn().getField();
+                                if (["A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3", "B4", "B5"].includes(key)) {
+                                    return `<a href="/player/${value}">${value}</a>`;
+                                }
+                                return value;
+                            }
+                        },
+                        {% endfor %}
+                    ],
+                    initialSort: [
+                        { column: "GameNum", dir: "desc" },
+                        { column: "GameDate", dir: "desc" }
+                    ]
+                });
+
+                // Load player names dynamically
+                var allPlayers = new Set();
+                table.getData().forEach(row => {
+                    ["A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3", "B4", "B5"].forEach(pos => {
+                        if (row[pos]) allPlayers.add(row[pos]);
+                    });
+                });
+
+                var playerList = Array.from(allPlayers).sort();
+
+                console.log("Games Data:", {{ games | tojson | safe }});
+
+                // Initialize Tom Select for Team A
+                new TomSelect("#teamA-filter", {
+                    options: playerList.map(player => ({ value: player, text: player })),
+                    maxItems: 5,
+                    persist: false,
+                    create: false,
+                    onChange: function (values) {
+                        updateFilters();
+                    }
+                });
+
+                // Initialize Tom Select for Team B
+                new TomSelect("#teamB-filter", {
+                    options: playerList.map(player => ({ value: player, text: player })),
+                    maxItems: 5,
+                    persist: false,
+                    create: false,
+                    onChange: function (values) {
+                        updateFilters();
+                    }
+                });
+
+                // General search bar
+                document.getElementById("general-search").addEventListener("input", function () {
+                    table.setFilter([
+                        { field: "GameDate", type: "like", value: this.value },
+                    ]);
+                });
+
+                // Function to update filters
+                function updateFilters() {
+                    var teamASelect = document.querySelector("#teamA-filter").tomselect;
+                    var selectedTeamA = teamASelect ? teamASelect.items : [];
+                    console.log("Selected Team A:", selectedTeamA);
+                    } else {
+                        console.error("TomSelect not initialized on #teamA-filter");
+                    }
+                    var teamBSelect = document.querySelector("#teamB-filter").tomselect;
+                    var selectedTeamB = teamBSelect ? teamBSelect.items : [];
+                    console.log("Selected Team B:", selectedTeamB);
+                    } else {
+                        console.error("TomSelect not initialized on #teamB-filter");
+                    }
+
+                    table.setFilter(function (row) {
+                        var data = row.getData();
+                        var teamAValid = selectedTeamA.length === 0 || selectedTeamA.some(player => Object.values(data).includes(player));
+                        var teamBValid = selectedTeamB.length === 0 || selectedTeamB.some(player => Object.values(data).includes(player));
+                        return teamAValid && teamBValid;
+                    });
+                }
+            });
+
+
+
+            // Enable Bootstrap tooltips for column headers
+            $('#statsTable thead th').tooltip({
+                delay: 0,
+                track: true,
+                fade: 250
+            });
+
+            // Tab functionality
+            $(".tab").click(function() {
+                var target = $(this).data("target");
+                $(".tab").removeClass("active");
+                $(this).addClass("active");
+                $(".tab-content").removeClass("active");
+                $("." + target).addClass("active");
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const tabs = document.querySelectorAll(".tab");
+            const contents = document.querySelectorAll(".tab-content");
+
+            tabs.forEach(tab => {
+                tab.addEventListener("click", function () {
+                    // Remove active class from all tabs and contents
+                    tabs.forEach(t => t.classList.remove("active"));
+                    contents.forEach(c => c.classList.remove("active"));
+
+                    // Add active class to clicked tab and corresponding content
+                    this.classList.add("active");
+                    const target = this.getAttribute("data-target");
+                    document.querySelector("." + target).classList.add("active");
+                });
+            });
+        });
+    </script>
+
+
+</body>
+</html>

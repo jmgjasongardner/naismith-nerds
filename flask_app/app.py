@@ -42,7 +42,7 @@ def home():
     stats_data, games_data, ratings_data, best_lambda, ratings_with_small_samples, bios = aggregate_data()
 
     return render_template(
-        "index.html",
+        "index_tabulator.html",
         stats=stats_data,
         num_days=len(games_data["GameDate"].unique()),
         games=games_data.to_pandas().drop('Date', axis = 1).to_dict(orient="records"),
