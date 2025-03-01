@@ -34,6 +34,8 @@ def generate_stats(run_locally=False):
             .over("GameDate")
             .cast(pl.Int32)
             .alias("GameNum")  # Sequential count per Date
+        ).with_columns(
+            pl.col("GameDate").cast(pl.Date).dt.strftime("%A").str.slice(0, 3).alias("Day")
         )
         .filter(pl.col("A_SCORE").is_not_nan())
     )
@@ -68,6 +70,7 @@ def generate_stats(run_locally=False):
         .agg(
             [
                 pl.count("player").alias("games_played"),
+                pl.n_unique("GameDate").alias("days_played"),
                 pl.sum("GameWon").alias("wins"),
                 (pl.count("player") - pl.sum("GameWon")).alias("losses"),
                 (pl.sum("GameWon") / pl.count("player")).round(3).alias("win_pct"),
