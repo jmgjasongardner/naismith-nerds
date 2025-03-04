@@ -6,16 +6,21 @@ import argparse
 pl.Config.set_tbl_rows(n=50)
 pl.Config.set_tbl_cols(n=8)
 
+
 def generate_stats(run_locally=False):
     data = "collective_bball/GameResults.xlsm"
-    df = pl.from_pandas(pd.read_excel(data, sheet_name="GameResults", engine="openpyxl"))
-    tiers = pl.from_pandas(pd.read_excel(data, sheet_name="PlayerTiers", engine="openpyxl"))
+    df = pl.from_pandas(
+        pd.read_excel(data, sheet_name="GameResults", engine="openpyxl")
+    )
+    tiers = pl.from_pandas(
+        pd.read_excel(data, sheet_name="PlayerTiers", engine="openpyxl")
+    )
 
     games = (
         df.with_columns(
-            pl.col("A_SCORE").cast(pl.Int64),
-            pl.col("B_SCORE").cast(pl.Int64)
-        ).with_columns(
+            pl.col("A_SCORE").cast(pl.Int64), pl.col("B_SCORE").cast(pl.Int64)
+        )
+        .with_columns(
             pl.when(pl.col("B_SCORE") > pl.col("A_SCORE"))
             .then(pl.lit("B"))
             .when(pl.col("B_SCORE") < pl.col("A_SCORE"))
@@ -34,8 +39,13 @@ def generate_stats(run_locally=False):
             .over("GameDate")
             .cast(pl.Int32)
             .alias("GameNum")  # Sequential count per Date
-        ).with_columns(
-            pl.col("GameDate").cast(pl.Date).dt.strftime("%A").str.slice(0, 3).alias("Day")
+        )
+        .with_columns(
+            pl.col("GameDate")
+            .cast(pl.Date)
+            .dt.strftime("%A")
+            .str.slice(0, 3)
+            .alias("Day")
         )
         .filter(pl.col("A_SCORE").is_not_nan())
     )
@@ -62,7 +72,9 @@ def generate_stats(run_locally=False):
             .alias("opponent_score"),
             (pl.col("team") == pl.col("Winner")).cast(pl.Int8).alias("GameWon"),
         )
-        .with_columns((pl.col("team_score") - pl.col("opponent_score")).alias("point_diff"))
+        .with_columns(
+            (pl.col("team_score") - pl.col("opponent_score")).alias("point_diff")
+        )
     )
 
     player_stats = (
@@ -81,10 +93,13 @@ def generate_stats(run_locally=False):
     )
 
     if run_locally:
-        player_stats.to_pandas().to_csv(f"collective_bball/raw-stats/PlayerStats-{date.today()}.csv", index=False)
+        player_stats.to_pandas().to_csv(
+            f"collective_bball/raw-stats/PlayerStats-{date.today()}.csv", index=False
+        )
         print(player_stats.to_pandas())
 
     return player_stats, games
+
 
 if __name__ == "__main__":
 

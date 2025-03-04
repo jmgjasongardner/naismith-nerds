@@ -11,9 +11,7 @@ def pull_in_data() -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     tiers = pl.from_pandas(
         pd.read_excel(data, sheet_name="PlayerTiers", engine="openpyxl")
     )
-    bios = pl.from_pandas(
-        pd.read_excel(data, sheet_name="Bios", engine="openpyxl")
-    )
+    bios = pl.from_pandas(pd.read_excel(data, sheet_name="Bios", engine="openpyxl"))
 
     return df, tiers, bios
 

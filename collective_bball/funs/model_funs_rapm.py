@@ -11,8 +11,12 @@ def preprocess(
     df: pl.DataFrame, players: pl.DataFrame
 ) -> Tuple[np.ndarray, sp.coo_matrix, np.ndarray]:
     game_to_idx = {
-        (date, num): idx for idx, (date, num) in enumerate(
-            df.select(["GameDate", "GameNum"]).unique().sort(["GameDate", "GameNum"]).iter_rows()
+        (date, num): idx
+        for idx, (date, num) in enumerate(
+            df.select(["GameDate", "GameNum"])
+            .unique()
+            .sort(["GameDate", "GameNum"])
+            .iter_rows()
         )
     }
 
@@ -21,14 +25,20 @@ def preprocess(
     }
 
     row_indices = np.array(
-        [game_to_idx[(date, num)] for date, num in zip(players["GameDate"], players["GameNum"])]
+        [
+            game_to_idx[(date, num)]
+            for date, num in zip(players["GameDate"], players["GameNum"])
+        ]
     )
     col_indices = np.array([player_to_idx[player] for player in players["player"]])
     data = players["effect"].to_numpy()
 
     sparse_matrix = sp.coo_matrix(
         (data, (row_indices, col_indices)),
-        shape=(len(df.select(["GameDate", "GameNum"]).unique()), len(players["player"].unique())),
+        shape=(
+            len(df.select(["GameDate", "GameNum"]).unique()),
+            len(players["player"].unique()),
+        ),
     )
 
     y = (
