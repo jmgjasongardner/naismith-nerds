@@ -20,6 +20,8 @@ def convert_game_row_to_player_level(row: dict, player_name: str) -> dict:
         opponents = [row[col] for col in b_cols]
         team_score, opp_score, team_quality, opp_quality = row["A_SCORE"], row["B_SCORE"], row["A_Quality"], row["B_Quality"]
         spread = -row["Spread"]
+        moneyline = row["Moneyline"]
+        win_pct = row["A_Win_Prob"]
         score_diff = -row["Score_Difference"]
         diff_from_spread = -row["Difference_From_Spread"]
     else:
@@ -28,6 +30,8 @@ def convert_game_row_to_player_level(row: dict, player_name: str) -> dict:
         opponents = [row[col] for col in a_cols]
         team_score, opp_score, team_quality, opp_quality = row["B_SCORE"], row["A_SCORE"], row["B_Quality"], row["A_Quality"]
         spread = row["Spread"]  # Flip sign
+        moneyline = -row["Moneyline"] #Flip sign
+        win_pct = 1-row["A_Win_Prob"]
         score_diff = row["Score_Difference"]  # Flip sign
         diff_from_spread = row["Difference_From_Spread"]  # Flip sign
 
@@ -42,10 +46,12 @@ def convert_game_row_to_player_level(row: dict, player_name: str) -> dict:
         "Team_Quality": team_quality,
         "Opp_Quality": opp_quality,
         "Proj_Score_Diff": spread,
+        "Moneyline": moneyline,
         "Final_Score_Diff": score_diff,
         "Spread_Difference": diff_from_spread,
         "T1": teammates[0], "T2": teammates[1], "T3": teammates[2], "T4": teammates[3],
-        "O1": opponents[0], "O2": opponents[1], "O3": opponents[2], "O4": opponents[3], "O5": opponents[4]
+        "O1": opponents[0], "O2": opponents[1], "O3": opponents[2], "O4": opponents[3], "O5": opponents[4],
+        "WinProb": win_pct
     }
 
 
@@ -72,11 +78,19 @@ def create_player_games_advanced(player_games: pl.DataFrame, games_data: pl.Data
         .alias('Favorite')
     )
 
+    win_pct = [
+        {
+            "Expected Wins": round(sum(player_games["WinProb"]), 3),
+            "Expected Win Pct": round(sum(player_games["WinProb"]) / len(player_games), 3),
+            "Expected Pct Differential": round(sum(player_games["Proj_Score_Diff"]) / len(player_games), 3)
+        }
+    ]
+
     player_games_advanced = pl.DataFrame(
         {
             "Pct Total Games Played": [round(len(player_games) / len(games_data), 3)],
             "Pct Total Days Played": [round(len(player_games["Date"].unique()) / len(games_data["Date"].unique()), 3)],
-            "Pct First Games Played": [round(sum(player_games["GameNum"] == 1) / len(games_data["Date"].unique()), 3)],
+            "Pct First Games Played": [round(sum(player_games["GameNum"] == 1) / len(player_games["Date"].unique()), 3)],
             "Pct Games w/ Positive Teammates": [round((player_games["Teammate_Quality"] > 0).sum() / num_games, 3)],
             "Pct Games w/ Positive Opponents": [round((player_games["Opp_Quality"] > 0).sum() / num_games, 3)],
             "Pct Games w/ Better Teammates": [
@@ -139,7 +153,7 @@ def create_player_games_advanced(player_games: pl.DataFrame, games_data: pl.Data
         how="vertical"
     ).drop_nulls(subset=["Game Type"])
 
-    return player_games_advanced, games_of_note
+    return win_pct, player_games_advanced, games_of_note
 
 
 def load_player_bio_data(bios: pl.DataFrame, player_name: str):
