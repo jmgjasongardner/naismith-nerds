@@ -69,7 +69,8 @@ if __name__ == "__main__":
 
     if args.save_csv:
         ratings_pd.to_csv(
-            util_funs.process_output_file(args=args, best_lambda=best_lambda), index=False
+            util_funs.process_output_file(args=args, best_lambda=best_lambda),
+            index=False,
         )
 
     print(ratings_pd)
