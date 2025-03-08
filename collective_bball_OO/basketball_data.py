@@ -5,6 +5,7 @@ from player_data import PlayerData
 from rapm_model import RAPMModel
 from moneyline_model import BettingGames
 from utils import util_code
+from typing import Tuple, List
 
 class BasketballData:
     def __init__(self, data_source: str, args: list):
@@ -13,6 +14,7 @@ class BasketballData:
         self.player_data = None
         self.player_games = None
         self.days = None
+        self.days_of_week = None
         self.args = args
         self.player_stats = None
         self.ratings = None
@@ -57,7 +59,7 @@ class BasketballData:
     def assemble_final_data(self):
         """Combines games & player data into final tables."""
         key_cols = [
-            "Date", "GameDate", "GameNum", "Winner", "A_SCORE", "B_SCORE", "A_Quality", "B_Quality",
+            "GameDate", "GameNum", "Winner", "A_SCORE", "B_SCORE", "A_Quality", "B_Quality",
             "Spread", "Score_Difference", "Difference_From_Spread", "Moneyline", "A_Win_Prob"
         ]
 
@@ -125,13 +127,29 @@ class BasketballData:
                                             pl.col("Opponents").list.get(i).alias(f"O{i + 1}") for i in range(5)
                                         ]).drop(["Teammates", "Opponents", 'A_SCORE', 'B_SCORE',
        'A_Quality', 'B_Quality', 'Spread', 'A_Win_Prob']).select(
-            ['Date', 'GameDate', 'GameNum', 'Player', 'Team', 'Team_Score', 'Opp_Score', 'Winner', 'Score_Difference',
+            ['GameDate', 'GameNum', 'Player', 'Team', 'Team_Score', 'Opp_Score', 'Winner', 'Score_Difference',
              'WinProb', 'Moneyline', 'Proj_Score_Diff', 'Difference_From_Spread', 'Team_Quality', 'Opp_Quality',
              'T1', 'T2', 'T3', 'T4', 'O1', 'O2', 'O3', 'O4', 'O5']
-        )
-        self.days = self.compute_days(self.games, self.player_games)
+        ).sort(["Player", "GameDate", "GameNum"]).with_columns([
+            # PlayerDayGameNum: Count up within each (Player, GameDate), ordered by GameNum
+            pl.col("GameNum").cum_count().over(["Player", "GameDate"]).alias("PlayerDayGameNum"),
+
+            # PlayerGameNum: Count up within each Player, ordered by GameDate -> GameNum
+            pl.col("GameNum").cum_count().over("Player").alias("PlayerGameNum"),
+
+            # PlayerWinNum: Running total of wins per player, ordered by GameDate -> GameNum
+            pl.col("Winner").cum_sum().over("Player").alias("PlayerWinNum"),
+
+            # PlayerLossNum: Total games played - wins
+            (pl.col("GameNum").cum_count().over("Player") - pl.col("Winner").cum_sum().over("Player"))
+            .alias("PlayerLossNum")
+        ]).sort("Player", "GameDate", "GameNum", descending=[False, True, True])
+
+        # TODO: Decide what we want to display from days and days of week dataframes
+        self.days, self.days_of_week = self.compute_days(self.games, self.player_games)
 
     @staticmethod
-    def compute_days(games: pl.DataFrame, player_games: pl.DataFrame) -> pl.DataFrame:
+    def compute_days(games: pl.DataFrame, player_games: pl.DataFrame) -> Tuple[pl.DataFrame, pl.DataFrame]:
         """Computes strength of day & fairness models."""
-        return games  # Placeholder for now
+
+        return games, player_games  # Placeholder for now

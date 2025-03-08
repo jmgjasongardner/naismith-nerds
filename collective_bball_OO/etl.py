@@ -42,6 +42,6 @@ def clean_games_data(raw_games_df: pl.DataFrame) -> pl.DataFrame:
             .alias("Day")
         )
         .filter(pl.col("A_SCORE").is_not_nan())
-    )
+    ).drop("Date")
 
     return games
