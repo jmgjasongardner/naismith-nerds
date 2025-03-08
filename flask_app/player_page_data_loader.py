@@ -115,7 +115,7 @@ def create_player_games_advanced(player_games: pl.DataFrame, games_data: pl.Data
             "Expected Win Pct": round(
                 sum(player_games["WinProb"]) / len(player_games), 3
             ),
-            "Expected Pct Differential": round(
+            "Expected Pt Differential": round(
                 sum(player_games["Proj_Score_Diff"]) / len(player_games), 3
             ),
         }
