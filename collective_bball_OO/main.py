@@ -1,6 +1,6 @@
 from collective_bball_OO.basketball_data import BasketballData
 from collective_bball_OO.rapm_model import RAPMModel
-from collective_bball_OO.moneyline_model import MoneylineModel
+from collective_bball_OO.moneyline_model import BettingGames
 import argparse
 import polars as pl
 
@@ -33,14 +33,17 @@ if __name__ == "__main__":
     rapm_model = RAPMModel()
     data.compute_rapm(rapm_model)
 
-    # TODO: create player_data which has a dataframe of all stats and ratings with indicator for whether they're tiered or not so that in outputs I can either deselect the ratings col, or filter out tiered players
     # Step 3: Merge stats + RAPM into final player data
     data.merge_player_data()
     # TODO: perhaps here or elsewhere, make player_games
 
     # Step 4: Compute win probabilities
-    moneyline_model = MoneylineModel()
-    data.compute_moneylines(moneyline_model)
+    betting_games = BettingGames()
+    data.compute_spreads(betting_games)
+    data.compute_moneylines(betting_games)
+
+    # Step 5: Compute player games
+    data.assemble_final_data()
 
     # Print results
     print(data.games.head())  # Games with win probabilities
