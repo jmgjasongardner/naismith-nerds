@@ -43,7 +43,8 @@ if __name__ == "__main__":
     data.compute_moneylines(betting_games)
 
     # Step 5: Compute player games
-    data.assemble_final_data()
+    data.assemble_player_data()
+    data.assemble_days_data()
 
     # Print results
     print(data.games.head())  # Games with win probabilities

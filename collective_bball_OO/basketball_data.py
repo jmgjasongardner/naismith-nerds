@@ -13,6 +13,7 @@ class BasketballData:
         self.games = None
         self.player_data = None
         self.player_games = None
+        self.player_days = None
         self.days = None
         self.days_of_week = None
         self.args = args
@@ -26,7 +27,7 @@ class BasketballData:
 
     def compute_player_stats(self):
         """Creates PlayerData object and computes player stats."""
-        player_stats_obj = PlayerData(self.games)
+        player_stats_obj = PlayerData(self.games, self.player_data)
         self.player_stats = player_stats_obj.compute_stats()
 
     def compute_rapm(self, rapm_model: RAPMModel):
@@ -56,100 +57,48 @@ class BasketballData:
         """Computes win probabilities for games."""
         self.games = betting_games.calculate_moneylines_log_reg(self.games)
 
-    def assemble_final_data(self):
-        """Combines games & player data into final tables."""
-        key_cols = [
-            "GameDate", "GameNum", "Winner", "A_SCORE", "B_SCORE", "A_Quality", "B_Quality",
-            "Spread", "Score_Difference", "Difference_From_Spread", "Moneyline", "A_Win_Prob"
-        ]
+    def assemble_player_data(self):
+        """Combines games & player data into one row per player-game."""
+        player_data_instance = PlayerData(self.games, self.player_data)
+        self.player_games = player_data_instance.assemble_player_games()
+        self.player_days = player_data_instance.assemble_player_days()
 
-        # Add teammates and opponents as list columns BEFORE unpivoting
-        df_prepped = self.games.with_columns([
-            pl.concat_list([pl.col(f"A{i}") for i in range(1, 6)]).alias("A_Teammates"),
-            pl.concat_list([pl.col(f"B{i}") for i in range(1, 6)]).alias("B_Teammates"),
-            pl.concat_list([pl.col(f"B{i}") for i in range(1, 6)]).alias("A_Opponents"),
-            pl.concat_list([pl.col(f"A{i}") for i in range(1, 6)]).alias("B_Opponents"),
-        ])
-
-        # Unpivot to transform A1-A5 and B1-B5 into a single "Player" column
-        df_long = (
-            df_prepped.unpivot(
-                index=key_cols + ["A_Teammates", "B_Teammates", "A_Opponents", "B_Opponents"],
-                on=util_code.player_columns,
-                variable_name="PlayerRole",
-                value_name="Player"
-            )
-            .with_columns([
-                # Assign team
-                pl.when(pl.col("PlayerRole").str.starts_with("A"))
-                .then(pl.lit("A"))
-                .otherwise(pl.lit("B"))
-                .alias("Team"),
-
-                # Assign teammates and opponents based on team
-                pl.when(pl.col("PlayerRole").str.starts_with("A"))
-                .then(pl.col("A_Teammates"))
-                .otherwise(pl.col("B_Teammates"))
-                .alias("Teammates"),
-
-                pl.when(pl.col("PlayerRole").str.starts_with("A"))
-                .then(pl.col("A_Opponents"))
-                .otherwise(pl.col("B_Opponents"))
-                .alias("Opponents")])
-        ).with_columns(
-            pl.struct(["Teammates", "Player"]).map_elements(
-                lambda x: [t for t in x["Teammates"] if t != x["Player"]]
-            ).alias("Teammates")
-        )
-        df_long = df_long.with_columns([
-                # Assign team-specific values
-                pl.when(pl.col("Team") == "A").then(pl.col("A_SCORE")).otherwise(pl.col("B_SCORE")).alias("Team_Score"),
-                pl.when(pl.col("Team") == "A").then(pl.col("B_SCORE")).otherwise(pl.col("A_SCORE")).alias("Opp_Score"),
-                pl.when(pl.col("Team") == "A").then(-pl.col("Score_Difference")).otherwise(pl.col("Score_Difference")).alias("Score_Difference"),
-                pl.when(pl.col("Team") == "A").then(-pl.col("Difference_From_Spread")).otherwise(pl.col("Difference_From_Spread")).alias("Difference_From_Spread"),
-                pl.when(pl.col("Team") == "A").then(pl.col("A_Quality")).otherwise(pl.col("B_Quality")).alias(
-                    "Team_Quality"),
-                pl.when(pl.col("Team") == "A").then(pl.col("B_Quality")).otherwise(pl.col("A_Quality")).alias(
-                    "Opp_Quality"),
-                pl.when(pl.col("Team") == "A").then(-pl.col("Spread")).otherwise(pl.col("Spread")).alias(
-                    "Proj_Score_Diff"),
-                pl.when(pl.col("Team") == "A").then(pl.col("A_Win_Prob")).otherwise(1 - pl.col("A_Win_Prob")).alias(
-                    "WinProb"),
-                pl.when(pl.col("Team") == "A").then(pl.col("Moneyline")).otherwise(-pl.col("Moneyline")).alias(
-                    "Moneyline"),
-                pl.when(pl.col("Team") == pl.col("Winner")).then(pl.lit(1)).otherwise(pl.lit(0)).alias("Winner"),
-            ]).drop(["PlayerRole", "A_Teammates", "B_Teammates", "A_Opponents", "B_Opponents"])
-
-        # Explode teammates and opponents into separate columns (if needed)
-        self.player_games = df_long.with_columns([
-                                            pl.col("Teammates").list.get(i).alias(f"T{i + 1}") for i in range(4)
-                                        ] + [
-                                            pl.col("Opponents").list.get(i).alias(f"O{i + 1}") for i in range(5)
-                                        ]).drop(["Teammates", "Opponents", 'A_SCORE', 'B_SCORE',
-       'A_Quality', 'B_Quality', 'Spread', 'A_Win_Prob']).select(
-            ['GameDate', 'GameNum', 'Player', 'Team', 'Team_Score', 'Opp_Score', 'Winner', 'Score_Difference',
-             'WinProb', 'Moneyline', 'Proj_Score_Diff', 'Difference_From_Spread', 'Team_Quality', 'Opp_Quality',
-             'T1', 'T2', 'T3', 'T4', 'O1', 'O2', 'O3', 'O4', 'O5']
-        ).sort(["Player", "GameDate", "GameNum"]).with_columns([
-            # PlayerDayGameNum: Count up within each (Player, GameDate), ordered by GameNum
-            pl.col("GameNum").cum_count().over(["Player", "GameDate"]).alias("PlayerDayGameNum"),
-
-            # PlayerGameNum: Count up within each Player, ordered by GameDate -> GameNum
-            pl.col("GameNum").cum_count().over("Player").alias("PlayerGameNum"),
-
-            # PlayerWinNum: Running total of wins per player, ordered by GameDate -> GameNum
-            pl.col("Winner").cum_sum().over("Player").alias("PlayerWinNum"),
-
-            # PlayerLossNum: Total games played - wins
-            (pl.col("GameNum").cum_count().over("Player") - pl.col("Winner").cum_sum().over("Player"))
-            .alias("PlayerLossNum")
-        ]).sort("Player", "GameDate", "GameNum", descending=[False, True, True])
-
+    def assemble_days_data(self):
         # TODO: Decide what we want to display from days and days of week dataframes
-        self.days, self.days_of_week = self.compute_days(self.games, self.player_games)
+        self.days, self.days_of_week = self.compute_days(self.player_games, self.player_days)
 
     @staticmethod
-    def compute_days(games: pl.DataFrame, player_games: pl.DataFrame) -> Tuple[pl.DataFrame, pl.DataFrame]:
+    def compute_days(player_games: pl.DataFrame, player_days: pl.DataFrame) -> Tuple[pl.DataFrame, pl.DataFrame]:
         """Computes strength of day & fairness models."""
 
-        return games, player_games  # Placeholder for now
+        days = player_days.group_by(["GameDate", "Day"]).agg(
+            pl.count("GameDate").alias("NumPlayers"),
+            pl.max('LastGameOfDay').alias("NumGames"),
+            pl.mean('rating').round(3).alias("MeanRatingPlayers"),
+            pl.max('LongestRunOnCourt'),
+            pl.mean('LongestRunOnCourt').round(3).alias('AvgLongestRunOnCourt'),
+            pl.max('LongestRunOnBench'),
+            pl.mean('LongestRunOnBench').round(3).alias('AvgLongestRunOnBench'),
+            (pl.col("Ws").gt(0).sum() / pl.count("GameDate")).round(3).alias("UniqueWinnersRate"),
+            pl.std("Teammates_Avg").round(3).alias('AvgParityOfTeammates'),
+            pl.std("Opps_Avg").round(3).alias('AvgParityOfTeams'),
+        ).join((player_games.group_by(["GameDate", "Day"]).agg(
+            pl.mean('rating').round(3).alias("MeanRatingPlayerGames"),
+            pl.std('WinProb').round(3).alias("AvgParityOfWinProbs"),
+            pl.col("Proj_Score_Diff").abs().std().round(3).alias("AvgParityOfSpread"),
+            pl.col("Score_Difference").abs().std().round(3).alias("AvgParityOfScoreDiff"),
+            pl.col("Score_Difference").abs().mean().round(3).alias("AvgScoreDiff")
+        )),
+            on=["GameDate", "Day"],
+            how="inner"
+        ).select(['GameDate', 'Day', 'NumPlayers', 'NumGames', 'MeanRatingPlayers', 'MeanRatingPlayerGames', 'AvgScoreDiff',
+                  'LongestRunOnCourt', 'AvgLongestRunOnCourt', 'LongestRunOnBench', 'AvgLongestRunOnBench', 'UniqueWinnersRate',
+                  'AvgParityOfTeammates', 'AvgParityOfTeams', 'AvgParityOfScoreDiff', 'AvgParityOfSpread', 'AvgParityOfWinProbs']).sort("GameDate", descending=True)
+
+        days_of_week = (
+            days.drop("GameDate")
+            .group_by("Day")
+            .agg(pl.all().mean().round(3))
+        ).sort("MeanRatingPlayerGames", descending=True)
+
+        return days, days_of_week
