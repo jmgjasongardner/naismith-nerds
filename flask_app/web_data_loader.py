@@ -1,7 +1,7 @@
 import polars as pl
 
 
-def format_stats_for_site(stats_df):
+def format_stats_for_site(df: pl.DataFrame):
     """Rename columns and round numeric values before passing to Jinja."""
     column_map = {
         "player": "Player",
@@ -10,16 +10,41 @@ def format_stats_for_site(stats_df):
         "wins": "Wins",
         "losses": "Losses",
         "win_pct": "Win Pct",
-        "avg_point_diff": "Point Differential",
+        "avg_score_diff": "Avg Score Diff",
         "rating": "Rating",
+        "tiered_rating": "Tiered Rating",
+        "full_name": "Full Name",
+        "height": "Height",
+        "position": "Position",
+        "expected_wins": "Expected Wins",
+        "expected_win_pct": "Expected Win Pct",
+        "proj_score_diff": "Projected Score Diff",
+        "pct_total_games_played": "Pct Total Games Played",
+        "pct_total_days_played": "Pct Total Days Played",
+        "most_recent_game": "Most Recent Game",
+        "teammate_quality": "Teammate Quality",
+        "team_quality": "Team Quality",
+        "opp_quality": "Opponent Quality",
+        "pct_positive_teammates": "Pct Positive Teammates",
+        "pct_positive_opponents": "Pct Positive Opponents",
+        "pct_games_favorite": "Pct Games as Favorite",
+        "pct_games_better_teammates": "Pct Games w/ Better Teammates",
+        "other_9_players_quality_diff": "Other 9 Players' Quality Diff",
+        "games_played_per_day": "Games Played Per Day",
+        "first_game_of_day_rate": "First Game Day Rate",
+        "last_game_of_day_rate": "Last Game Day Rate",
+        "mon_rate": "Monday Rate",
+        "wed_rate": "Wednesday Rate",
+        "sat_rate": "Saturday Rate",
     }
-    stats_df = stats_df.to_pandas().rename(columns=column_map)  # Rename columns
+
+    df = df.to_pandas().rename(columns=column_map)  # Rename columns
 
     # Round only numeric columns
-    for col in stats_df.select_dtypes(include="number").columns:
-        stats_df[col] = stats_df[col].round(5) if col == 'Rating' else stats_df[col].round(3)
+    for col in df.select_dtypes(include="number").columns:
+        df[col] = df[col].round(5) if col == 'Rating' else df[col].round(3)
 
-    return stats_df.to_dict(orient="records")  # Convert to list of dicts for Jinja
+    return df.to_dict(orient="records")  # Convert to list of dicts for Jinja
 
 
 # def get_model_outputs():
