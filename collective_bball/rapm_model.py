@@ -5,7 +5,7 @@ import polars as pl
 import scipy.sparse as sp
 from sklearn.linear_model import Ridge
 from typing import Tuple, List
-from utils import util_code
+from collective_bball.utils import util_code
 
 
 class RAPMModel:

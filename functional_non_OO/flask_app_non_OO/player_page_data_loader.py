@@ -1,5 +1,4 @@
 import polars as pl
-import pandas as pd
 
 
 def filter_player_games(games_data: pl.DataFrame, player_name: str) -> pl.DataFrame:
@@ -219,16 +218,17 @@ def create_player_games_advanced(player_games: pl.DataFrame, games_data: pl.Data
     return win_pct, player_games_advanced, games_of_note
 
 
-def load_player_bio_data(player_name: str, player_data: pl.DataFrame):
+def load_player_bio_data(bios: pl.DataFrame, player_name: str):
 
-    bio_row = player_data.filter(pl.col('player') == player_name)
+    # Look up bio information
+    bio_row = bios.filter(pl.col("player") == player_name)
 
     # Default to player_name if full_name is missing
-    full_name = bio_row["full_name"].item() if bio_row["full_name"] is not None else player_name
-    position = bio_row["position"].item() if bio_row["position"] is not None else None
+    full_name = bio_row["full_name"].item() if not bio_row.is_empty() else player_name
+    position = bio_row["position"].item() if not bio_row.is_empty() else None
 
     # Convert height from inches to "ft, in" format if available
-    if bio_row["height"] is not None:
+    if not bio_row.is_empty() and bio_row["height"].is_not_null().all():
         height_in = int(bio_row["height"].item())
         height_ft = height_in // 12
         height_remain = height_in % 12

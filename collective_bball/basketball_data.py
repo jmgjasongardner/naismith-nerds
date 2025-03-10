@@ -1,10 +1,9 @@
 import polars as pl
 
-from etl import load_data, clean_games_data
-from player_data import PlayerData
-from rapm_model import RAPMModel
-from moneyline_model import BettingGames
-from utils import util_code
+from collective_bball.etl import load_data, clean_games_data
+from collective_bball.player_data import PlayerData
+from collective_bball.rapm_model import RAPMModel
+from collective_bball.moneyline_model import BettingGames
 from typing import Tuple, List
 
 class BasketballData:
@@ -46,6 +45,7 @@ class BasketballData:
             .with_columns((pl.col("rating") == pl.col("rating_right")).cast(pl.Int64).fill_null(0).alias("tiered_rating"))
             .sort("rating", "wins", "win_pct", descending=[True, True, True])
             .drop(["uncommon", "tier", "description", "rating_right"])
+            .join(self.bios, left_on="player", right_on="player", how="left")
     )
 
     def compute_spreads(self, betting_games: BettingGames):
@@ -62,6 +62,7 @@ class BasketballData:
         player_data_instance = PlayerData(self.games, self.player_data)
         self.player_games = player_data_instance.assemble_player_games()
         self.player_days = player_data_instance.assemble_player_days()
+        self.player_data = player_data_instance.combine_player_stats_with_games_groupings()
 
     def assemble_days_data(self):
         # TODO: Decide what we want to display from days and days of week dataframes

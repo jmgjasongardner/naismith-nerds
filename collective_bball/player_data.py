@@ -1,5 +1,5 @@
 import polars as pl
-from utils import util_code
+from collective_bball.utils import util_code
 
 class PlayerData:
     def __init__(self, games: pl.DataFrame, player_data: pl.DataFrame):
@@ -97,7 +97,8 @@ class PlayerData:
                 .alias("Opponents")])
         ).with_columns(
             pl.struct(["Teammates", "Player"]).map_elements(
-                lambda x: [t for t in x["Teammates"] if t != x["Player"]]
+                lambda x: [t for t in x["Teammates"] if t != x["Player"]],
+                return_dtype=pl.List(pl.Utf8)
             ).alias("Teammates")
         )
         df_long = df_long.with_columns([
@@ -208,3 +209,45 @@ class PlayerData:
             pl.max("GamesWaited").alias("LongestRunOnBench")
         ).sort("GameDate", "FirstGameOfDay", "Player", descending=[True, False, False])
         return self.player_days
+
+    def combine_player_stats_with_games_groupings(self):
+        self.player_data = self.player_data.join(
+            self.player_games.group_by(["Player"]).agg(
+                pl.sum('WinProb').round(3).alias('ExpectedWins'),
+                (pl.sum('WinProb') / pl.count('Player')).round(3).alias('ExpectedWinPct'),
+                pl.mean('Proj_Score_Diff').round(3).alias('Proj_Score_Diff'),
+                (pl.count('Player') / len(self.games)).round(3).alias('PctTotalGamesPlayed'),
+                (pl.n_unique('GameDate') / len(self.games['GameDate'].unique())).round(3).alias('PctTotalDaysPlayed'),
+                pl.mean('Teammate_Quality').round(3),
+                pl.mean('Team_Quality').round(3),
+                pl.mean('Opp_Quality').round(3),
+                pl.col('Teammate_Quality').gt(0).mean().round(3).alias('PercentPositiveTeammates'),
+                pl.col('Opp_Quality').gt(0).mean().round(3).alias('PercentPositiveOpponents'),
+                pl.col('Proj_Score_Diff').gt(0).mean().round(3).alias('PctGamesFavorite'),
+                (pl.col('Opp_Quality') < pl.col('Teammate_Quality')).mean().round(3).alias('PctGamesBetterTeammates'),
+                pl.mean('Other_9_Players_Quality_Diff').round(3),
+
+        ),
+            left_on="player",
+            right_on="Player",
+            how="inner"
+        ).join(
+            self.player_days.group_by(["Player"]).agg(
+                pl.mean('GP').round(3).alias('GamesPlayedPerDay'),
+                (pl.sum('PlayedFirstGame') / pl.count('Player')).round(3).alias('FirstGameOfDayRate'),
+                (pl.sum('PlayedLastGame') / pl.count('Player')).round(3).alias('LastGameOfDayRate'),
+                ((pl.when(pl.col('Day') == 'Mon').then(1).otherwise(0)).sum() /
+                 self.games.filter(pl.col("Day") == "Mon")["GameDate"].n_unique()).round(3).alias("MonRate"),
+                ((pl.when(pl.col('Day') == 'Wed').then(1).otherwise(0)).sum() /
+                 self.games.filter(pl.col("Day") == "Wed")["GameDate"].n_unique()).round(3).alias("WedRate"),
+                ((pl.when(pl.col('Day') == 'Sat').then(1).otherwise(0)).sum() /
+                 self.games.filter(pl.col("Day") == "Sat")["GameDate"].n_unique()).round(3).alias("SatRate")
+
+
+        ),
+            left_on="player",
+            right_on="Player",
+            how="inner"
+        )
+
+        return self.player_data
