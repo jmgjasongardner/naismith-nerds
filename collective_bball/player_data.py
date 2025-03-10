@@ -8,6 +8,10 @@ class PlayerData:
         self.player_stats = None
         self.player_games = None
         self.player_days = None
+        self.teammate_games = None
+        self.opponent_games = None
+        self.teammates = None
+        self.opponents = None
 
     def compute_stats(self) -> pl.DataFrame:
         """Extracts player stats from games."""
@@ -251,3 +255,49 @@ class PlayerData:
         )
 
         return self.player_data
+
+    def calculate_teammate_opponent_pairings(self):
+        key_cols = ['GameDate', 'GameNum', 'Day', 'Player', 'rating',
+                    'Team', 'Team_Score', 'Opp_Score', 'Winner', 'Score_Difference',
+                    'WinProb', 'Moneyline', 'Proj_Score_Diff', 'Difference_From_Spread',
+                    'Team_Quality', 'Teammate_Quality', 'Opp_Quality',
+                    'Other_9_Players_Quality_Diff']
+
+        #x = self.player_games
+        #z = self.player_data.select(['player', 'rating'])
+
+        # Unpivot to transform A1-A5 and B1-B5 into a single "Player" column
+        self.teammate_games = x.unpivot(
+                index=key_cols,
+                on=[f"T{i}" for i in range(1, 5)],
+                variable_name="PlayerRole",
+                value_name="Teammate"
+        ).drop('PlayerRole').join(
+            z,
+            left_on='Teammate',
+            right_on='player',
+            suffix='_teammate'
+        ).with_columns(
+            (pl.col('Teammate_Quality') - pl.col('rating_teammate')).round(3),
+            (pl.col('Other_9_Players_Quality_Diff') - pl.col('rating_teammate')).round(3).alias('Other_8_Players_Quality_Diff')
+        ).drop('Other_9_Players_Quality_Diff')
+
+        self.opponent_games = x.unpivot(
+                index=key_cols,
+                on=[f"O{i}" for i in range(1, 6)],
+                variable_name="PlayerRole",
+                value_name="Opponent"
+        ).drop('PlayerRole').join(
+            z,
+            left_on='Opponent',
+            right_on='player',
+            suffix='_opp'
+        ).with_columns(
+            (pl.col('Opp_Quality') - pl.col('rating_opp')).round(3).alias('Opp_Teammate_Quality'),
+            (pl.col('Other_9_Players_Quality_Diff') + pl.col('rating_opp')).round(3).alias('Other_8_Players_Quality_Diff')
+        ).drop('Other_9_Players_Quality_Diff')
+
+        self.teammates = self.teammate_games
+        self.opponents = self.opponent_games
+
+        return self.teammate_games, self.opponent_games, self.teammates, self.opponents
