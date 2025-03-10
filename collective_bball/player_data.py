@@ -222,6 +222,7 @@ class PlayerData:
                 pl.mean('proj_score_diff').round(3).alias('proj_score_diff'),
                 (pl.count('player') / len(self.games)).round(3).alias('pct_total_games_played'),
                 (pl.n_unique('game_date') / len(self.games['game_date'].unique())).round(3).alias('pct_total_days_played'),
+                pl.max('game_date').alias('most_recent_game'),
                 pl.mean('teammate_quality').round(3),
                 pl.mean('team_quality').round(3),
                 pl.mean('opp_quality').round(3),
