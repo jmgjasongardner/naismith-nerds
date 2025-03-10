@@ -265,6 +265,8 @@ class PlayerData:
 
         #x = self.player_games
         #z = self.player_data.select(['player', 'rating'])
+        tg = self.teammate_games
+        og = self.opponent_games
 
         # Unpivot to transform A1-A5 and B1-B5 into a single "Player" column
         self.teammate_games = x.unpivot(
@@ -297,7 +299,39 @@ class PlayerData:
             (pl.col('Other_9_Players_Quality_Diff') + pl.col('rating_opp')).round(3).alias('Other_8_Players_Quality_Diff')
         ).drop('Other_9_Players_Quality_Diff')
 
-        self.teammates = self.teammate_games
-        self.opponents = self.opponent_games
+        self.teammates = tg.group_by(['Player', 'Teammate']).agg(
+            pl.len().alias("games_played"),  # Count of rows in the group
+            pl.n_unique("GameDate").alias("days_played"),
+            pl.sum("Winner").alias("wins"),
+            (pl.len() - pl.sum("Winner")).alias("losses"),
+            (pl.sum("Winner") / pl.len()).round(3).alias("win_pct"),
+            pl.sum("WinProb").round(3).alias("exp_wins"),
+            pl.mean('WinProb').round(3).alias("expected_win_pct"),
+            (pl.sum('Winner') - pl.sum('WinProb')).round(3).alias('wins_over_exp'),
+            pl.mean("Score_Difference").round(3).alias("avg_score_diff"),
+            pl.max('GameDate').alias('most_recent_game'),
+            pl.mean('Team_Quality').round(3),
+            pl.mean('Teammate_Quality').round(3),
+            pl.mean('Opp_Quality').round(3),
+            pl.mean('Other_8_Players_Quality_Diff').round(3)
+        ).sort('wins', 'wins_over_exp', 'Player', 'Teammate', descending = [True, True, False, False])
+
+        self.opponents = og.group_by(['Player', 'Opponent']).agg(
+            pl.len().alias("games_played"),  # Count of rows in the group
+            pl.n_unique("GameDate").alias("days_played"),
+            pl.sum("Winner").alias("wins"),
+            (pl.len() - pl.sum("Winner")).alias("losses"),
+            (pl.sum("Winner") / pl.len()).round(3).alias("win_pct"),
+            pl.sum("WinProb").round(3).alias("exp_wins"),
+            pl.mean('WinProb').round(3).alias("expected_win_pct"),
+            (pl.sum('Winner') - pl.sum('WinProb')).round(3).alias('wins_over_exp'),
+            pl.mean("Score_Difference").round(3).alias("avg_score_diff"),
+            pl.max('GameDate').alias('most_recent_game'),
+            pl.mean('Team_Quality').round(3),
+            pl.mean('Teammate_Quality').round(3),
+            pl.mean('Opp_Quality').round(3),
+            pl.mean('Opp_Teammate_Quality').round(3),
+            pl.mean('Other_8_Players_Quality_Diff').round(3)
+        ).sort('wins', 'wins_over_exp', 'Player', 'Opponent', descending = [True, True, False, False])
 
         return self.teammate_games, self.opponent_games, self.teammates, self.opponents
