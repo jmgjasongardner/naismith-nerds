@@ -10,7 +10,7 @@ class BettingGames:
         """Calculate the spreads of games just using algebra"""
         games_long = (
             games.unpivot(
-                index=["GameDate", "GameNum"],
+                index=["game_date", "game_num"],
                 on=["A1", "A2", "A3", "A4", "A5", "B1", "B2", "B3", "B4", "B5"],
                 variable_name="team_role",
                 value_name="player",
@@ -18,63 +18,63 @@ class BettingGames:
             .join(ratings, on="player", how="left")
             .with_columns(
                 (pl.col("team_role").str.starts_with("A") * pl.col("rating")).alias(
-                    "A_rating"
+                    "a_rating"
                 ),
                 (pl.col("team_role").str.starts_with("B") * pl.col("rating")).alias(
-                    "B_rating"
+                    "b_rating"
                 ),
             )
-            .group_by(["GameDate", "GameNum"])
+            .group_by(["game_date", "game_num"])
             .agg(
-                pl.sum("A_rating").round(3).alias("A_Quality"),
-                pl.sum("B_rating").round(3).alias("B_Quality"),
+                pl.sum("a_rating").round(3).alias("a_quality"),
+                pl.sum("b_rating").round(3).alias("b_quality"),
             )
             .with_columns(
-                (pl.col("B_Quality") - pl.col("A_Quality")).round(3).alias("Spread")
+                (pl.col("b_quality") - pl.col("a_quality")).round(3).alias("spread")
             )
         )
 
         games_with_spreads = (
-            games.join(games_long, on=["GameDate", "GameNum"], how="inner")
-            .with_columns((pl.col("B_SCORE") - pl.col("A_SCORE")).alias("Score_Difference"))
+            games.join(games_long, on=["game_date", "game_num"], how="inner")
+            .with_columns((pl.col("b_score") - pl.col("a_score")).alias("score_diff"))
             .with_columns(
-                (pl.col("Score_Difference") - pl.col("Spread"))
+                (pl.col("score_diff") - pl.col("spread"))
                 .round(3)
-                .alias("Difference_From_Spread")
+                .alias("diff_from_spread")
             )
             .with_columns(
-                (pl.col("Spread").abs()).alias("Absolute_Spread"),
-                (pl.col("Score_Difference").abs()).alias("Absolute_Score_Difference"),
-                (pl.col("Difference_From_Spread").abs()).alias(
-                    "Absolute_Spread_Difference"
+                (pl.col("spread").abs()).alias("absolute_spread"),
+                (pl.col("score_diff").abs()).alias("absolute_score_diff"),
+                (pl.col("diff_from_spread").abs()).alias(
+                    "absolute_spread_diff"
                 ),
             )
         ).sort(
-            "GameDate", "GameNum", descending=[True, True]
+            "game_date", "game_num", descending=[True, True]
         )
         return games_with_spreads
 
     def calculate_moneylines_log_reg(self, games_with_spreads: pl.DataFrame) -> pl.DataFrame:
         """Trains logistic regression and computes win probabilities."""
 
-        x = games_with_spreads.select(["A_Quality", "B_Quality"]).to_numpy()
-        y = (games_with_spreads["Winner"] == "A").to_numpy()
+        x = games_with_spreads.select(["a_quality", "b_quality"]).to_numpy()
+        y = (games_with_spreads["winner"] == "A").to_numpy()
         self.model.fit(x, y)
         games_with_spreads_moneylines = games_with_spreads.with_columns(
-            pl.Series(name="A_Win_Prob", values=(self.model.predict_proba(x)[:, 1]))
+            pl.Series(name="a_win_prob", values=(self.model.predict_proba(x)[:, 1]))
         )
         games_with_spreads_moneylines = games_with_spreads_moneylines.with_columns(
-            pl.when(pl.col("A_Win_Prob") >= 0.5)
+            pl.when(pl.col("a_win_prob") >= 0.5)
             .then(
-                (-100 * pl.col("A_Win_Prob") / (1 - pl.col("A_Win_Prob")))
+                (-100 * pl.col("a_win_prob") / (1 - pl.col("a_win_prob")))
                 .round(0)
                 .cast(pl.Int64)
             )
             .otherwise(
-                (100 * (1 - pl.col("A_Win_Prob")) / pl.col("A_Win_Prob"))
+                (100 * (1 - pl.col("a_win_prob")) / pl.col("a_win_prob"))
                 .round(0)
                 .cast(pl.Int64)
             )
-            .alias("Moneyline")
-        ).with_columns(pl.col("A_Win_Prob").round(3).alias("A_Win_Prob"))
+            .alias("moneyline")
+        ).with_columns(pl.col("a_win_prob").round(3).alias("a_win_prob"))
         return games_with_spreads_moneylines

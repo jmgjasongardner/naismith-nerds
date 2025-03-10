@@ -95,7 +95,7 @@ class RAPMModel:
                 min_games=args.min_games_to_not_tier,
             )
 
-        id_cols = ["GameDate", "GameNum", "A_SCORE", "B_SCORE", "Winner"]
+        id_cols = ["game_date", "game_num", "a_score", "b_score", "winner"]
         team_cols = util_code.player_columns
 
         players = games.select(id_cols + team_cols).unpivot(index=id_cols).with_columns(
@@ -103,16 +103,16 @@ class RAPMModel:
             pl.col("value").alias("player"),
         ).drop(["value", "variable"]).with_columns(
             pl.when(pl.col("team") == "A")
-            .then(pl.col("A_SCORE"))
-            .otherwise(pl.col("B_SCORE"))
+            .then(pl.col("a_score"))
+            .otherwise(pl.col("b_score"))
             .alias("team_score"),
             pl.when(pl.col("team") == "A")
-            .then(pl.col("B_SCORE"))
-            .otherwise(pl.col("A_SCORE"))
+            .then(pl.col("b_score"))
+            .otherwise(pl.col("a_score"))
             .alias("opponent_score"),
-            (pl.col("team") == pl.col("Winner")).cast(pl.Int8).alias("GameWon"),
+            (pl.col("team") == pl.col("winner")).cast(pl.Int8).alias("game_won"),
         ).with_columns(
-            (pl.col("team_score") - pl.col("opponent_score")).alias("point_diff"),
+            (pl.col("team_score") - pl.col("opponent_score")).alias("score_diff"),
             pl.when(pl.col("team") == "A").then(1).otherwise(-1).alias("effect"),
         )
 
@@ -120,9 +120,9 @@ class RAPMModel:
         game_to_idx = {
             (date, num): idx
             for idx, (date, num) in enumerate(
-                games.select(["GameDate", "GameNum"])
+                games.select(["game_date", "game_num"])
                 .unique()
-                .sort(["GameDate", "GameNum"])
+                .sort(["game_date", "game_num"])
                 .iter_rows()
             )
         }
@@ -134,7 +134,7 @@ class RAPMModel:
         row_indices = np.array(
             [
                 game_to_idx[(date, num)]
-                for date, num in zip(players["GameDate"], players["GameNum"])
+                for date, num in zip(players["game_date"], players["game_num"])
             ]
         )
         col_indices = np.array([player_to_idx[player] for player in players["player"]])
@@ -143,15 +143,15 @@ class RAPMModel:
         sparse_matrix = sp.coo_matrix(
             (data, (row_indices, col_indices)),
             shape=(
-                len(games.select(["GameDate", "GameNum"]).unique()),
+                len(games.select(["game_date", "game_num"]).unique()),
                 len(players["player"].unique()),
             ),
         )
 
         y = (
-            games.sort(["GameDate", "GameNum"], descending=[False, False])
-            .with_columns((pl.col("A_SCORE") - pl.col("B_SCORE")).alias("point_diff"))
-            .select("point_diff")
+            games.sort(["game_date", "game_num"], descending=[False, False])
+            .with_columns((pl.col("a_score") - pl.col("b_score")).alias("score_diff"))
+            .select("score_diff")
             .to_numpy()
         )
 

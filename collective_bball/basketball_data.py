@@ -78,34 +78,34 @@ class BasketballData:
     def compute_days(player_games: pl.DataFrame, player_days: pl.DataFrame) -> Tuple[pl.DataFrame, pl.DataFrame]:
         """Computes strength of day & fairness models."""
 
-        days = player_days.group_by(["GameDate", "Day"]).agg(
-            pl.count("GameDate").alias("NumPlayers"),
-            pl.max('LastGameOfDay').alias("NumGames"),
-            pl.mean('rating').round(3).alias("MeanRatingPlayers"),
-            pl.max('LongestRunOnCourt'),
-            pl.mean('LongestRunOnCourt').round(3).alias('AvgLongestRunOnCourt'),
-            pl.max('LongestRunOnBench'),
-            pl.mean('LongestRunOnBench').round(3).alias('AvgLongestRunOnBench'),
-            (pl.col("Ws").gt(0).sum() / pl.count("GameDate")).round(3).alias("UniqueWinnersRate"),
-            pl.std("Teammates_Avg").round(3).alias('AvgParityOfTeammates'),
-            pl.std("Opps_Avg").round(3).alias('AvgParityOfTeams'),
-        ).join((player_games.group_by(["GameDate", "Day"]).agg(
-            pl.mean('rating').round(3).alias("MeanRatingPlayerGames"),
-            pl.std('WinProb').round(3).alias("AvgParityOfWinProbs"),
-            pl.col("Proj_Score_Diff").abs().std().round(3).alias("AvgParityOfSpread"),
-            pl.col("Score_Difference").abs().std().round(3).alias("AvgParityOfScoreDiff"),
-            pl.col("Score_Difference").abs().mean().round(3).alias("AvgScoreDiff")
+        days = player_days.group_by(["game_date", "day"]).agg(
+            pl.count("game_date").alias("num_players"),
+            pl.max('last_game_of_day').alias("num_games"),
+            pl.mean('rating').round(3).alias("mean_rating_players"),
+            pl.max('longest_run_on_court'),
+            pl.mean('longest_run_on_court').round(3).alias('avg_longest_run_on_court'),
+            pl.max('longest_run_on_bench'),
+            pl.mean('longest_run_on_bench').round(3).alias('avg_longest_run_on_bench'),
+            (pl.col("wins").gt(0).sum() / pl.count("game_date")).round(3).alias("unique_winners_rate"),
+            pl.std("teammates_avg").round(3).alias('avg_parity_of_teammates'),
+            pl.std("opps_avg").round(3).alias('avg_parity_of_teams'),
+        ).join((player_games.group_by(["game_date", "day"]).agg(
+            pl.mean('rating').round(3).alias("mean_rating_player_games"),
+            pl.std('win_prob').round(3).alias("avg_parity_of_win_probs"),
+            pl.col("proj_score_diff").abs().std().round(3).alias("avg_parity_of_spread"),
+            pl.col("score_diff").abs().std().round(3).alias("avg_parity_of_score_diff"),
+            pl.col("score_diff").abs().mean().round(3).alias("avg_score_diff")
         )),
-            on=["GameDate", "Day"],
+            on=["game_date", "day"],
             how="inner"
-        ).select(['GameDate', 'Day', 'NumPlayers', 'NumGames', 'MeanRatingPlayers', 'MeanRatingPlayerGames', 'AvgScoreDiff',
-                  'LongestRunOnCourt', 'AvgLongestRunOnCourt', 'LongestRunOnBench', 'AvgLongestRunOnBench', 'UniqueWinnersRate',
-                  'AvgParityOfTeammates', 'AvgParityOfTeams', 'AvgParityOfScoreDiff', 'AvgParityOfSpread', 'AvgParityOfWinProbs']).sort("GameDate", descending=True)
+        ).select(['game_date', 'day', 'num_players', 'num_games', 'mean_rating_players', 'mean_rating_player_games', 'avg_score_diff',
+                  'longest_run_on_court', 'avg_longest_run_on_court', 'longest_run_on_bench', 'avg_longest_run_on_bench', 'unique_winners_rate',
+                  'avg_parity_of_teammates', 'avg_parity_of_teams', 'avg_parity_of_score_diff', 'avg_parity_of_spread', 'avg_parity_of_win_probs']).sort("game_date", descending=True)
 
         days_of_week = (
-            days.drop("GameDate")
-            .group_by("Day")
+            days.drop("game_date")
+            .group_by("day")
             .agg(pl.all().mean().round(3))
-        ).sort("MeanRatingPlayerGames", descending=True)
+        ).sort("mean_rating_player_games", descending=True)
 
         return days, days_of_week
