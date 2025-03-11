@@ -1,7 +1,9 @@
 import polars as pl
+import logging
 
 
 def format_stats_for_site(df: pl.DataFrame):
+    logging.debug(f"In format_stats_for_site")
     """Rename columns and round numeric values before passing to Jinja."""
     column_map = {
         "player": "Player",
@@ -91,14 +93,21 @@ def format_stats_for_site(df: pl.DataFrame):
         "wed_rate": "Wed Rate",
         "sat_rate": "Sat Rate",
     }
+    logging.debug(f"ratings sample df in web_data_loader as polars: {df.head(5)}")
+    df = df.head(5)
 
     df = df.to_pandas().rename(columns=column_map)  # Rename columns
+    logging.debug(f"ratings sample df in web_data_loader to pandas: {df.head(5)}")
 
     # Round only numeric columns
     for col in df.select_dtypes(include="number").columns:
         df[col] = df[col].round(5) if col == "Rating" else df[col].round(3)
 
-    return df.to_dict(orient="records")  # Convert to list of dicts for Jinja
+    logging.debug(f"ratings sample df in web_data_loader with rounding: {df.head(5)}")
+    output_dict = df.to_dict(orient="records")  # Convert to list of dicts for Jinja
+    logging.debug(f"ratings sample dict in web_data_loader: {output_dict}")
+
+    return output_dict
 
 
 # def get_model_outputs():
