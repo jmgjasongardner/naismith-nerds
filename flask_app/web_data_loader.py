@@ -100,8 +100,10 @@ def format_stats_for_site(df: pl.DataFrame):
     logging.debug(f"original column map in web_data_loader: {column_map}")
     logging.debug(f"filtered column map in web_data_loader: {filtered_column_map}")
 
-    df = df.to_pandas().rename(columns=filtered_column_map)  # Rename columns
-    logging.debug(f"ratings sample df in web_data_loader to pandas: {df.head(5)}")
+    df = df.rename(filtered_column_map)
+    logging.debug(f"ratings sample df in web_data_loader polars with new columns: {df}")
+    df = df.to_pandas()  # Rename columns
+    logging.debug(f"ratings sample df in web_data_loader to pandas: {df}")
 
 
     # Round only numeric columns
