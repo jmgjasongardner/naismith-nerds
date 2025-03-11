@@ -18,10 +18,10 @@ from flask_app.player_page_data_loader import (
 import polars as pl
 import os
 
-app = Flask(__name__, static_folder="../static")
+print("Data loaded:", data is not None)
 
-# Global storage for precomputed data
-data_cached = data
+app = Flask(__name__, static_folder="../static")
+app.config["DATA_CACHED"] = data
 
 def filter_dictionary(dictionary, player_name):
     return [entry for entry in dictionary if entry["Player"] == player_name]
@@ -29,6 +29,7 @@ def filter_dictionary(dictionary, player_name):
 
 @app.route("/")
 def home():
+    data_cached = app.config["DATA_CACHED"]
     return render_template(
         "index.html",
         stats=format_stats_for_site(
@@ -59,6 +60,7 @@ def player_page(player_name):
     # )
 
     # Check if the player's image exists in "static/player_pics/"
+    data_cached = app.config["DATA_CACHED"]
     image_path = f"static/player_pics/{player_name}.png"
     image_exists = os.path.exists(image_path)
 
