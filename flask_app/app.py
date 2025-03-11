@@ -93,8 +93,7 @@ def player_page(player_name):
         ),
         player_rating=data_cached.ratings.filter(pl.col("player") == player_name)
         .with_columns(pl.col("rating").round(5))
-        .to_pandas()
-        .to_dict(orient="records"),
+        .to_dicts(),
         player_days=format_stats_for_site(
             data_cached.player_days.filter(pl.col("player") == player_name).drop(
                 ["player", "rating"]
