@@ -1,9 +1,11 @@
 from flask import Flask, render_template
 from flask_app.utility_imports import tooltips
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 # from collective_bball.eda_main import generate_stats
 # from collective_bball.win_prob_log_reg import calculate_team_A_win_prob
-print("app.py pre data load")
+logging.debug("app.py pre data load")
 from collective_bball.main import data  # Get precomputed `data`
 from flask_app.web_data_loader import (
     format_stats_for_site,
@@ -19,7 +21,7 @@ from flask_app.player_page_data_loader import (
 import polars as pl
 import os
 
-print("app.py post data load:", data is not None)
+logging.debug(f"app.py post data load: {data is not None}")
 
 app = Flask(__name__, static_folder="../static")
 app.config["DATA_CACHED"] = data
