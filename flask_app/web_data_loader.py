@@ -96,7 +96,7 @@ def format_stats_for_site(df: pl.DataFrame):
 
     # Round only numeric columns
     for col in df.select_dtypes(include="number").columns:
-        df[col] = df[col].round(5) if col == 'Rating' else df[col].round(3)
+        df[col] = df[col].round(5) if col == "Rating" else df[col].round(3)
 
     return df.to_dict(orient="records")  # Convert to list of dicts for Jinja
 

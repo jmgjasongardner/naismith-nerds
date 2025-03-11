@@ -113,21 +113,33 @@ def process_output_file(args, best_lambda: int) -> str:
 
     return f"collective_bball/ratings/{date.today()}-ratings-lambda={best_lambda}{used_tiers}{min_games}.csv"
 
+
 def player_games(games, ratings):
 
     player_games = (
-        games.unpivot(
-            index=["GameDate", "GameNum", "Day", "Winner", "A_SCORE", "B_SCORE"],  # Columns to keep
-            on=[f"A{i}" for i in range(1, 6)] + [f"B{i}" for i in range(1, 6)],  # Columns to pivot
-            variable_name="PlayerRole",  # New column indicating A1-A5 or B1-B5
-            value_name="Player"  # New column for player names
+        (
+            games.unpivot(
+                index=[
+                    "GameDate",
+                    "GameNum",
+                    "Day",
+                    "Winner",
+                    "A_SCORE",
+                    "B_SCORE",
+                ],  # Columns to keep
+                on=[f"A{i}" for i in range(1, 6)]
+                + [f"B{i}" for i in range(1, 6)],  # Columns to pivot
+                variable_name="PlayerRole",  # New column indicating A1-A5 or B1-B5
+                value_name="Player",  # New column for player names
+            )
         )
-    ).with_columns(
-        pl.col('PlayerRole').str.slice(0,1).alias('Team')
-    ).with_columns(
-        (pl.col('Team')==pl.col('Winner')).cast(pl.Int32).alias('WonGame')
-    ).to_pandas()
+        .with_columns(pl.col("PlayerRole").str.slice(0, 1).alias("Team"))
+        .with_columns(
+            (pl.col("Team") == pl.col("Winner")).cast(pl.Int32).alias("WonGame")
+        )
+        .to_pandas()
+    )
 
     # TODO: load and join ratings -- perhaps ditching this in favor of OO approach
 
-    return (player_games)
+    return player_games
