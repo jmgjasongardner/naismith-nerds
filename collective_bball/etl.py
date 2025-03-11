@@ -14,6 +14,7 @@ def load_data(filepath: str) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
 
 
 def clean_games_data(raw_games_df: pl.DataFrame) -> pl.DataFrame:
+    raw_games_df = raw_games_df.sample(60)
     games = (
         raw_games_df.with_columns(
             pl.col("a_score").cast(pl.Int64), pl.col("b_score").cast(pl.Int64)
