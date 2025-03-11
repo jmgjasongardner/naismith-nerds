@@ -1,6 +1,7 @@
 from sklearn.linear_model import LogisticRegression
 import polars as pl
 
+
 class BettingGames:
     def __init__(self):
         self.model = LogisticRegression()
@@ -45,16 +46,14 @@ class BettingGames:
             .with_columns(
                 (pl.col("spread").abs()).alias("absolute_spread"),
                 (pl.col("score_diff").abs()).alias("absolute_score_diff"),
-                (pl.col("diff_from_spread").abs()).alias(
-                    "absolute_spread_diff"
-                ),
+                (pl.col("diff_from_spread").abs()).alias("absolute_spread_diff"),
             )
-        ).sort(
-            "game_date", "game_num", descending=[True, True]
-        )
+        ).sort("game_date", "game_num", descending=[True, True])
         return games_with_spreads
 
-    def calculate_moneylines_log_reg(self, games_with_spreads: pl.DataFrame) -> pl.DataFrame:
+    def calculate_moneylines_log_reg(
+        self, games_with_spreads: pl.DataFrame
+    ) -> pl.DataFrame:
         """Trains logistic regression and computes win probabilities."""
 
         x = games_with_spreads.select(["a_quality", "b_quality"]).to_numpy()

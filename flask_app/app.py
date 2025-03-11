@@ -1,5 +1,6 @@
 from flask import Flask, render_template
 from flask_app.utility_imports import tooltips
+
 # from collective_bball.eda_main import generate_stats
 # from collective_bball.win_prob_log_reg import calculate_team_A_win_prob
 from collective_bball.main import data  # Get precomputed `data`
@@ -10,7 +11,7 @@ from flask_app.web_data_loader import (
     # calculate_game_spreads,
 )
 from flask_app.player_page_data_loader import (
-    #create_player_games,
+    # create_player_games,
     load_player_bio_data,
     create_player_games_advanced,
 )
@@ -63,16 +64,22 @@ def filter_dictionary(dictionary, player_name):
 def home():
     return render_template(
         "index.html",
-        stats=format_stats_for_site(data.player_data.drop(['rating', 'tiered_rating', 'full_name', 'height', 'position'])),
+        stats=format_stats_for_site(
+            data.player_data.drop(
+                ["rating", "tiered_rating", "full_name", "height", "position"]
+            )
+        ),
         num_days=len(data.days),
         games=format_stats_for_site(data.games),
         ratings=format_stats_for_site(data.ratings),
-        player_days=format_stats_for_site(data.player_days.drop('rating')),
-        #player_games=format_stats_for_site(data.player_games),
-        teammates=format_stats_for_site(data.teammates.drop(['player', 'teammate']).unique()),
+        player_days=format_stats_for_site(data.player_days.drop("rating")),
+        # player_games=format_stats_for_site(data.player_games),
+        teammates=format_stats_for_site(
+            data.teammates.drop(["player", "teammate"]).unique()
+        ),
         opponents=format_stats_for_site(data.opponents),
-        #teammate_games=format_stats_for_site(data.teammate_games),
-        #opponent_games=format_stats_for_site(data.opponent_games),
+        # teammate_games=format_stats_for_site(data.teammate_games),
+        # opponent_games=format_stats_for_site(data.opponent_games),
         days_of_week=format_stats_for_site(data.days_of_week),
         days=format_stats_for_site(data.days),
         best_lambda=data.best_lambda,
@@ -103,19 +110,33 @@ def player_page(player_name):
         position=position,
         image_exists=image_exists,
         image_path=image_path if image_exists else None,
-        player_stats=format_stats_for_site(data.player_data.filter(pl.col('player') == player_name).drop(['player', 'rating', 'tiered_rating', 'full_name', 'height', 'position'])),
-        player_rating=data.ratings.filter(pl.col('player') == player_name).with_columns(pl.col('rating').round(5)).to_pandas().to_dict(orient="records"),
+        player_stats=format_stats_for_site(
+            data.player_data.filter(pl.col("player") == player_name).drop(
+                ["player", "rating", "tiered_rating", "full_name", "height", "position"]
+            )
+        ),
+        player_rating=data.ratings.filter(pl.col("player") == player_name)
+        .with_columns(pl.col("rating").round(5))
+        .to_pandas()
+        .to_dict(orient="records"),
         player_days=format_stats_for_site(
-            data.player_days.filter(
-                pl.col('player') == player_name).drop(['player', 'rating'])),
-        player_games=format_stats_for_site(data.player_games.filter(pl.col('player') == player_name).drop(['rating', 'player'])),
+            data.player_days.filter(pl.col("player") == player_name).drop(
+                ["player", "rating"]
+            )
+        ),
+        player_games=format_stats_for_site(
+            data.player_games.filter(pl.col("player") == player_name).drop(
+                ["rating", "player"]
+            )
+        ),
         player_teammates=format_stats_for_site(
-            data.teammates.filter(
-                pl.col('player') == player_name).drop(['player', 'pairing'])),
+            data.teammates.filter(pl.col("player") == player_name).drop(
+                ["player", "pairing"]
+            )
+        ),
         player_oppponents=format_stats_for_site(
-            data.opponents.filter(
-                pl.col('player') == player_name).drop(['player'])),
-
+            data.opponents.filter(pl.col("player") == player_name).drop(["player"])
+        ),
         # player_games_advanced=player_games_advanced.to_pandas().to_dict(
         #     orient="records"
         # ),

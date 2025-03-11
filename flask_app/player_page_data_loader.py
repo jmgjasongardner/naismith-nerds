@@ -221,10 +221,12 @@ def create_player_games_advanced(player_games: pl.DataFrame, games_data: pl.Data
 
 def load_player_bio_data(player_name: str, player_data: pl.DataFrame):
 
-    bio_row = player_data.filter(pl.col('player') == player_name)
+    bio_row = player_data.filter(pl.col("player") == player_name)
 
     # Default to player_name if full_name is missing
-    full_name = bio_row["full_name"].item() if bio_row["full_name"] is not None else player_name
+    full_name = (
+        bio_row["full_name"].item() if bio_row["full_name"] is not None else player_name
+    )
     position = bio_row["position"].item() if bio_row["position"] is not None else None
 
     # Convert height from inches to "ft, in" format if available

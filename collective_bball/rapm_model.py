@@ -17,15 +17,21 @@ class RAPMModel:
         if args.default_lambda:
             self.best_lambda = 25 if args.use_tier_data else 100
         else:
-            lambdas, self.best_lambda = self.tune_lambda(games=games, tiers=tiers, args=args)
-        self.ratings, self.best_lambda = self.train_final_model(games=games, tiers=tiers, args=args, best_lambda=self.best_lambda)
+            lambdas, self.best_lambda = self.tune_lambda(
+                games=games, tiers=tiers, args=args
+            )
+        self.ratings, self.best_lambda = self.train_final_model(
+            games=games, tiers=tiers, args=args, best_lambda=self.best_lambda
+        )
 
         return self.ratings, self.best_lambda
 
     def train_final_model(
-            self, games: pl.DataFrame, tiers: pl.DataFrame, args=None, best_lambda=None
+        self, games: pl.DataFrame, tiers: pl.DataFrame, args=None, best_lambda=None
     ) -> Tuple[pl.DataFrame, int]:
-        y, players, sparse_matrix, dense_matrix = self.preprocess_data(games=games, tiers=tiers, args=args)
+        y, players, sparse_matrix, dense_matrix = self.preprocess_data(
+            games=games, tiers=tiers, args=args
+        )
         player_to_idx = {
             player: idx for idx, player in enumerate(players["player"].unique().sort())
         }
@@ -46,13 +52,15 @@ class RAPMModel:
         return self.ratings, self.best_lambda
 
     def tune_lambda(
-            self, games: pl.DataFrame, tiers: pl.DataFrame, args=None, n_splits=10
+        self, games: pl.DataFrame, tiers: pl.DataFrame, args=None, n_splits=10
     ) -> Tuple[List, float]:
 
         # Store results for each lambda
         results = []
 
-        y, players, sparse_matrix, dense_matrix = self.preprocess_data(games=games, tiers=tiers, args=args)
+        y, players, sparse_matrix, dense_matrix = self.preprocess_data(
+            games=games, tiers=tiers, args=args
+        )
 
         lambda_values = args.lambda_params
         # Iterate over different lambda values
@@ -60,7 +68,9 @@ class RAPMModel:
             fold_rmse = []  # To store RMSE for each fold
             for random_state_val in [0, 11, 21, 42]:
                 # Initialize k-fold cross-validation
-                kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_state_val)
+                kf = KFold(
+                    n_splits=n_splits, shuffle=True, random_state=random_state_val
+                )
 
                 # Cross-validation loop
                 for train_idx, val_idx in kf.split(sparse_matrix):
@@ -87,7 +97,9 @@ class RAPMModel:
 
         return results, best_lambda[0]
 
-    def preprocess_data(self, games: pl.DataFrame, tiers=None, args=None) -> Tuple[np.ndarray, pl.DataFrame, sp.coo_matrix, np.ndarray]:
+    def preprocess_data(
+        self, games: pl.DataFrame, tiers=None, args=None
+    ) -> Tuple[np.ndarray, pl.DataFrame, sp.coo_matrix, np.ndarray]:
         if args.use_tier_data:
             games = self.sub_tier_data(
                 games=games,
@@ -98,24 +110,30 @@ class RAPMModel:
         id_cols = ["game_date", "game_num", "a_score", "b_score", "winner"]
         team_cols = util_code.player_columns
 
-        players = games.select(id_cols + team_cols).unpivot(index=id_cols).with_columns(
-            pl.col("variable").str.extract(r"([AB])", 1).alias("team"),
-            pl.col("value").alias("player"),
-        ).drop(["value", "variable"]).with_columns(
-            pl.when(pl.col("team") == "A")
-            .then(pl.col("a_score"))
-            .otherwise(pl.col("b_score"))
-            .alias("team_score"),
-            pl.when(pl.col("team") == "A")
-            .then(pl.col("b_score"))
-            .otherwise(pl.col("a_score"))
-            .alias("opponent_score"),
-            (pl.col("team") == pl.col("winner")).cast(pl.Int8).alias("game_won"),
-        ).with_columns(
-            (pl.col("team_score") - pl.col("opponent_score")).alias("score_diff"),
-            pl.when(pl.col("team") == "A").then(1).otherwise(-1).alias("effect"),
+        players = (
+            games.select(id_cols + team_cols)
+            .unpivot(index=id_cols)
+            .with_columns(
+                pl.col("variable").str.extract(r"([AB])", 1).alias("team"),
+                pl.col("value").alias("player"),
+            )
+            .drop(["value", "variable"])
+            .with_columns(
+                pl.when(pl.col("team") == "A")
+                .then(pl.col("a_score"))
+                .otherwise(pl.col("b_score"))
+                .alias("team_score"),
+                pl.when(pl.col("team") == "A")
+                .then(pl.col("b_score"))
+                .otherwise(pl.col("a_score"))
+                .alias("opponent_score"),
+                (pl.col("team") == pl.col("winner")).cast(pl.Int8).alias("game_won"),
+            )
+            .with_columns(
+                (pl.col("team_score") - pl.col("opponent_score")).alias("score_diff"),
+                pl.when(pl.col("team") == "A").then(1).otherwise(-1).alias("effect"),
+            )
         )
-
 
         game_to_idx = {
             (date, num): idx
@@ -161,15 +179,16 @@ class RAPMModel:
 
     @staticmethod
     def sub_tier_data(
-            games: pl.DataFrame, tiers: pl.DataFrame, min_games: int
+        games: pl.DataFrame, tiers: pl.DataFrame, min_games: int
     ) -> pl.DataFrame:
         player_columns = util_code.player_columns
-        games_played = games.select(player_columns).unpivot(
-                on=player_columns, value_name="player").filter(
-                pl.col("player").is_not_null()).group_by(
-                "player").agg(
-                pl.len().alias("games_played")).sort(  # Count how many times each player appears
-                pl.col("games_played")
+        games_played = (
+            games.select(player_columns)
+            .unpivot(on=player_columns, value_name="player")
+            .filter(pl.col("player").is_not_null())
+            .group_by("player")
+            .agg(pl.len().alias("games_played"))
+            .sort(pl.col("games_played"))  # Count how many times each player appears
         )
         tiers = tiers.join(games_played, on="player")
         tiers = tiers.filter(pl.col("games_played") < min_games)
