@@ -138,9 +138,6 @@
         <div class="tab active" data-target="stats">Stats</div>
         <div class="tab" data-target="ratings">Ratings</div>
         <div class="tab" data-target="games">Games</div>
-        <div class="tab" data-target="players_advanced">Players Advanced</div>
-        <div class="tab" data-target="player_pairings">Player Pairings</div>
-        <div class="tab" data-target="days">Days</div>
         <div class="tab" data-target="methodology">Methodology</div>
     </div>
 
@@ -213,6 +210,9 @@
             <p>No player ratings available.</p>
         {% endif %}
     </div>
+
+
+       <!-- Tab Content -->
     <div class="tab-content games">
         <h2>Games</h2>
         {% if games %}
@@ -243,148 +243,6 @@
         </table>
         {% else %}
             <p>No game data available.</p>
-        {% endif %}
-    </div>
-    <div class="tab-content players_advanced">
-        <h2>Players Advanced</h2>
-        {% if player_days %}
-        <table id="playerDaysTable">
-            <thead>
-                <tr>
-                    {% for col in player_days[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-             <tbody>
-                {% for row in player_days %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            {% if key == "Player" %}
-                                <td>
-                                    <a href="{{ url_for('player_page', player_name=value) }}">
-                                        {{ value }}
-                                    </a>
-                                </td>
-                            {% else %}
-                                <td>{{ value }}</td>
-                            {% endif %}
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No player day data available.</p>
-        {% endif %}
-    </div>
-    <div class="tab-content player_pairings">
-        <h2>Player Pairings</h2>
-        <h3>Teammate Combos</h3>
-        {% if teammates %}
-        <table id="teammatesTable">
-            <thead>
-                <tr>
-                    {% for col in teammates[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-             <tbody>
-                {% for row in teammates %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            <td>{{ value }}</td>
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No teammate data available.</p>
-        {% endif %}
-        <h3>Opponent Combos</h3>
-        {% if opponents %}
-        <table id="opponentsTable">
-            <thead>
-                <tr>
-                    {% for col in opponents[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-             <tbody>
-                {% for row in opponents %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            {% if key in ["Player", "Opp"]  %}
-                                <td>
-                                    <a href="{{ url_for('player_page', player_name=value) }}">
-                                        {{ value }}
-                                    </a>
-                                </td>
-                            {% else %}
-                                <td>{{ value }}</td>
-                            {% endif %}
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No opponent data available.</p>
-        {% endif %}
-    </div>
-    <div class="tab-content days">
-        <h2>Days</h2>
-        {% if days_of_week %}
-        <table id="daysOfWeekTable">
-            <thead>
-                <tr>
-                    {% for col in days_of_week[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-             <tbody>
-                {% for row in days_of_week %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            <td>{{ value }}</td>
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No days of week data available.</p>
-        {% endif %}
-        {% if days %}
-        <table id="daysTable">
-            <thead>
-                <tr>
-                    {% for col in days[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-             <tbody>
-                {% for row in days %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            <td>{{ value }}</td>
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No days data available.</p>
         {% endif %}
     </div>
 
@@ -424,41 +282,6 @@
                 "language": {
                     "info": "Showing _START_ to _END_ of _TOTAL_ games",
                     "lengthMenu": 'Show <span>_MENU_</span> games'
-                }
-            });
-            $("#playerDaysTable").DataTable({
-                "order": [[1, "desc"], [4, "desc"], [6, "desc"], [0, "desc"]],  // Sort by Game Date, Wins, Win%, Name descending
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ player-days",
-                    "lengthMenu": 'Show <span>_MENU_</span> player-days'
-                }
-            });
-            $("#teammatesTable").DataTable({
-                "order": [[3, "desc"], [8, "desc"]],  // Sort by Wins, then Wins Over Exp descending
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ teammate combos",
-                    "lengthMenu": 'Show <span>_MENU_</span> teammate combos'
-                }
-            });
-            $("#opponentsTable").DataTable({
-                "order": [[4, "desc"], [9, "desc"]],  // Sort by Wins, then Wins Over Exp descending
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ opponent combos",
-                    "lengthMenu": 'Show <span>_MENU_</span> opponent combos'
-                }
-            });
-            $("#daysOfWeekTable").DataTable({
-                "order": [[4, "desc"]],  // Sort by Mean Rating Player Games
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ days",
-                    "lengthMenu": 'Show <span>_MENU_</span> days'
-                }
-            });
-            $("#daysTable").DataTable({
-                "order": [[0, "desc"]],  // Sort by Game Date
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ days",
-                    "lengthMenu": 'Show <span>_MENU_</span> days'
                 }
             });
 
