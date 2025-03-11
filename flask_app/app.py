@@ -25,6 +25,7 @@ logging.debug(f"app.py post data load: {data is not None}")
 
 app = Flask(__name__, static_folder="../static")
 app.config["DATA_CACHED"] = data
+logging.debug(f"player data head outside funs: {data.player_data.head(5)}")
 
 def filter_dictionary(dictionary, player_name):
     return [entry for entry in dictionary if entry["Player"] == player_name]
@@ -33,6 +34,8 @@ def filter_dictionary(dictionary, player_name):
 @app.route("/")
 def home():
     data_cached = app.config["DATA_CACHED"]
+    logging.debug(f"ratings head in home: {data_cached.ratings.head(5)}")
+    logging.debug(f"games data in home: {format_stats_for_site(data_cached.games)}")
     return render_template(
         "index.html",
         stats=format_stats_for_site(
