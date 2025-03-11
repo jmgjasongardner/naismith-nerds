@@ -94,24 +94,25 @@ def format_stats_for_site(df: pl.DataFrame):
         "sat_rate": "Sat Rate",
     }
     logging.debug(f"ratings sample df in web_data_loader as polars: {df.head(5)}")
-    df = df.head(5)
+    #df = df.head(5)
     columns_in_df = df.columns
     filtered_column_map = {k: v for k, v in column_map.items() if k in columns_in_df}
     logging.debug(f"original column map in web_data_loader: {column_map}")
     logging.debug(f"filtered column map in web_data_loader: {filtered_column_map}")
 
     df = df.rename(filtered_column_map)
-    logging.debug(f"ratings sample df in web_data_loader polars with new columns: {df}")
-    df = df.to_pandas()  # Rename columns
-    logging.debug(f"ratings sample df in web_data_loader to pandas: {df}")
+    logging.debug(f"Original df in web_data_loader polars: {df}")
 
+    # Round numeric columns (here, we assume 'Rating' column needs rounding to 5 decimals)
+    df = df.with_columns([
+        pl.col(col).round(5).alias(col) if col == "rating" else pl.col(col).round(3).alias(col)
+        for col in df.columns if df[col].dtype in [pl.Float32, pl.Float64]  # Check for numeric columns
+    ])
 
-    # Round only numeric columns
-    for col in df.select_dtypes(include="number").columns:
-        df[col] = df[col].round(5) if col == "Rating" else df[col].round(3)
+    logging.debug(f"df with rounding in web_data_loader polars: {df}")
 
-    logging.debug(f"ratings sample df in web_data_loader with rounding: {df.head(5)}")
-    output_dict = df.to_dict(orient="records")  # Convert to list of dicts for Jinja
+    # Convert to list of dictionaries
+    output_dict = df.to_dicts()  # This gives you a list of dictionaries
     logging.debug(f"ratings sample dict in web_data_loader: {output_dict}")
 
     return output_dict
