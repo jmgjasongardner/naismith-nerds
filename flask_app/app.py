@@ -35,7 +35,11 @@ def filter_dictionary(dictionary, player_name):
 def home():
     data_cached = app.config["DATA_CACHED"]
     logging.debug(f"ratings head in home: {data_cached.ratings.head(5)}")
-    logging.debug(f"games data in home: {format_stats_for_site(data_cached.games)}")
+    logging.debug(f"ratings sample dict in home: {format_stats_for_site(data_cached.ratings.head(5))}")
+    games_sample = data_cached.games[:5]  # Only take the first 5 games
+    logging.debug(f"games sample df in home: {games_sample}")
+    logging.debug(f"games sample dict in home: {format_stats_for_site(games_sample)}")
+    logging.debug(f"games dict in home: {format_stats_for_site(data_cached.games)}")
     return render_template(
         "index.html",
         stats=format_stats_for_site(
