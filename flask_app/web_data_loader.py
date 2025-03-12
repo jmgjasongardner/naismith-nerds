@@ -1,5 +1,12 @@
 import polars as pl
 import logging
+import os
+import psutil
+
+def log_memory_usage():
+    process = psutil.Process(os.getpid())
+    memory_info = process.memory_info()
+    logging.debug(f"Memory usage: {memory_info.rss / 1024 ** 2} MB")
 
 
 def format_stats_for_site(df: pl.DataFrame):
@@ -93,15 +100,16 @@ def format_stats_for_site(df: pl.DataFrame):
         "wed_rate": "Wed Rate",
         "sat_rate": "Sat Rate",
     }
-    logging.debug(f"ratings sample df in web_data_loader as polars: {df.head(5)}")
+    #logging.debug(f"ratings sample df in web_data_loader as polars: {df.head(5)}")
     #df = df.head(5)
     columns_in_df = df.columns
     filtered_column_map = {k: v for k, v in column_map.items() if k in columns_in_df}
-    logging.debug(f"original column map in web_data_loader: {column_map}")
-    logging.debug(f"filtered column map in web_data_loader: {filtered_column_map}")
+    #logging.debug(f"original column map in web_data_loader: {column_map}")
+    #logging.debug(f"filtered column map in web_data_loader: {filtered_column_map}")
 
     df = df.rename(filtered_column_map)
-    logging.debug(f"Original df in web_data_loader polars: {df}")
+    log_memory_usage()
+    #logging.debug(f"Original df in web_data_loader polars: {df}")
 
     # Round numeric columns (here, we assume 'Rating' column needs rounding to 5 decimals)
     # df = df.with_columns([
@@ -109,11 +117,13 @@ def format_stats_for_site(df: pl.DataFrame):
     #     for col in df.columns if df[col].dtype in [pl.Float32, pl.Float64]  # Check for numeric columns
     # ])
 
-    logging.debug(f"df with rounding in web_data_loader polars: {df}")
+    logging.debug(f"df with rounding in web_data_loader polars: {df.head(5)}")
+    log_memory_usage()
 
     # Convert to list of dictionaries
     output_dict = df.to_dicts()  # This gives you a list of dictionaries
-    logging.debug(f"ratings sample dict in web_data_loader: {output_dict}")
+    #logging.debug(f"dict in web_data_loader: {output_dict}")
+    log_memory_usage()
 
     return output_dict
 

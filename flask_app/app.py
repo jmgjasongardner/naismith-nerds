@@ -2,6 +2,8 @@ from flask import Flask, render_template
 from flask_app.utility_imports import tooltips
 import logging
 logging.basicConfig(level=logging.DEBUG)
+import os
+import psutil
 
 # from collective_bball.eda_main import generate_stats
 # from collective_bball.win_prob_log_reg import calculate_team_A_win_prob
@@ -30,6 +32,11 @@ app.config["DATA_CACHED"] = data
 def filter_dictionary(dictionary, player_name):
     return [entry for entry in dictionary if entry["Player"] == player_name]
 
+def log_memory_usage():
+    process = psutil.Process(os.getpid())
+    memory_info = process.memory_info()
+    logging.debug(f"Memory usage: {memory_info.rss / 1024 ** 2} MB")
+
 
 @app.route("/")
 def home():
@@ -43,30 +50,38 @@ def home():
 
     # Precompute all data before returning
     logging.debug('computing pre-processed')
+    log_memory_usage()
     stats = format_stats_for_site(
         data_cached.player_data.drop(
             ["rating", "tiered_rating", "full_name", "height", "position"]
         )
     )
     logging.debug('computed stats')
+    log_memory_usage()
     num_days = len(data_cached.days)
     games = format_stats_for_site(data_cached.games)
     logging.debug('computed games')
+    log_memory_usage()
     ratings = format_stats_for_site(data_cached.ratings)
     logging.debug('computed ratings')
+    log_memory_usage()
     player_days = format_stats_for_site(data_cached.player_days.drop("rating"))
     logging.debug('computed player days')
+    log_memory_usage()
     teammates = format_stats_for_site(
         data_cached.teammates.drop(["player", "teammate"]).unique()
     )
     logging.debug('computed teammates')
+    log_memory_usage()
     opponents = format_stats_for_site(data_cached.opponents)
     days_of_week = format_stats_for_site(data_cached.days_of_week)
     days = format_stats_for_site(data_cached.days)
     logging.debug('computed opponents, days')
+    log_memory_usage()
     best_lambda = data_cached.best_lambda
     main_tooltip = tooltips.main_tooltip
     logging.debug('computed all pre-processed')
+    log_memory_usage()
 
     # Return only after all data is prepared
     return render_template(
