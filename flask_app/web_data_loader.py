@@ -3,7 +3,7 @@ import logging
 
 
 def format_stats_for_site(df: pl.DataFrame):
-    logging.debug(f"In format_stats_for_site")
+    #logging.debug(f"In format_stats_for_site")
     """Rename columns and round numeric values before passing to Jinja."""
     column_map = {
         "player": "Player",
@@ -93,15 +93,15 @@ def format_stats_for_site(df: pl.DataFrame):
         "wed_rate": "Wed Rate",
         "sat_rate": "Sat Rate",
     }
-    logging.debug(f"ratings sample df in web_data_loader as polars: {df.head(5)}")
+    # logging.debug(f"ratings sample df in web_data_loader as polars: {df.head(5)}")
     #df = df.head(5)
     columns_in_df = df.columns
     filtered_column_map = {k: v for k, v in column_map.items() if k in columns_in_df}
-    logging.debug(f"original column map in web_data_loader: {column_map}")
-    logging.debug(f"filtered column map in web_data_loader: {filtered_column_map}")
+    # logging.debug(f"original column map in web_data_loader: {column_map}")
+    # logging.debug(f"filtered column map in web_data_loader: {filtered_column_map}")
 
     df = df.rename(filtered_column_map)
-    logging.debug(f"Original df in web_data_loader polars: {df}")
+    # logging.debug(f"Original df in web_data_loader polars: {df}")
 
     # Round numeric columns (here, we assume 'Rating' column needs rounding to 5 decimals)
     df = df.with_columns([
