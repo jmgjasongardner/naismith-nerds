@@ -48,16 +48,22 @@ def home():
             ["rating", "tiered_rating", "full_name", "height", "position"]
         )
     )
+    logging.debug('computed stats')
     num_days = len(data_cached.days)
     games = format_stats_for_site(data_cached.games)
+    logging.debug('computed games')
     ratings = format_stats_for_site(data_cached.ratings)
+    logging.debug('computed ratings')
     player_days = format_stats_for_site(data_cached.player_days.drop("rating"))
+    logging.debug('computed player days')
     teammates = format_stats_for_site(
         data_cached.teammates.drop(["player", "teammate"]).unique()
     )
+    logging.debug('computed teammates')
     opponents = format_stats_for_site(data_cached.opponents)
     days_of_week = format_stats_for_site(data_cached.days_of_week)
     days = format_stats_for_site(data_cached.days)
+    logging.debug('computed opponents, days')
     best_lambda = data_cached.best_lambda
     main_tooltip = tooltips.main_tooltip
     logging.debug('computed all pre-processed')
