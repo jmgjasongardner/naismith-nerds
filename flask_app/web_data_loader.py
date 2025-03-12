@@ -104,10 +104,10 @@ def format_stats_for_site(df: pl.DataFrame):
     logging.debug(f"Original df in web_data_loader polars: {df}")
 
     # Round numeric columns (here, we assume 'Rating' column needs rounding to 5 decimals)
-    df = df.with_columns([
-        pl.col(col).round(5).alias(col) if col == "rating" else pl.col(col).round(3).alias(col)
-        for col in df.columns if df[col].dtype in [pl.Float32, pl.Float64]  # Check for numeric columns
-    ])
+    # df = df.with_columns([
+    #     pl.col(col).round(5).alias(col) if col == "rating" else pl.col(col).round(3).alias(col)
+    #     for col in df.columns if df[col].dtype in [pl.Float32, pl.Float64]  # Check for numeric columns
+    # ])
 
     logging.debug(f"df with rounding in web_data_loader polars: {df}")
 
