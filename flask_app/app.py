@@ -40,25 +40,42 @@ def home():
     # logging.debug(f"games sample df in home: {games_sample}")
     # logging.debug(f"games sample dict in home: {format_stats_for_site(games_sample)}")
     # logging.debug(f"games dict in home: {format_stats_for_site(data_cached.games)}")
+
+    # Precompute all data before returning
+    logging.debug('computing pre-processed')
+    stats = format_stats_for_site(
+        data_cached.player_data.drop(
+            ["rating", "tiered_rating", "full_name", "height", "position"]
+        )
+    )
+    num_days = len(data_cached.days)
+    games = format_stats_for_site(data_cached.games)
+    ratings = format_stats_for_site(data_cached.ratings)
+    player_days = format_stats_for_site(data_cached.player_days.drop("rating"))
+    teammates = format_stats_for_site(
+        data_cached.teammates.drop(["player", "teammate"]).unique()
+    )
+    opponents = format_stats_for_site(data_cached.opponents)
+    days_of_week = format_stats_for_site(data_cached.days_of_week)
+    days = format_stats_for_site(data_cached.days)
+    best_lambda = data_cached.best_lambda
+    main_tooltip = tooltips.main_tooltip
+    logging.debug('computed all pre-processed')
+
+    # Return only after all data is prepared
     return render_template(
         "index.html",
-        stats=format_stats_for_site(
-            data_cached.player_data.drop(
-                ["rating", "tiered_rating", "full_name", "height", "position"]
-            )
-        ),
-        num_days=len(data_cached.days),
-        games=format_stats_for_site(data_cached.games),
-        ratings=format_stats_for_site(data_cached.ratings),
-        player_days=format_stats_for_site(data_cached.player_days.drop("rating")),
-        teammates=format_stats_for_site(
-            data_cached.teammates.drop(["player", "teammate"]).unique()
-        ),
-        opponents=format_stats_for_site(data_cached.opponents),
-        days_of_week=format_stats_for_site(data_cached.days_of_week),
-        days=format_stats_for_site(data_cached.days),
-        best_lambda=data_cached.best_lambda,
-        main_tooltip=tooltips.main_tooltip,
+        stats=stats,
+        num_days=num_days,
+        games=games,
+        ratings=ratings,
+        player_days=player_days,
+        teammates=teammates,
+        opponents=opponents,
+        days_of_week=days_of_week,
+        days=days,
+        best_lambda=best_lambda,
+        main_tooltip=main_tooltip,
     )
 
 
