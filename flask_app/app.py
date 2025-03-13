@@ -39,66 +39,6 @@ def log_memory_usage():
 
 
 @app.route("/")
-# def home():
-#     data_cached = app.config["DATA_CACHED"]
-#     # logging.debug(f"ratings head in home: {data_cached.ratings.head(5)}")
-#     # logging.debug(f"ratings sample dict in home: {format_stats_for_site(data_cached.ratings.head(5))}")
-#     # games_sample = data_cached.games[:5]  # Only take the first 5 games
-#     # logging.debug(f"games sample df in home: {games_sample}")
-#     # logging.debug(f"games sample dict in home: {format_stats_for_site(games_sample)}")
-#     # logging.debug(f"games dict in home: {format_stats_for_site(data_cached.games)}")
-#
-#     # Precompute all data before returning
-#     logging.debug('computing pre-processed')
-#     log_memory_usage()
-#     stats = format_stats_for_site(
-#         data_cached.player_data.drop(
-#             ["rating", "tiered_rating", "full_name", "height", "position"]
-#         )
-#     )
-#     logging.debug('computed stats')
-#     log_memory_usage()
-#     num_days = len(data_cached.days)
-#     games = format_stats_for_site(data_cached.games)
-#     logging.debug('computed games')
-#     log_memory_usage()
-#     ratings = format_stats_for_site(data_cached.ratings)
-#     logging.debug('computed ratings')
-#     log_memory_usage()
-#     player_days = format_stats_for_site(data_cached.player_days.drop("rating"))
-#     logging.debug('computed player days')
-#     log_memory_usage()
-#     teammates = format_stats_for_site(
-#         data_cached.teammates.drop(["player", "teammate"]).unique()
-#     )
-#     logging.debug('computed teammates')
-#     log_memory_usage()
-#     opponents = format_stats_for_site(data_cached.opponents)
-#     days_of_week = format_stats_for_site(data_cached.days_of_week)
-#     days = format_stats_for_site(data_cached.days)
-#     logging.debug('computed opponents, days')
-#     log_memory_usage()
-#     best_lambda = data_cached.best_lambda
-#     main_tooltip = tooltips.main_tooltip
-#     logging.debug('computed all pre-processed')
-#     log_memory_usage()
-#
-#     # Return only after all data is prepared
-#     return render_template(
-#         "index.html",
-#         stats=stats,
-#         num_days=num_days,
-#         games=games,
-#         ratings=ratings,
-#         player_days=player_days,
-#         teammates=teammates,
-#         opponents=opponents,
-#         days_of_week=days_of_week,
-#         days=days,
-#         best_lambda=best_lambda,
-#         main_tooltip=main_tooltip,
-#     )
-
 def home():
     data_cached = app.config["DATA_CACHED"]
     # logging.debug(f"ratings head in home: {data_cached.ratings.head(5)}")
@@ -123,35 +63,95 @@ def home():
     logging.debug('computed games')
     log_memory_usage()
     ratings = format_stats_for_site(data_cached.ratings)
-    # logging.debug('computed ratings')
-    # log_memory_usage()
-    # player_days = format_stats_for_site(data_cached.player_days.drop("rating"))
-    # logging.debug('computed player days')
-    # log_memory_usage()
-    # teammates = format_stats_for_site(
-    #     data_cached.teammates.drop(["player", "teammate"]).unique()
-    # )
-    # logging.debug('computed teammates')
-    # log_memory_usage()
-    # opponents = format_stats_for_site(data_cached.opponents)
-    # days_of_week = format_stats_for_site(data_cached.days_of_week)
-    # days = format_stats_for_site(data_cached.days)
-    # logging.debug('computed opponents, days')
-    # log_memory_usage()
-    # best_lambda = data_cached.best_lambda
+    logging.debug('computed ratings')
+    log_memory_usage()
+    player_days = format_stats_for_site(data_cached.player_days.drop("rating"))
+    logging.debug('computed player days')
+    log_memory_usage()
+    teammates = format_stats_for_site(
+        data_cached.teammates.drop(["player", "teammate"]).unique()
+    )
+    logging.debug('computed teammates')
+    log_memory_usage()
+    opponents = format_stats_for_site(data_cached.opponents)
+    days_of_week = format_stats_for_site(data_cached.days_of_week)
+    days = format_stats_for_site(data_cached.days)
+    logging.debug('computed opponents, days')
+    log_memory_usage()
+    best_lambda = data_cached.best_lambda
     main_tooltip = tooltips.main_tooltip
-    # logging.debug('computed all pre-processed')
-    # log_memory_usage()
+    logging.debug('computed all pre-processed')
+    log_memory_usage()
 
     # Return only after all data is prepared
     return render_template(
         "index.html",
         stats=stats,
         num_days=num_days,
-        main_tooltip=main_tooltip,
         games=games,
         ratings=ratings,
+        player_days=player_days,
+        teammates=teammates,
+        opponents=opponents,
+        days_of_week=days_of_week,
+        days=days,
+        best_lambda=best_lambda,
+        main_tooltip=main_tooltip,
     )
+
+# def home():
+#     data_cached = app.config["DATA_CACHED"]
+#     # logging.debug(f"ratings head in home: {data_cached.ratings.head(5)}")
+#     # logging.debug(f"ratings sample dict in home: {format_stats_for_site(data_cached.ratings.head(5))}")
+#     # games_sample = data_cached.games[:5]  # Only take the first 5 games
+#     # logging.debug(f"games sample df in home: {games_sample}")
+#     # logging.debug(f"games sample dict in home: {format_stats_for_site(games_sample)}")
+#     # logging.debug(f"games dict in home: {format_stats_for_site(data_cached.games)}")
+#
+#     # Precompute all data before returning
+#     logging.debug('computing pre-processed')
+#     log_memory_usage()
+#     stats = format_stats_for_site(
+#         data_cached.player_data.drop(
+#             ["rating", "tiered_rating", "full_name", "height", "position"]
+#         )
+#     )
+#     logging.debug('computed stats')
+#     log_memory_usage()
+#     num_days = len(data_cached.days)
+#     games = format_stats_for_site(data_cached.games)
+#     logging.debug('computed games')
+#     log_memory_usage()
+#     ratings = format_stats_for_site(data_cached.ratings)
+#     # logging.debug('computed ratings')
+#     # log_memory_usage()
+#     # player_days = format_stats_for_site(data_cached.player_days.drop("rating"))
+#     # logging.debug('computed player days')
+#     # log_memory_usage()
+#     # teammates = format_stats_for_site(
+#     #     data_cached.teammates.drop(["player", "teammate"]).unique()
+#     # )
+#     # logging.debug('computed teammates')
+#     # log_memory_usage()
+#     # opponents = format_stats_for_site(data_cached.opponents)
+#     # days_of_week = format_stats_for_site(data_cached.days_of_week)
+#     # days = format_stats_for_site(data_cached.days)
+#     # logging.debug('computed opponents, days')
+#     # log_memory_usage()
+#     # best_lambda = data_cached.best_lambda
+#     main_tooltip = tooltips.main_tooltip
+#     # logging.debug('computed all pre-processed')
+#     # log_memory_usage()
+#
+#     # Return only after all data is prepared
+#     return render_template(
+#         "index.html",
+#         stats=stats,
+#         num_days=num_days,
+#         main_tooltip=main_tooltip,
+#         games=games,
+#         ratings=ratings,
+#     )
 
 
 @app.route("/player/<player_name>")
@@ -215,4 +215,4 @@ def player_page(player_name):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000, debug=True)
+    app.run(host="0.0.0.0", port=8080, debug=True)
