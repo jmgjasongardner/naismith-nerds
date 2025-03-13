@@ -1,0 +1,20 @@
+app = 'naismith-nerds'
+primary_region = 'iad'
+
+[processes]
+  app = "flask --app flask_app.app run --host=0.0.0.0 --port=8080"
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
