@@ -119,10 +119,10 @@ def home():
     logging.debug('computed stats')
     log_memory_usage()
     num_days = len(data_cached.days)
-    # games = format_stats_for_site(data_cached.games)
-    # logging.debug('computed games')
-    # log_memory_usage()
-    # ratings = format_stats_for_site(data_cached.ratings)
+    games = format_stats_for_site(data_cached.games)
+    logging.debug('computed games')
+    log_memory_usage()
+    ratings = format_stats_for_site(data_cached.ratings)
     # logging.debug('computed ratings')
     # log_memory_usage()
     # player_days = format_stats_for_site(data_cached.player_days.drop("rating"))
@@ -149,6 +149,8 @@ def home():
         stats=stats,
         num_days=num_days,
         main_tooltip=main_tooltip,
+        games=games,
+        ratings=ratings,
     )
 
 
