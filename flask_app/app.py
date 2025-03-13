@@ -148,6 +148,7 @@ def home():
         "index.html",
         stats=stats,
         num_days=num_days,
+        main_tooltip=main_tooltip,
     )
 
 
