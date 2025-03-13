@@ -225,17 +225,17 @@ def load_player_bio_data(player_name: str, player_data: pl.DataFrame):
 
     # Default to player_name if full_name is missing
     full_name = (
-        bio_row["full_name"].item() if bio_row["full_name"] is not None else player_name
+        bio_row["full_name"].item() if bio_row["full_name"].item() is not None else player_name
     )
-    position = bio_row["position"].item() if bio_row["position"] is not None else None
+    position = bio_row["position"].item() if bio_row["position"].item() is not None else 'No position listed'
 
     # Convert height from inches to "ft, in" format if available
-    if bio_row["height"] is not None:
+    if bio_row["height"].item() is not None:
         height_in = int(bio_row["height"].item())
         height_ft = height_in // 12
         height_remain = height_in % 12
         height_str = f"Height: {height_ft}'{height_remain}\""
     else:
-        height_str = None  # No height available
+        height_str = 'No height listed'  # No height available
 
     return full_name, height_str, position
