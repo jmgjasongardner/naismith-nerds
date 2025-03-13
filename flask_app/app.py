@@ -139,7 +139,7 @@ def home():
     # logging.debug('computed opponents, days')
     # log_memory_usage()
     # best_lambda = data_cached.best_lambda
-    # main_tooltip = tooltips.main_tooltip
+    main_tooltip = tooltips.main_tooltip
     # logging.debug('computed all pre-processed')
     # log_memory_usage()
 
