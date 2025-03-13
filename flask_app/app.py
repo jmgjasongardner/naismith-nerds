@@ -111,14 +111,14 @@ def home():
     # Precompute all data before returning
     logging.debug('computing pre-processed')
     log_memory_usage()
-    # stats = format_stats_for_site(
-    #     data_cached.player_data.drop(
-    #         ["rating", "tiered_rating", "full_name", "height", "position"]
-    #     )
-    # )
-    # logging.debug('computed stats')
-    # log_memory_usage()
-    # num_days = len(data_cached.days)
+    stats = format_stats_for_site(
+        data_cached.player_data.drop(
+            ["rating", "tiered_rating", "full_name", "height", "position"]
+        )
+    )
+    logging.debug('computed stats')
+    log_memory_usage()
+    num_days = len(data_cached.days)
     # games = format_stats_for_site(data_cached.games)
     # logging.debug('computed games')
     # log_memory_usage()
@@ -146,6 +146,8 @@ def home():
     # Return only after all data is prepared
     return render_template(
         "index.html",
+        stats=stats,
+        num_days=num_days,
     )
 
 
