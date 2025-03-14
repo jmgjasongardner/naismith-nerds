@@ -1,3 +1,5 @@
+import logging
+
 import polars as pl
 import pandas as pd
 
@@ -220,22 +222,29 @@ def create_player_games_advanced(player_games: pl.DataFrame, games_data: pl.Data
 
 
 def load_player_bio_data(player_name: str, player_data: pl.DataFrame):
-
+    logging.debug("starting to load player bio data")
     bio_row = player_data.filter(pl.col("player") == player_name)
+    logging.debug("got bio row")
 
     # Default to player_name if full_name is missing
     full_name = (
         bio_row["full_name"].item() if bio_row["full_name"].item() is not None else player_name
     )
+    logging.debug("got full name")
     position = bio_row["position"].item() if bio_row["position"].item() is not None else 'No position listed'
+    logging.debug("got position")
 
     # Convert height from inches to "ft, in" format if available
     if bio_row["height"].item() is not None:
+        logging.debug("bio row height is not none")
         height_in = int(bio_row["height"].item())
         height_ft = height_in // 12
         height_remain = height_in % 12
         height_str = f"Height: {height_ft}'{height_remain}\""
+        logging.debug("heigh string")
     else:
+        logging.debug("no height listed")
         height_str = 'No height listed'  # No height available
 
+    logging.debug("end of load player bio data")
     return full_name, height_str, position
