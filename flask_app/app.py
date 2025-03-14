@@ -162,13 +162,17 @@ def player_page(player_name):
     # )
 
     # Check if the player's image exists in "static/player_pics/"
+    logging.debug('starting player page')
     data_cached = app.config["DATA_CACHED"]
     image_path = f"static/player_pics/{player_name}.png"
     image_exists = os.path.exists(image_path)
+    logging.debug('image exists')
 
+    logging.debug('loading player bio data')
     full_name, height_str, position = load_player_bio_data(
         player_name=player_name, player_data=data_cached.player_data
     )
+    logging.debug('computed player bio data')
 
     return render_template(
         "player.html",
