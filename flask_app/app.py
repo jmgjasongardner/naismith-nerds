@@ -176,7 +176,7 @@ def player_page(player_name):
 
     return render_template(
         "player.html",
-        # player_name=player_name,
+        player_name=player_name,
         # full_name=full_name,
         # height_str=height_str,
         # position=position,
