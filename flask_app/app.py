@@ -200,14 +200,14 @@ def player_page(player_name):
                 ["rating", "player"]
             )
         ),
-        player_teammates=format_stats_for_site(
-            data_cached.teammates.filter(pl.col("player") == player_name).drop(
-                ["player", "pairing"]
-            )
-        ),
-        player_oppponents=format_stats_for_site(
-            data_cached.opponents.filter(pl.col("player") == player_name).drop(["player"])
-        ),
+        # player_teammates=format_stats_for_site(
+        #     data_cached.teammates.filter(pl.col("player") == player_name).drop(
+        #         ["player", "pairing"]
+        #     )
+        # ),
+        # player_oppponents=format_stats_for_site(
+        #     data_cached.opponents.filter(pl.col("player") == player_name).drop(["player"])
+        # ),
         # player_games_advanced=player_games_advanced.to_pandas().to_dict(
         #     orient="records"
         # ),
