@@ -182,24 +182,24 @@ def player_page(player_name):
         # position=position,
         image_exists=image_exists,
         image_path=image_path if image_exists else None,
-        player_stats=format_stats_for_site(
-            data_cached.player_data.filter(pl.col("player") == player_name).drop(
-                ["player", "rating", "tiered_rating", "full_name", "height", "position"]
-            )
-        ),
+        # player_stats=format_stats_for_site(
+        #     data_cached.player_data.filter(pl.col("player") == player_name).drop(
+        #         ["player", "rating", "tiered_rating", "full_name", "height", "position"]
+        #     )
+        # ),
         player_rating=data_cached.ratings.filter(pl.col("player") == player_name)
         .with_columns(pl.col("rating").round(5))
         .to_dicts(),
-        player_days=format_stats_for_site(
-            data_cached.player_days.filter(pl.col("player") == player_name).drop(
-                ["player", "rating"]
-            )
-        ),
-        player_games=format_stats_for_site(
-            data_cached.player_games.filter(pl.col("player") == player_name).drop(
-                ["rating", "player"]
-            )
-        ),
+        # player_days=format_stats_for_site(
+        #     data_cached.player_days.filter(pl.col("player") == player_name).drop(
+        #         ["player", "rating"]
+        #     )
+        # ),
+        # player_games=format_stats_for_site(
+        #     data_cached.player_games.filter(pl.col("player") == player_name).drop(
+        #         ["rating", "player"]
+        #     )
+        # ),
         # player_teammates=format_stats_for_site(
         #     data_cached.teammates.filter(pl.col("player") == player_name).drop(
         #         ["player", "pairing"]
