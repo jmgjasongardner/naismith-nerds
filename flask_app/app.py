@@ -169,17 +169,17 @@ def player_page(player_name):
     logging.debug('image exists')
 
     logging.debug('loading player bio data')
-    full_name, height_str, position = load_player_bio_data(
-        player_name=player_name, player_data=data_cached.player_data
-    )
+    # full_name, height_str, position = load_player_bio_data(
+    #     player_name=player_name, player_data=data_cached.player_data
+    # )
     logging.debug('computed player bio data')
 
     return render_template(
         "player.html",
-        player_name=player_name,
-        full_name=full_name,
-        height_str=height_str,
-        position=position,
+        # player_name=player_name,
+        # full_name=full_name,
+        # height_str=height_str,
+        # position=position,
         image_exists=image_exists,
         image_path=image_path if image_exists else None,
         player_stats=format_stats_for_site(
