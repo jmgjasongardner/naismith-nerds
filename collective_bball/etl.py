@@ -2,15 +2,14 @@ import polars as pl
 from typing import Tuple
 
 
-def load_data(filepath: str) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
+def load_data(filepath: str) -> Tuple[pl.DataFrame, pl.DataFrame]:
     """Loads game data from Excel and returns Polars DataFrames."""
     raw_games_df = pl.read_excel(
         filepath, sheet_name="GameResults", engine="openpyxl"
     ).rename({"Date": "date", "A_SCORE": "a_score", "B_SCORE": "b_score"})
-    tiers = pl.read_excel(filepath, sheet_name="PlayerTiers", engine="openpyxl")
-    bios = pl.read_excel(filepath, sheet_name="Bios", engine="openpyxl")
+    tiers = pl.read_excel(filepath, sheet_name="Players", engine="openpyxl")
 
-    return raw_games_df, tiers, bios
+    return raw_games_df, tiers
 
 
 def clean_games_data(raw_games_df: pl.DataFrame) -> pl.DataFrame:

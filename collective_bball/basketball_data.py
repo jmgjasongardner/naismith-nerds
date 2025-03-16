@@ -9,7 +9,7 @@ from typing import Tuple, List
 
 class BasketballData:
     def __init__(self, data_source: str, args: list):
-        self.raw_games_data, self.tiers, self.bios = load_data(
+        self.raw_games_data, self.tiers= load_data(
             data_source
         )  # Read in from Excel (for now)
         self.games = None
@@ -63,7 +63,6 @@ class BasketballData:
             )
             .sort("rating", "wins", "win_pct", descending=[True, True, True])
             .drop(["uncommon", "tier", "description", "rating_right"])
-            .join(self.bios, left_on="player", right_on="player", how="left")
         )
 
     def compute_spreads(self, betting_games: BettingGames):
