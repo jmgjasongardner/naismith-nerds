@@ -2,7 +2,7 @@ app = 'naismith-nerds'
 primary_region = 'iad'
 
 [processes]
-  app = "flask --app flask_app.app run --host=0.0.0.0 --port=8080"
+app = "gunicorn -w 1 -b 0.0.0.0:8080 flask_app.app:app"
 
 [build]
 
