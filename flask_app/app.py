@@ -73,7 +73,7 @@ def home():
     # )
     logging.debug('computed teammates')
     log_memory_usage()
-    opponents = format_stats_for_site(data_cached.opponents)
+    # opponents = format_stats_for_site(data_cached.opponents)
     days_of_week = format_stats_for_site(data_cached.days_of_week)
     days = format_stats_for_site(data_cached.days)
     logging.debug('computed opponents, days')
@@ -92,7 +92,7 @@ def home():
         ratings=ratings,
         player_days=player_days,
         # teammates=teammates,
-        opponents=opponents,
+        # opponents=opponents,
         days_of_week=days_of_week,
         days=days,
         best_lambda=best_lambda,
