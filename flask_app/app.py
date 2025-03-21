@@ -68,12 +68,12 @@ def home():
     player_days = format_stats_for_site(data_cached.player_days.drop("rating"))
     logging.debug('computed player days')
     log_memory_usage()
-    # teammates = format_stats_for_site(
-    #     data_cached.teammates.drop(["player", "teammate"]).unique()
-    # )
+    teammates = format_stats_for_site(
+        data_cached.teammates.drop(["player", "teammate"]).unique()
+    )
     logging.debug('computed teammates')
     log_memory_usage()
-    # opponents = format_stats_for_site(data_cached.opponents)
+    opponents = format_stats_for_site(data_cached.opponents)
     days_of_week = format_stats_for_site(data_cached.days_of_week)
     days = format_stats_for_site(data_cached.days)
     logging.debug('computed opponents, days')
@@ -91,8 +91,8 @@ def home():
         games=games,
         ratings=ratings,
         player_days=player_days,
-        # teammates=teammates,
-        # opponents=opponents,
+        teammates=teammates,
+        opponents=opponents,
         days_of_week=days_of_week,
         days=days,
         best_lambda=best_lambda,
@@ -169,45 +169,45 @@ def player_page(player_name):
     logging.debug('image exists')
 
     logging.debug('loading player bio data')
-    # full_name, height_str, position = load_player_bio_data(
-    #     player_name=player_name, player_data=data_cached.player_data
-    # )
+    full_name, height_str, position = load_player_bio_data(
+        player_name=player_name, player_data=data_cached.player_data
+    )
     logging.debug('computed player bio data')
 
     return render_template(
         "player.html",
         player_name=player_name,
-        # full_name=full_name,
-        # height_str=height_str,
-        # position=position,
+        full_name=full_name,
+        height_str=height_str,
+        position=position,
         image_exists=image_exists,
         image_path=image_path if image_exists else None,
-        # player_stats=format_stats_for_site(
-        #     data_cached.player_data.filter(pl.col("player") == player_name).drop(
-        #         ["player", "rating", "tiered_rating", "full_name", "height", "position"]
-        #     )
-        # ),
+        player_stats=format_stats_for_site(
+            data_cached.player_data.filter(pl.col("player") == player_name).drop(
+                ["player", "rating", "tiered_rating", "full_name", "height", "position"]
+            )
+        ),
         player_rating=data_cached.ratings.filter(pl.col("player") == player_name)
         .with_columns(pl.col("rating").round(5))
         .to_dicts(),
-        # player_days=format_stats_for_site(
-        #     data_cached.player_days.filter(pl.col("player") == player_name).drop(
-        #         ["player", "rating"]
-        #     )
-        # ),
-        # player_games=format_stats_for_site(
-        #     data_cached.player_games.filter(pl.col("player") == player_name).drop(
-        #         ["rating", "player"]
-        #     )
-        # ),
-        # player_teammates=format_stats_for_site(
-        #     data_cached.teammates.filter(pl.col("player") == player_name).drop(
-        #         ["player", "pairing"]
-        #     )
-        # ),
-        # player_oppponents=format_stats_for_site(
-        #     data_cached.opponents.filter(pl.col("player") == player_name).drop(["player"])
-        # ),
+        player_days=format_stats_for_site(
+            data_cached.player_days.filter(pl.col("player") == player_name).drop(
+                ["player", "rating"]
+            )
+        ),
+        player_games=format_stats_for_site(
+            data_cached.player_games.filter(pl.col("player") == player_name).drop(
+                ["rating", "player"]
+            )
+        ),
+        player_teammates=format_stats_for_site(
+            data_cached.teammates.filter(pl.col("player") == player_name).drop(
+                ["player", "pairing"]
+            )
+        ),
+        player_oppponents=format_stats_for_site(
+            data_cached.opponents.filter(pl.col("player") == player_name).drop(["player"])
+        ),
         # player_games_advanced=player_games_advanced.to_pandas().to_dict(
         #     orient="records"
         # ),
