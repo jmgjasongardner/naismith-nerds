@@ -138,11 +138,13 @@
         <div class="tab active" data-target="stats">Stats</div>
         <div class="tab" data-target="ratings">Ratings</div>
         <div class="tab" data-target="games">Games</div>
-        <div class="tab" data-target="players_advanced">Players Advanced</div>
+        <div class="tab" data-target="player_days">Player Days</div>
         <div class="tab" data-target="player_pairings">Player Pairings</div>
         <div class="tab" data-target="days">Days</div>
         <div class="tab" data-target="methodology">Methodology</div>
     </div>
+
+    <input id="minGamesPlayed" type="number" placeholder="Filter Min Games" oninput="filterByMinGamesPlayed()">
 
     <!-- Tab Content -->
     <div class="tab-content stats active">
@@ -245,8 +247,8 @@
             <p>No game data available.</p>
         {% endif %}
     </div>
-    <div class="tab-content players_advanced">
-        <h2>Players Advanced</h2>
+    <div class="tab-content player_days">
+        <h2>Player Days</h2>
         {% if player_days %}
         <table id="playerDaysTable">
             <thead>
@@ -405,62 +407,65 @@
 
     <script>
         $(document).ready(function() {
-            $("#statsTable").DataTable({
-                "order": [[3, "desc"], [6, "desc"]],  // Sort by Wins descending (fourth column) and win pct (sixth)
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ players",
-                    "lengthMenu": "Show _MENU_ players"
-                }
-            });
-            $("#ratingsTable").DataTable({
-                "order": [[1, "desc"]],  // Sort by Ratings descending (second column)
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ players",
-                    "lengthMenu": "Show _MENU_ players"
-                }
-            });
-            $("#gamesTable").DataTable({
-                "order": [[13, "desc"], [14, "desc"]],  // Sort by Game Date and Game Nums descending
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ games",
-                    "lengthMenu": 'Show <span>_MENU_</span> games'
-                }
-            });
-            $("#playerDaysTable").DataTable({
-                "order": [[1, "desc"], [4, "desc"], [6, "desc"], [0, "desc"]],  // Sort by Game Date, Wins, Win%, Name descending
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ player-days",
-                    "lengthMenu": 'Show <span>_MENU_</span> player-days'
-                }
-            });
-            $("#teammatesTable").DataTable({
-                "order": [[3, "desc"], [8, "desc"]],  // Sort by Wins, then Wins Over Exp descending
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ teammate combos",
-                    "lengthMenu": 'Show <span>_MENU_</span> teammate combos'
-                }
-            });
-            $("#opponentsTable").DataTable({
-                "order": [[4, "desc"], [9, "desc"]],  // Sort by Wins, then Wins Over Exp descending
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ opponent combos",
-                    "lengthMenu": 'Show <span>_MENU_</span> opponent combos'
-                }
-            });
-            $("#daysOfWeekTable").DataTable({
-                "order": [[4, "desc"]],  // Sort by Mean Rating Player Games
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ days",
-                    "lengthMenu": 'Show <span>_MENU_</span> days'
-                }
-            });
-            $("#daysTable").DataTable({
-                "order": [[0, "desc"]],  // Sort by Game Date
-                "language": {
-                    "info": "Showing _START_ to _END_ of _TOTAL_ days",
-                    "lengthMenu": 'Show <span>_MENU_</span> days'
-                }
-            });
+            // Initialize all tables, even those that don't require filtering
+            let allTables = {
+                statsTable: $("#statsTable").DataTable({
+                    "order": [[3, "desc"], [6, "desc"]], // Sort by Wins and Win Pct descending
+                    "language": {
+                        "info": "Showing _START_ to _END_ of _TOTAL_ players",
+                        "lengthMenu": "Show _MENU_ players"
+                    }
+                }),
+                ratingsTable: $("#ratingsTable").DataTable({
+                    "order": [[1, "desc"]], // Sort by Rating descending
+                    "language": {
+                        "info": "Showing _START_ to _END_ of _TOTAL_ players",
+                        "lengthMenu": "Show _MENU_ players"
+                    }
+                }),
+                gamesTable: $("#gamesTable").DataTable({
+                    "order": [[13, "desc"], [14, "desc"]], // Sort by Game Date and Game Nums descending
+                    "language": {
+                        "info": "Showing _START_ to _END_ of _TOTAL_ games",
+                        "lengthMenu": 'Show <span>_MENU_</span> games'
+                    }
+                }),
+                playerDaysTable: $("#playerDaysTable").DataTable({
+                    "order": [[1, "desc"], [4, "desc"], [6, "desc"], [0, "desc"]], // Sort by Game Date, Wins, Win%, Name descending
+                    "language": {
+                        "info": "Showing _START_ to _END_ of _TOTAL_ player-days",
+                        "lengthMenu": 'Show <span>_MENU_</span> player-days'
+                    }
+                }),
+                teammatesTable: $("#teammatesTable").DataTable({
+                    "order": [[3, "desc"], [8, "desc"]], // Sort by Wins, then Wins Over Exp descending
+                    "language": {
+                        "info": "Showing _START_ to _END_ of _TOTAL_ teammate combos",
+                        "lengthMenu": 'Show _MENU_ teammate combos'
+                    }
+                }),
+                opponentsTable: $("#opponentsTable").DataTable({
+                    "order": [[4, "desc"], [9, "desc"]], // Sort by Wins, then Wins Over Exp descending
+                    "language": {
+                        "info": "Showing _START_ to _END_ of _TOTAL_ opponent combos",
+                        "lengthMenu": 'Show _MENU_ opponent combos'
+                    }
+                }),
+                daysOfWeekTable: $("#daysOfWeekTable").DataTable({
+                    "order": [[4, "desc"]], // Sort by Mean Player Game
+                    "language": {
+                        "info": "Showing _START_ to _END_ of _TOTAL_ days",
+                        "lengthMenu": 'Show <span>_MENU_</span> days'
+                    }
+                }),
+                daysTable: $("#daysTable").DataTable({
+                    "order": [[0, "desc"]], // Sort by Game Date
+                    "language": {
+                        "info": "Showing _START_ to _END_ of _TOTAL_ days",
+                        "lengthMenu": 'Show <span>_MENU_</span> days'
+                    }
+                })
+            };
 
             // Tab functionality
             $(".tab").click(function() {
@@ -470,8 +475,49 @@
                 $(".tab-content").removeClass("active");
                 $("." + target).addClass("active");
             });
+
+            // Function to filter only specific tables
+            window.filterByMinGamesPlayed = function() {
+                let minGames = parseInt($("#minGamesPlayed").val(), 10) || 0;
+
+                // Remove existing filters before applying a new one
+                $.fn.dataTable.ext.search = [];
+
+                // Only apply filtering to specific tables
+                $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+                    let tableId = settings.nTable.id;
+                    let columnIndex;
+
+                    switch (tableId) {
+                        case "statsTable":
+                            columnIndex = 1; // Adjust based on actual column index
+                            break;
+                        case "playerDaysTable":
+                            columnIndex = 4; // Adjust based on actual column index
+                            break;
+                        case "teammatesTable":
+                            columnIndex = 1; // Adjust based on actual column index
+                            break;
+                        case "opponentsTable":
+                            columnIndex = 2; // Adjust based on actual column index
+                            break;
+                        default:
+                            return true; // Skip filtering for tables not in the filter list
+                    }
+
+                    let gamesPlayed = parseInt(data[columnIndex]) || 0;
+                    return gamesPlayed >= minGames;
+                });
+
+                // Redraw only filtered tables
+                ["statsTable", "playerDaysTable", "teammatesTable", "opponentsTable"].forEach(tableName => {
+                    allTables[tableName].draw();
+                });
+            };
         });
     </script>
+
+
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
