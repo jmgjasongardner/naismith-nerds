@@ -1,5 +1,8 @@
-fly.toml
+# Ignore unnecessary files and directories
 .git/
 __pycache__/
 .envrc
 .venv/
+
+# Allow requirements.txt and any other necessary files
+!requirements.txt
