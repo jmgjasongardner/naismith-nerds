@@ -65,17 +65,17 @@ def home():
     ratings = format_stats_for_site(data_cached.ratings)
     logging.debug('computed ratings')
     log_memory_usage()
-    player_days = format_stats_for_site(data_cached.player_days.drop("rating"))
+    # player_days = format_stats_for_site(data_cached.player_days.drop("rating"))
     logging.debug('computed player days')
     log_memory_usage()
-    teammates = format_stats_for_site(
-        data_cached.teammates.drop(["player", "teammate"]).unique()
-    )
+    # teammates = format_stats_for_site(
+    #     data_cached.teammates.drop(["player", "teammate"]).unique()
+    # )
     logging.debug('computed teammates')
     log_memory_usage()
-    opponents = format_stats_for_site(data_cached.opponents)
-    days_of_week = format_stats_for_site(data_cached.days_of_week)
-    days = format_stats_for_site(data_cached.days)
+    # opponents = format_stats_for_site(data_cached.opponents)
+    # days_of_week = format_stats_for_site(data_cached.days_of_week)
+    # days = format_stats_for_site(data_cached.days)
     logging.debug('computed opponents, days')
     log_memory_usage()
     best_lambda = data_cached.best_lambda
@@ -90,11 +90,11 @@ def home():
         num_days=num_days,
         games=games,
         ratings=ratings,
-        player_days=player_days,
-        teammates=teammates,
-        opponents=opponents,
-        days_of_week=days_of_week,
-        days=days,
+        # player_days=player_days,
+        # teammates=teammates,
+        # opponents=opponents,
+        # days_of_week=days_of_week,
+        # days=days,
         best_lambda=best_lambda,
         main_tooltip=main_tooltip,
     )
@@ -190,24 +190,24 @@ def player_page(player_name):
         player_rating=data_cached.ratings.filter(pl.col("player") == player_name)
         .with_columns(pl.col("rating").round(5))
         .to_dicts(),
-        player_days=format_stats_for_site(
-            data_cached.player_days.filter(pl.col("player") == player_name).drop(
-                ["player", "rating"]
-            )
-        ),
-        player_games=format_stats_for_site(
-            data_cached.player_games.filter(pl.col("player") == player_name).drop(
-                ["rating", "player"]
-            )
-        ),
-        player_teammates=format_stats_for_site(
-            data_cached.teammates.filter(pl.col("player") == player_name).drop(
-                ["player", "pairing"]
-            )
-        ),
-        player_oppponents=format_stats_for_site(
-            data_cached.opponents.filter(pl.col("player") == player_name).drop(["player"])
-        ),
+        # player_days=format_stats_for_site(
+        #     data_cached.player_days.filter(pl.col("player") == player_name).drop(
+        #         ["player", "rating"]
+        #     )
+        # ),
+        # player_games=format_stats_for_site(
+        #     data_cached.player_games.filter(pl.col("player") == player_name).drop(
+        #         ["rating", "player"]
+        #     )
+        # ),
+        # player_teammates=format_stats_for_site(
+        #     data_cached.teammates.filter(pl.col("player") == player_name).drop(
+        #         ["player", "pairing"]
+        #     )
+        # ),
+        # player_oppponents=format_stats_for_site(
+        #     data_cached.opponents.filter(pl.col("player") == player_name).drop(["player"])
+        # ),
         # player_games_advanced=player_games_advanced.to_pandas().to_dict(
         #     orient="records"
         # ),
