@@ -81,9 +81,9 @@ class BasketballData:
         self.player_data = (
             player_data_instance.combine_player_stats_with_games_groupings()
         )
-        # self.teammate_games, self.opponent_games, self.teammates, self.opponents = (
-        #     player_data_instance.calculate_teammate_opponent_pairings()
-        # )
+        self.teammate_games, self.opponent_games, self.teammates, self.opponents = (
+            player_data_instance.calculate_teammate_opponent_pairings()
+        )
 
     def assemble_days_data(self):
         # TODO: Decide what we want to display from days and days of week dataframes
