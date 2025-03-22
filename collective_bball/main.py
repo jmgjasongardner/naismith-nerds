@@ -1,6 +1,7 @@
 from collective_bball.basketball_data import BasketballData
 from collective_bball.rapm_model import RAPMModel
 from collective_bball.moneyline_model import BettingGames
+from collective_bball.utils import util_code
 import argparse
 import polars as pl
 import logging
@@ -22,7 +23,7 @@ def create_data(args=None):
         )
     logging.debug(f"main.py pre data load")
 
-    data = BasketballData(data_source="./collective_bball/GameResults.xlsm", args=args)
+    data = BasketballData(data_source=util_code.public_data_url, args=args)
     logging.debug(f"main.py post data load: {data is not None}")
     data.clean_data()
     logging.debug(f"main.py post data clean: {data is not None}")
