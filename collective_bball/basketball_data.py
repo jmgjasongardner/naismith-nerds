@@ -81,9 +81,9 @@ class BasketballData:
         self.player_data = (
             player_data_instance.combine_player_stats_with_games_groupings()
         )
-        # self.teammate_games, self.opponent_games, self.teammates, self.opponents = (
-        #     player_data_instance.calculate_teammate_opponent_pairings()
-        # )
+        self.teammate_games, self.opponent_games, self.teammates, self.opponents = (
+            player_data_instance.calculate_teammate_opponent_pairings()
+        )
 
     def assemble_days_data(self):
         # TODO: Decide what we want to display from days and days of week dataframes
@@ -101,6 +101,8 @@ class BasketballData:
             player_days.group_by(["game_date", "day"])
             .agg(
                 pl.count("game_date").alias("num_players"),
+                pl.sum("resident").alias("residents"),
+                pl.mean("resident").round(3).alias("resident_rate"),
                 pl.max("last_game_of_day").alias("num_games"),
                 pl.mean("rating").round(3).alias("mean_rating_players"),
                 pl.max("longest_run_on_court"),
@@ -147,6 +149,8 @@ class BasketballData:
                     "game_date",
                     "day",
                     "num_players",
+                    "residents",
+                    "resident_rate",
                     "num_games",
                     "mean_rating_players",
                     "mean_rating_player_games",

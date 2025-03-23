@@ -186,7 +186,7 @@ class PlayerData:
                 ]
             )
             .join(
-                self.player_data.select(["player", "rating"]),
+                self.player_data.select(["player", "rating", "resident"]),
                 left_on="player",
                 right_on="player",
                 how="left",
@@ -228,6 +228,7 @@ class PlayerData:
                     "day",
                     "player",
                     "rating",
+                    "resident",
                     "team",
                     "team_score",
                     "opp_score",
@@ -350,7 +351,7 @@ class PlayerData:
 
     def assemble_player_days(self):
         self.player_days = (
-            self.player_games.group_by(["player", "game_date", "day", "rating"])
+            self.player_games.group_by(["player", "game_date", "day", "rating", "resident"])
             .agg(
                 pl.count("player").alias("games_played"),
                 pl.sum("winner").alias("wins"),
