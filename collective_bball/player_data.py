@@ -333,6 +333,12 @@ class PlayerData:
                 ]
             )
             .with_columns(
+                pl.col('GameReset')
+                .cum_sum()
+                .over(["player", "game_date"])
+                .alias("streak_num")
+            )
+            .with_columns(
                 [
                     # Calculate consecutive_games based on resets
                     pl.when(pl.col("GameReset") == 1)
@@ -340,12 +346,12 @@ class PlayerData:
                     .otherwise(
                         pl.col("consecutive_gamesInitial")
                         .cum_sum()
-                        .over(["player", "game_date"])
+                        .over(["player", "game_date", "streak_num"])
                     )
                     .alias("consecutive_games")
                 ]
             )
-            .drop(["GameReset", "consecutive_gamesInitial"])
+            .drop(["GameReset", "consecutive_gamesInitial", "streak_num"])
         )
         return self.player_games
 
@@ -368,7 +374,7 @@ class PlayerData:
                 pl.sum("played_last_game"),
                 pl.min("game_num").alias("first_game_of_day"),
                 pl.max("game_num").alias("last_game_of_day"),
-                pl.max("consecutive_games").alias("longest_run_on_court"),
+                (pl.max("consecutive_games") + 1).alias("longest_run_on_court"),
                 pl.max("games_waited").alias("longest_run_on_bench"),
             )
             .sort(
