@@ -20,6 +20,15 @@
     <!link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/dataTables.bootstrap5.min.css">
     <!link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 
+    <!-- DataTables Buttons Extension -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
+
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+
+
+
 
 <style>
         body {
@@ -107,6 +116,9 @@
         }
     </style>
 </head>
+
+
+
 <body>
     <h1>Welcome, Naismith Nerds</h1>
 
@@ -414,56 +426,88 @@
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ players",
                         "lengthMenu": "Show _MENU_ players"
-                    }
+                    },
+                    dom: 'lBfrtip',  // Add buttons
+                    buttons: [
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                    ]
                 }),
                 ratingsTable: $("#ratingsTable").DataTable({
                     "order": [[1, "desc"]], // Sort by Rating descending
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ players",
                         "lengthMenu": "Show _MENU_ players"
-                    }
+                    },
+                    dom: 'lBfrtip',  // Add buttons
+                    buttons: [
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                    ]
                 }),
                 gamesTable: $("#gamesTable").DataTable({
                     "order": [[13, "desc"], [14, "desc"]], // Sort by Game Date and Game Nums descending
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ games",
                         "lengthMenu": 'Show <span>_MENU_</span> games'
-                    }
+                    },
+                    dom: 'lBfrtip',  // Add buttons
+                    buttons: [
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                    ]
                 }),
                 playerDaysTable: $("#playerDaysTable").DataTable({
                     "order": [[1, "desc"], [4, "desc"], [6, "desc"], [0, "desc"]], // Sort by Game Date, Wins, Win%, Name descending
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ player-days",
                         "lengthMenu": 'Show <span>_MENU_</span> player-days'
-                    }
+                    },
+                    dom: 'lBfrtip',  // Add buttons
+                    buttons: [
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                    ]
                 }),
                 teammatesTable: $("#teammatesTable").DataTable({
                     "order": [[3, "desc"], [8, "desc"]], // Sort by Wins, then Wins Over Exp descending
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ teammate combos",
                         "lengthMenu": 'Show _MENU_ teammate combos'
-                    }
+                    },
+                    dom: 'lBfrtip',  // Add buttons
+                    buttons: [
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                    ]
                 }),
                 opponentsTable: $("#opponentsTable").DataTable({
                     "order": [[4, "desc"], [9, "desc"]], // Sort by Wins, then Wins Over Exp descending
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ opponent combos",
                         "lengthMenu": 'Show _MENU_ opponent combos'
-                    }
+                    },
+                    dom: 'lBfrtip',  // Add buttons
+                    buttons: [
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                    ]
                 }),
                 daysOfWeekTable: $("#daysOfWeekTable").DataTable({
-                    "order": [[4, "desc"]], // Sort by Mean Player Game
+                    "order": [[6, "desc"]], // Sort by Mean Player Game
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ days",
                         "lengthMenu": 'Show <span>_MENU_</span> days'
-                    }
+                    },
+                    dom: 'lBfrtip',  // Add buttons
+                    buttons: [
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success"}
+                    ]
                 }),
                 daysTable: $("#daysTable").DataTable({
                     "order": [[0, "desc"]], // Sort by Game Date
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ days",
                         "lengthMenu": 'Show <span>_MENU_</span> days'
-                    }
+                    },
+                    dom: 'lBfrtip',  // Add buttons
+                    buttons: [
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                    ]
                 })
             };
 
@@ -475,6 +519,18 @@
                 $(".tab-content").removeClass("active");
                 $("." + target).addClass("active");
             });
+
+            // Manually trigger export when clicking the button
+            $("#exportExcel").click(function() {
+                let activeTableId = $("table:visible").attr("id"); // Find the visible table
+                if (allTables[activeTableId]) {
+                    // Trigger the export button by targeting its container
+                    allTables[activeTableId].buttons().container().find('.buttons-excel').click();
+                } else {
+                    alert("No active table found for export.");
+                }
+            });
+
 
             // Function to filter only specific tables
             window.filterByMinGamesPlayed = function() {
@@ -519,9 +575,9 @@
 
 
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>
+<!--    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>-->
+<!--    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>-->
+<!--    <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>-->
     <script>
         $(document).ready(function() {
             var table = $('#statsTable').DataTable();
