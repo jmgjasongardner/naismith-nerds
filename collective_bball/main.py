@@ -4,6 +4,7 @@ from collective_bball.basketball_data import BasketballData
 from collective_bball.rapm_model import RAPMModel
 from collective_bball.moneyline_model import BettingGames
 from collective_bball.utils import util_code
+from collective_bball.plots import Plots
 import argparse
 import polars as pl
 import logging
@@ -60,6 +61,9 @@ def create_data(args=None):
     data.assemble_player_data()
     data.assemble_days_data()
     # logging.debug(f"main.py post data everything: {data is not None}")
+
+    plots = Plots(conn)
+    data.plot_things(plots)
 
     conn.close()
 

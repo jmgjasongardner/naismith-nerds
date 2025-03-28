@@ -5,6 +5,7 @@ from collective_bball.etl import load_data, clean_games_data
 from collective_bball.player_data import PlayerData
 from collective_bball.rapm_model import RAPMModel
 from collective_bball.moneyline_model import BettingGames
+from collective_bball.plots import Plots
 from typing import Tuple, List
 
 
@@ -27,6 +28,7 @@ class BasketballData:
         self.opponent_games = None
         self.teammates = None
         self.opponents = None
+        self.plot_ratings = None
 
     def clean_data(self):
         """Cleans raw game data into structured format."""
@@ -188,3 +190,11 @@ class BasketballData:
         ).sort("mean_rating_player_games", descending=True)
 
         return days, days_of_week
+
+    def plot_things(self, plots: Plots):
+
+        self.plot_ratings = plots.plot_ratings_time()
+
+
+
+
