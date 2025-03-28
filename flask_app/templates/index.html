@@ -7,8 +7,11 @@
 
     <!-- Include jQuery and DataTables.js -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+    <!-- Keep only the latest DataTables version -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css">
+    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>
+
 
     <!-- Include Font Awesome for icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
@@ -26,6 +29,16 @@
     <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.colVis.min.js"></script>
+
+    <!-- FixedHeader Extension -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.2.4/css/fixedHeader.dataTables.min.css">
+    <script src="https://cdn.datatables.net/fixedheader/3.2.4/js/dataTables.fixedHeader.min.js"></script>
+
+    <!-- FixedColumns Extension -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.0.2/css/fixedColumns.dataTables.min.css">
+    <script src="https://cdn.datatables.net/fixedcolumns/4.0.2/js/dataTables.fixedColumns.min.js"></script>
+
 
 
 
@@ -36,23 +49,34 @@
             text-align: center;
         }
         table {
-            width: 80%;
+            width: 100%;
             margin: auto;
             border-collapse: collapse;
+        }
+        /* Sticky Header */
+        th {
+            position: sticky;
+            top: 0;
+            background-color: #007bff;
+            color: black;
+            z-index: 2; /* Ensure header stays above rows */
         }
         th, td {
             padding: 10px;
             border: 1px solid black;
+            text-align: left;
         }
-        th {
-            background-color: #f4f4f4;
+        th:first-child {
+          position: sticky;
+          left: 0;
+          z-index: 1000;
         }
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
         .tabs {
             display: flex;
-            justify-content: center;
+            justify-content: left;
             margin: 20px 0;
         }
         .tab {
@@ -425,11 +449,20 @@
                     "order": [[3, "desc"], [6, "desc"]], // Sort by Wins and Win Pct descending
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ players",
-                        "lengthMenu": "Show _MENU_ players"
+                        "lengthMenu": "Show _MENU_ players "
+                    },
+                    
+                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
+                    fixedHeader: true,  // Keep header fixed when scrolling
+                    responsive: true,  // Helps with mobile layout
+                    autoWidth: true,  // Prevents incorrect column sizing
+                    fixedColumns: {
+                        leftColumns: 1 // This should keep the first column sticky
                     },
                     dom: 'lBfrtip',  // Add buttons
                     buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
+                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
                     ]
                 }),
                 ratingsTable: $("#ratingsTable").DataTable({
@@ -438,9 +471,18 @@
                         "info": "Showing _START_ to _END_ of _TOTAL_ players",
                         "lengthMenu": "Show _MENU_ players"
                     },
+                    
+                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
+                    fixedHeader: true,  // Keep header fixed when scrolling
+                    responsive: true,  // Helps with mobile layout
+                    autoWidth: true,  // Prevents incorrect column sizing
+                    fixedColumns: {
+                        leftColumns: 1 // This should keep the first column sticky
+                    },
                     dom: 'lBfrtip',  // Add buttons
                     buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
+                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
                     ]
                 }),
                 gamesTable: $("#gamesTable").DataTable({
@@ -449,9 +491,18 @@
                         "info": "Showing _START_ to _END_ of _TOTAL_ games",
                         "lengthMenu": 'Show <span>_MENU_</span> games'
                     },
+                    
+                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
+                    fixedHeader: true,  // Keep header fixed when scrolling
+                    responsive: true,  // Helps with mobile layout
+                    autoWidth: true,  // Prevents incorrect column sizing
+                    fixedColumns: {
+                        leftColumns: 1 // This should keep the first column sticky
+                    },
                     dom: 'lBfrtip',  // Add buttons
                     buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
+                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
                     ]
                 }),
                 playerDaysTable: $("#playerDaysTable").DataTable({
@@ -460,9 +511,18 @@
                         "info": "Showing _START_ to _END_ of _TOTAL_ player-days",
                         "lengthMenu": 'Show <span>_MENU_</span> player-days'
                     },
+                    
+                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
+                    fixedHeader: true,  // Keep header fixed when scrolling
+                    responsive: true,  // Helps with mobile layout
+                    autoWidth: true,  // Prevents incorrect column sizing
+                    fixedColumns: {
+                        leftColumns: 1 // This should keep the first column sticky
+                    },
                     dom: 'lBfrtip',  // Add buttons
                     buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
+                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
                     ]
                 }),
                 teammatesTable: $("#teammatesTable").DataTable({
@@ -471,9 +531,18 @@
                         "info": "Showing _START_ to _END_ of _TOTAL_ teammate combos",
                         "lengthMenu": 'Show _MENU_ teammate combos'
                     },
+                    
+                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
+                    fixedHeader: true,  // Keep header fixed when scrolling
+                    responsive: true,  // Helps with mobile layout
+                    autoWidth: true,  // Prevents incorrect column sizing
+                    fixedColumns: {
+                        leftColumns: 1 // This should keep the first column sticky
+                    },
                     dom: 'lBfrtip',  // Add buttons
                     buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
+                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
                     ]
                 }),
                 opponentsTable: $("#opponentsTable").DataTable({
@@ -482,9 +551,18 @@
                         "info": "Showing _START_ to _END_ of _TOTAL_ opponent combos",
                         "lengthMenu": 'Show _MENU_ opponent combos'
                     },
+                    
+                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
+                    fixedHeader: true,  // Keep header fixed when scrolling
+                    responsive: true,  // Helps with mobile layout
+                    autoWidth: true,  // Prevents incorrect column sizing
+                    fixedColumns: {
+                        leftColumns: 1 // This should keep the first column sticky
+                    },
                     dom: 'lBfrtip',  // Add buttons
                     buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
+                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
                     ]
                 }),
                 daysOfWeekTable: $("#daysOfWeekTable").DataTable({
@@ -493,9 +571,18 @@
                         "info": "Showing _START_ to _END_ of _TOTAL_ days",
                         "lengthMenu": 'Show <span>_MENU_</span> days'
                     },
+                    
+                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
+                    fixedHeader: true,  // Keep header fixed when scrolling
+                    responsive: true,  // Helps with mobile layout
+                    autoWidth: true,  // Prevents incorrect column sizing
+                    fixedColumns: {
+                        leftColumns: 1 // This should keep the first column sticky
+                    },
                     dom: 'lBfrtip',  // Add buttons
                     buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success"}
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success"},
+                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
                     ]
                 }),
                 daysTable: $("#daysTable").DataTable({
@@ -504,9 +591,18 @@
                         "info": "Showing _START_ to _END_ of _TOTAL_ days",
                         "lengthMenu": 'Show <span>_MENU_</span> days'
                     },
+                    
+                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
+                    fixedHeader: true,  // Keep header fixed when scrolling
+                    responsive: true,  // Helps with mobile layout
+                    autoWidth: true,  // Prevents incorrect column sizing
+                    fixedColumns: {
+                        leftColumns: 1 // This should keep the first column sticky
+                    },
                     dom: 'lBfrtip',  // Add buttons
                     buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" }
+                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
+                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
                     ]
                 })
             };
@@ -575,9 +671,6 @@
 
 
 
-<!--    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>-->
-<!--    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>-->
-<!--    <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>-->
     <script>
         $(document).ready(function() {
             var table = $('#statsTable').DataTable();
