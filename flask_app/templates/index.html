@@ -49,7 +49,7 @@
             text-align: center;
         }
         table {
-            width: 100%;
+            min-width: 50%;
             margin: auto;
             border-collapse: collapse;
         }
@@ -57,7 +57,7 @@
         th {
             position: sticky;
             top: 0;
-            background-color: #007bff;
+            background-color: #f4f4f4 !important;
             color: black;
             z-index: 2; /* Ensure header stays above rows */
         }
@@ -70,6 +70,11 @@
           position: sticky;
           left: 0;
           z-index: 1000;
+        }
+        @media (max-width: 768px) {
+            th, td {
+                position: sticky;
+            }
         }
         tr:nth-child(even) {
             background-color: #f9f9f9;

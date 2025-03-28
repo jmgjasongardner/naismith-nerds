@@ -21,38 +21,38 @@ def create_data(args=None):
             lambda_params=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
             save_csv=False,
         )
-    logging.debug(f"main.py pre data load")
+    # logging.debug(f"main.py pre data load")
 
     data = BasketballData(data_source=util_code.public_data_url, args=args)
-    logging.debug(f"main.py post data load: {data is not None}")
+    # logging.debug(f"main.py post data load: {data is not None}")
     data.clean_data()
-    logging.debug(f"main.py post data clean: {data is not None}")
+    # logging.debug(f"main.py post data clean: {data is not None}")
     data.compute_player_stats()
-    logging.debug(f"main.py post data stats: {data is not None}")
+    # logging.debug(f"main.py post data stats: {data is not None}")
 
     rapm_model = RAPMModel()
     data.compute_rapm(rapm_model)
-    logging.debug(f"main.py post data rapm: {data is not None}")
+    # logging.debug(f"main.py post data rapm: {data is not None}")
     data.merge_player_data()
-    logging.debug(f"main.py post data player merge: {data is not None}")
+    # logging.debug(f"main.py post data player merge: {data is not None}")
 
     betting_games = BettingGames()
     data.compute_spreads(betting_games)
 
     data.compute_moneylines(betting_games)
-    logging.debug(f"main.py post data betting: {data is not None}")
+    # logging.debug(f"main.py post data betting: {data is not None}")
 
     data.assemble_player_data()
     data.assemble_days_data()
-    logging.debug(f"main.py post data everything: {data is not None}")
+    # logging.debug(f"main.py post data everything: {data is not None}")
 
     return data
 
 
 # Create `data` when imported (for Flask)
-logging.debug(f"main.py pre data obj creation:")
+# logging.debug(f"main.py pre data obj creation:")
 data = create_data()
-logging.debug(f"main.py post data obj creation: {data is not None}")
+# logging.debug(f"main.py post data obj creation: {data is not None}")
 
 if __name__ == "__main__":
     # Allow CLI arguments

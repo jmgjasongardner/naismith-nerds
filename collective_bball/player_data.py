@@ -333,7 +333,7 @@ class PlayerData:
                 ]
             )
             .with_columns(
-                pl.col('GameReset')
+                pl.col("GameReset")
                 .cum_sum()
                 .over(["player", "game_date"])
                 .alias("streak_num")
@@ -357,7 +357,9 @@ class PlayerData:
 
     def assemble_player_days(self):
         self.player_days = (
-            self.player_games.group_by(["player", "game_date", "day", "rating", "resident"])
+            self.player_games.group_by(
+                ["player", "game_date", "day", "rating", "resident"]
+            )
             .agg(
                 pl.count("player").alias("games_played"),
                 pl.sum("winner").alias("wins"),
