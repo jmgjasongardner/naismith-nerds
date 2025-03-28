@@ -1,13 +1,14 @@
 from flask import Flask, render_template
 from flask_app.utility_imports import tooltips
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
 import os
 import psutil
 
 # from collective_bball.eda_main import generate_stats
 # from collective_bball.win_prob_log_reg import calculate_team_A_win_prob
-#logging.debug("app.py pre data load")
+# logging.debug("app.py pre data load")
 from collective_bball.main import data  # Get precomputed `data`
 from flask_app.web_data_loader import (
     format_stats_for_site,
@@ -23,19 +24,21 @@ from flask_app.player_page_data_loader import (
 import polars as pl
 import os
 
-logging.debug(f"app.py post data load: {data is not None}")
+# logging.debug(f"app.py post data load: {data is not None}")
 
 app = Flask(__name__, static_folder="../static")
 app.config["DATA_CACHED"] = data
-#logging.debug(f"player data head outside funs: {data.player_data.head(5)}")
+# logging.debug(f"player data head outside funs: {data.player_data.head(5)}")
+
 
 def filter_dictionary(dictionary, player_name):
     return [entry for entry in dictionary if entry["Player"] == player_name]
 
+
 def log_memory_usage():
     process = psutil.Process(os.getpid())
     memory_info = process.memory_info()
-    logging.debug(f"Memory usage: {memory_info.rss / 1024 ** 2} MB")
+    # logging.debug(f"Memory usage: {memory_info.rss / 1024 ** 2} MB")
 
 
 @app.route("/")
@@ -43,38 +46,42 @@ def home():
     data_cached = app.config["DATA_CACHED"]
 
     # Precompute all data before returning
-    logging.debug('computing pre-processed')
+    # logging.debug('computing pre-processed')
     log_memory_usage()
     stats = format_stats_for_site(
         data_cached.player_data.drop(
             ["rating", "tiered_rating", "full_name", "height", "position", "resident"]
         )
     )
-    logging.debug('computed stats')
+    # logging.debug('computed stats')
     log_memory_usage()
     num_days = len(data_cached.days)
     games = format_stats_for_site(data_cached.games)
-    logging.debug('computed games')
+    # logging.debug('computed games')
     log_memory_usage()
-    ratings = format_stats_for_site(data_cached.ratings.with_columns(pl.col('rating').round(5)))
-    logging.debug('computed ratings')
+    ratings = format_stats_for_site(
+        data_cached.ratings.with_columns(pl.col("rating").round(5))
+    )
+    # logging.debug('computed ratings')
     log_memory_usage()
-    player_days = format_stats_for_site(data_cached.player_days.drop("rating", "resident"))
-    logging.debug('computed player days')
+    player_days = format_stats_for_site(
+        data_cached.player_days.drop("rating", "resident")
+    )
+    # logging.debug('computed player days')
     log_memory_usage()
     teammates = format_stats_for_site(
         data_cached.teammates.drop(["player", "teammate"]).unique()
     )
-    logging.debug('computed teammates')
+    # logging.debug('computed teammates')
     log_memory_usage()
     opponents = format_stats_for_site(data_cached.opponents)
     days_of_week = format_stats_for_site(data_cached.days_of_week)
     days = format_stats_for_site(data_cached.days)
-    logging.debug('computed opponents, days')
+    # logging.debug('computed opponents, days')
     log_memory_usage()
     best_lambda = data_cached.best_lambda
     main_tooltip = tooltips.main_tooltip
-    logging.debug('computed all pre-processed')
+    # logging.debug('computed all pre-processed')
     log_memory_usage()
 
     # Return only after all data is prepared
@@ -102,17 +109,17 @@ def player_page(player_name):
     # )
 
     # Check if the player's image exists in "static/player_pics/"
-    logging.debug('starting player page')
+    # logging.debug('starting player page')
     data_cached = app.config["DATA_CACHED"]
     image_path = f"static/player_pics/{player_name}.png"
     image_exists = os.path.exists(image_path)
-    logging.debug('image exists')
+    # logging.debug('image exists')
 
-    logging.debug('loading player bio data')
+    # logging.debug('loading player bio data')
     full_name, height_str, position = load_player_bio_data(
         player_name=player_name, player_data=data_cached.player_data
     )
-    logging.debug('computed player bio data')
+    # logging.debug('computed player bio data')
 
     return render_template(
         "player.html",
@@ -124,7 +131,15 @@ def player_page(player_name):
         image_path=image_path if image_exists else None,
         player_stats=format_stats_for_site(
             data_cached.player_data.filter(pl.col("player") == player_name).drop(
-                ["player", "rating", "tiered_rating", "full_name", "height", "position", "resident"]
+                [
+                    "player",
+                    "rating",
+                    "tiered_rating",
+                    "full_name",
+                    "height",
+                    "position",
+                    "resident",
+                ]
             )
         ),
         player_rating=data_cached.ratings.filter(pl.col("player") == player_name)
@@ -136,11 +151,9 @@ def player_page(player_name):
             )
         ),
         player_games=format_stats_for_site(
-            data_cached.player_games.filter(pl.col("player") == player_name).drop(
-                ["rating", "player", "resident"]
-            ).with_columns(
-                pl.col('win_prob').round(3)
-            )
+            data_cached.player_games.filter(pl.col("player") == player_name)
+            .drop(["rating", "player", "resident"])
+            .with_columns(pl.col("win_prob").round(3))
         ),
         player_teammates=format_stats_for_site(
             data_cached.teammates.filter(pl.col("player") == player_name).drop(
@@ -148,7 +161,9 @@ def player_page(player_name):
             )
         ),
         player_oppponents=format_stats_for_site(
-            data_cached.opponents.filter(pl.col("player") == player_name).drop(["player"])
+            data_cached.opponents.filter(pl.col("player") == player_name).drop(
+                ["player"]
+            )
         ),
         # player_games_advanced=player_games_advanced.to_pandas().to_dict(
         #     orient="records"
