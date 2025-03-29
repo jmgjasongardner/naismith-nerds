@@ -1,4 +1,5 @@
 import polars as pl
+import duckdb
 
 from collective_bball.etl import load_data, clean_games_data
 from collective_bball.player_data import PlayerData
@@ -36,10 +37,17 @@ class BasketballData:
         player_stats_obj = PlayerData(self.games, self.player_data)
         self.player_stats = player_stats_obj.compute_stats()
 
-    def compute_rapm(self, rapm_model: RAPMModel):
+    def compute_rapm(self, rapm_model: RAPMModel, date_to_filter=None):
         """Computes RAPM ratings and updates player data."""
+        games_df = self.games.with_columns(
+            pl.col("game_date").str.strptime(pl.Date, "%Y-%m-%d").alias("date_to_filter")
+        )
+        if date_to_filter:
+            games_df = games_df.filter(
+                pl.col('date_to_filter') <= pl.lit(date_to_filter).str.strptime(pl.Date, "%Y-%m-%d")
+            )
         self.ratings, self.best_lambda = rapm_model.run_rapm(
-            self.games, self.tiers, self.args
+            games_df, self.tiers, self.args
         )
 
     def merge_player_data(self):
@@ -86,10 +94,15 @@ class BasketballData:
         )
 
     def assemble_days_data(self):
-        # TODO: Decide what we want to display from days and days of week dataframes
         self.days, self.days_of_week = self.compute_days(
             self.player_games, self.player_days
         )
+
+    def write_to_db(self, conn, date_to_filter = None):
+        ratings_df = self.ratings.with_columns(
+            pl.lit(date_to_filter or self.games["game_date"].unique().sort().last()).alias("date")
+        ).to_pandas()
+        conn.execute("INSERT INTO ratings BY NAME SELECT * FROM ratings_df ON CONFLICT(player, date) DO NOTHING")
 
     @staticmethod
     def compute_days(
