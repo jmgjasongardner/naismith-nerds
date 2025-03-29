@@ -46,6 +46,7 @@ dependencies = [
     "gunicorn>=23.0.0",
     "gevent>=24.11.1",
     "psutil>=7.0.0",
+    "duckdb>=1.2.1",
 ]
 requires-python = "==3.11.*"
 readme = "README.md"
