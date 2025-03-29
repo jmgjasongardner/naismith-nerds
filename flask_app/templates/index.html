@@ -143,6 +143,15 @@
             width: 200px; /* Set a fixed width for both images */
             margin: 0 10px;
         }
+        .plot-container {
+            width: 100%; /* Set the container to take up the full width */
+            height: 500px; /* Set a height to keep the plot visible, adjust as needed */
+        }
+        .plot-container .plotly-graph-div {
+            width: 100% !important; /* Ensure the plot itself takes up the full width */
+            height: 100% !important; /* Set the plot's height to fill the container */
+        }
+
     </style>
 </head>
 
@@ -255,6 +264,7 @@
         {% else %}
             <p>No player ratings available.</p>
         {% endif %}
+        <div>{{ plot_ratings | safe }}</div>
     </div>
     <div class="tab-content games">
         <h2>Games</h2>

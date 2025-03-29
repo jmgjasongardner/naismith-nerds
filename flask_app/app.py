@@ -98,6 +98,7 @@ def home():
         days=days,
         best_lambda=best_lambda,
         main_tooltip=main_tooltip,
+        plot_ratings = data_cached.plot_ratings
     )
 
 
