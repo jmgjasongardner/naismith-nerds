@@ -59,7 +59,6 @@
             top: 0;
             background-color: #f4f4f4 !important;
             color: black;
-            z-index: 2; /* Ensure header stays above rows */
         }
         th, td {
             padding: 10px;
@@ -134,6 +133,16 @@
         .methodology h2 {
             text-align: center; /* Keep h2 centered */
         }
+        .glossary {
+            font-size: 1.2em;
+            padding: 20px;
+            background-color: #f4f4f4;
+            margin-top: 20px;
+            text-align: left; /* Left justify glossary text */
+        }
+        .glossary h2 {
+            text-align: center; /* Keep h3 centered */
+        }
         .images-container {
             display: flex;
             justify-content: center;
@@ -163,7 +172,8 @@
     <!-- Credits Section -->
     <div class="credits">
         <p>Created by Jason Gardner January 2025</p>
-        <p>Stats from thrice-weekly semi-formal pickup basketball at <a href="https://thecollectivedc.com/" target="_blank">The Collective</a> in SE Washington, DC beginning January 2025</p>
+        <p>Stats from thrice-weekly semi-formal pickup basketball in SE Washington, DC beginning January 2025</p>
+        <p>Additional credit to Jack Stubblefield for sous-stat-taking, data validation, and further ideas</p>
     </div>
 
     <!-- Social Media Icons -->
@@ -191,6 +201,7 @@
         <div class="tab" data-target="player_days">Player Days</div>
         <div class="tab" data-target="player_pairings">Player Pairings</div>
         <div class="tab" data-target="days">Days</div>
+        <div class="tab" data-target="glossary">Glossary and Explanation</div>
         <div class="tab" data-target="methodology">Methodology</div>
     </div>
 
@@ -441,12 +452,58 @@
         {% endif %}
     </div>
 
+    <div class="tab-content glossary">
+        <h2>Glossary and Explanation</h2>
+        <h3>So what exactly am I looking at?</h3>
+        <p>Good question!  In short, everything here is derived from the score difference of each game.  The <i>only</i> information going into the model is the final score difference, and then ten players on the court.</p>
+        <p>Essentially, read it as "Player X has a rating of 1.5, so he makes his team 1.5 points better than an average player replacing him when on the court."</p>
+        <h3>How did these ratings come to be?</h3>
+        <p>Consider a game where a player is on the court with four below average players (say, each worth -1 points), and against five slightly above average players (each worth 0.5).  The ratings of the opponent sum to 2.5, and the teammates sum to -4.  Off the bat, this player is playing at an expected -6.5 point difference.  So, if he were to "cover" that spread, as in win the game, or lose by six or less, than he will have made a <b>positive contribution</b> and it will reflect positively on his rating. </p>
+
+    </p><p>Another perspective from the same example: Pretend the aforementioned player was already a positive 2.0 rating player.  Now, let's look at the perspective of his teammate.  His opponents still have a rating of 2.5, but his teammates have a rating of 2-1-1-1=-1.  This player is stepping onto the court at an expected -3.5 point difference.  So, <i>he</i> must "cover" that spread of 3.5 to reflect positively, because he had the luxury of playing with a better teammate than the first player did.</p>
+        <p>For this reason <b>it is neither inherently good nor bad to have better or worse teammates or opponents!</b>  The only barometer of your success is how well <i>you do versus expectation (which is the sum of the other nine players' ratings on the court).</i>  If your team outscores that expectation, then you will have accrued a positive rating, and vice versa.  <b>To see this in action, sort on "Result vs Expectation".</b></p>
+        <h3>Stats</h3>
+        <p><b>Proj Score Diff</b> -- The sum of a team's player ratings minus the others</p>
+        <p><b>Teammate Quality</b> -- Sum of a team's player ratings (outside of that player's)</p>
+        <p><b>Team Quality</b> -- Sum of a team's player ratings</p>
+        <p><b>Opp Quality</b> -- Sum of the opponent's player ratings</p>
+        <p><b>Pct Positive Teammates</b> -- Percentage of games a player's teammates sum to better than average</p>
+        <p><b>Pct Positive Opps</b> -- Percentage of games a player's opponents sum to better than average</p>
+        <p><b>Pct Games as Favorite</b> -- Percentage of games a player's team is projected better than the opponent</p>
+        <p><b>Pct Games w/ Better Teammates</b> -- Percentage of games a player's teammates are projected better than the opponent</p>
+        <p><b>Other 9 Players' Quality Diff</b> -- The average rating of a player's teammates minus opponents</p>
+        <p><b>First Game Day Rate</b> -- Percent of days the player showed up that they played the first game</p>
+        <p><b>Last Game Day Rate</b> -- Percent of days the player showed up that they played the last game</p>
+        <h3>Games</h3>
+        <p><b>Team X Quality</b> -- Sum of team player ratings</p>
+        <p><b>Spread</b> -- Team A Quality minus Team B Quality (More positive means A is better)</p>
+        <p><b>Diff From Spread</b> -- Actual game score difference minus pregame spread (More positive means A performed better)</p>
+        <p><b>Abs</b> -- Absolute value (for ease of sorting)</p>
+        <p><b>Team A Win Prob</b> -- Probability of winning the game based on a logistic regression model of Team A and B Quality</p>
+        <p><b>Moneyline</b> -- Win probability converted to moneyline (More negative means A is favored more)</p>
+        <h3>Player Days</h3>
+        <p><b>First Game Day</b> -- The game number for that day that the player first appeared in</p>
+        <p><b>Last Game Day</b> -- The game number for that day that the player last appeared in</p>
+        <p><b>Longest Run on Court/Bench</b> -- Longest number of consecutive games spent playing or sitting after starting</p>
+        <h3>Player Pairings</h3>
+        <p><b>Teammate/Other 9 Player's Quality Ratings</b> -- Ratings with the two players listed removed</p>
+        <h3>Days</h3>
+        <p><b>Mean Rating Players</b> -- Mean rating of all of the players there, each weighted equally</p>
+        <p><b>Mean Rating Player Games</b> -- Mean rating of all of the players there, weighted by the number of games played</p>
+        <p><b>Longest Run on Court/Bench</b> -- The most a <i>single player</i> played/sat on that day</p>
+        <p><b>Avg Longest Run on Court/Bench</b> -- Average of how much every player's longest played/sat was on that day</p>
+        <p><b>Unique Winners Rate</b> -- Percentage of players that showed up that day that won at least one game</p>
+        <p><b>Avg Parity of Teammates</b> -- Standard deviation of the teammates for each player (lesser equals more even)</p>
+        <p><b>Avg Parity of Teams</b> -- Standard deviation of all of the teams for the day (lesser equals more even)</p>
+        <p><b>Avg Parity of Score Diff/Spread/Win Probs</b> -- Standard deviation of all of those values (lesser equals more even)</p>
+    </div>
+
     <div class="tab-content methodology">
         <h2>Methodology</h2>
-        <p>Hello, my fellow hoops nerd!</p>
+        <h3>Hello, my fellow hoops nerd!</h3>
         <p>This is my attempt at a very basic RAPM-model, the exact type of nerddom that appreciates my favorite athlete of all-time, <a href="https://www.youtube.com/watch?v=t65ZAGM_kSA"> someone for whom I offer my direct thanks to God</a> at least one or two mornings and evenings a week.</p>
         <p>Anyway, <a href="https://jecutter.github.io/blog/rapm-model/" target="_blank">Jacob Cutter</a> does a remarkable job of explaining the math behind the NBA application of a RAPM model.</p>
-        <h2>Let's break RAPM down</h2>
+        <h3>Let's break RAPM down</h3>
         <p> First, <a href="https://iscoresports.com/basketball/kb/faq_general/what_is_pm.php" target="_blank">plus-minus</a> is a well-known concept known in basketball (and other sports) that is simply a measure of the point-difference for a given player when they're on the court.</p>
         <p> The problem with this, however, is that players are often at the mercy (detriment or benefit) of the other nine players on the court, and they might thus <a href="https://www.instagram.com/foreversnappnn2/" target="_blank">run the gym</a> despite not necessarily being the lead contributor.  To account for this, we create an adjustment, the "A" in RAPM, with a <a href="https://www.xlstat.com/en/solutions/features/ordinary-least-squares-regression-ols" target="_blank">linear regression</a> model that accounts for each of the ten players on the court, to solve for the relative contributions that each player made to the final score differential on an adjusted scale.</p>
         <p> There are, however, problems with this as well, given that small sample sizes can lead to absurdly high or low coefficient values for a given player (their adjusted plus minus).  To account for this, we regularize the model, the "R" in RAPM, by adding an L2 regularization term to the OLS linear model to instead create a <a href="https://www.ibm.com/think/topics/ridge-regression" target="_blank">ridge regression model.</a>  This "penalizes" coefficient (read: adjusted plus-minus rating prediction) values that stray too far either side of zero with smaller samples.  What you get at the end is a:</p>
@@ -511,9 +568,6 @@
                     fixedHeader: true,  // Keep header fixed when scrolling
                     responsive: true,  // Helps with mobile layout
                     autoWidth: true,  // Prevents incorrect column sizing
-                    fixedColumns: {
-                        leftColumns: 1 // This should keep the first column sticky
-                    },
                     dom: 'lBfrtip',  // Add buttons
                     buttons: [
                         { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },

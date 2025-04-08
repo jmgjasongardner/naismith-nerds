@@ -60,7 +60,11 @@ def home():
     # logging.debug('computed games')
     log_memory_usage()
     ratings = format_stats_for_site(
-        data_cached.ratings.with_columns(pl.col("rating").round(5))
+        data_cached.ratings.filter(
+            ~pl.col("player").str.contains("Tier")
+        ).with_columns(
+            pl.col("rating").round(5)
+        )
     )
     # logging.debug('computed ratings')
     log_memory_usage()

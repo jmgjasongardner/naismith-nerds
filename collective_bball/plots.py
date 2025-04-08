@@ -13,13 +13,14 @@ class Plots:
 
     def plot_ratings_time(self):
         # Fetch data from DuckDB and convert it to Polars
-        df_pandas = self.conn.execute("SELECT * FROM ratings").fetch_df()
+        df_pandas = self.conn.execute("SELECT * FROM ratings WHERE player NOT ILIKE '%tier%'").fetch_df()
 
         # Ensure 'date' is a datetime object for sorting
         df_pandas["date"] = pd.to_datetime(df_pandas["date"])
-        fig = px.line(df_pandas, x="date", y="rating", color="player", title="Player Ratings Over Time")
+        fig = px.line(df_pandas, x="date", y="rating", color="player",
+                      labels = {'x': "Date", 'y': "Rating"}, title="Player Ratings Over Time <br><sup>Double click on a player to filter to them and click to add others. Draw area to zoom.</sup>")
         # fig.show()
 
-        self.plot_ratings = plot_html = fig.to_html(full_html=False)
+        self.plot_ratings = fig.to_html(full_html=False)
 
         return self.plot_ratings
