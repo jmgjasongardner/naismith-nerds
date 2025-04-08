@@ -201,6 +201,11 @@ class PlayerData:
                 .round(3)
                 .alias("other_9_players_quality_diff")
             )
+            .with_columns(
+                (pl.col("score_diff") - pl.col("other_9_players_quality_diff"))
+                .round(3)
+                .alias("result_vs_expectation")
+            )
         )
 
         # Explode teammates and opponents into separate columns (if needed)
@@ -242,6 +247,7 @@ class PlayerData:
                     "teammate_quality",
                     "opp_quality",
                     "other_9_players_quality_diff",
+                    "result_vs_expectation",
                     "T1",
                     "T2",
                     "T3",
@@ -372,6 +378,9 @@ class PlayerData:
                 pl.mean("other_9_players_quality_diff")
                 .round(3)
                 .alias("other_9_player_avg"),
+                pl.mean("result_vs_expectation")
+                .round(3)
+                .alias("result_vs_expectation_avg"),
                 pl.sum("played_first_game"),
                 pl.sum("played_last_game"),
                 pl.min("game_num").alias("first_game_of_day"),
@@ -391,11 +400,13 @@ class PlayerData:
     def combine_player_stats_with_games_groupings(self):
         self.player_data = self.player_data.join(
             self.player_games.group_by(["player"]).agg(
+                pl.mean("proj_score_diff").round(3).alias("proj_score_diff"),
                 pl.sum("win_prob").round(3).alias("expected_wins"),
                 (pl.sum("win_prob") / pl.count("player"))
                 .round(3)
                 .alias("expected_win_pct"),
-                pl.mean("proj_score_diff").round(3).alias("proj_score_diff"),
+                pl.mean("other_9_players_quality_diff").round(3),
+                pl.mean("result_vs_expectation").round(3),
                 (pl.count("player") / len(self.games))
                 .round(3)
                 .alias("pct_total_games_played"),
@@ -425,7 +436,6 @@ class PlayerData:
                 .mean()
                 .round(3)
                 .alias("pct_games_better_teammates"),
-                pl.mean("other_9_players_quality_diff").round(3),
             ),
             left_on="player",
             right_on="player",
@@ -485,6 +495,7 @@ class PlayerData:
             "teammate_quality",
             "opp_quality",
             "other_9_players_quality_diff",
+            "result_vs_expectation"
         ]
 
         # Unpivot to transform A1-A5 and B1-B5 into a single "player" column
