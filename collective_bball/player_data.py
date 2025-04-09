@@ -495,7 +495,7 @@ class PlayerData:
             "teammate_quality",
             "opp_quality",
             "other_9_players_quality_diff",
-            "result_vs_expectation"
+            "result_vs_expectation",
         ]
 
         # Unpivot to transform A1-A5 and B1-B5 into a single "player" column

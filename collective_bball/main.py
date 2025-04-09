@@ -24,7 +24,7 @@ def create_data(args=None):
             default_lambda=True,
             lambda_params=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
             save_csv=False,
-            loop_through_ratings_dates=False
+            loop_through_ratings_dates=False,
         )
     # logging.debug(f"main.py pre data load")
 

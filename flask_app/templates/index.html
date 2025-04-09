@@ -228,6 +228,10 @@
                             <td>
                                 {% if key == "Player" %}
                                     <a href="{{ url_for('player_page', player_name=row['Player']) }}">{{ value }}</a>
+                                {% elif key == "Most Recent Game" %}
+                                    <a href="{{ url_for('date_page', date=value) }}">
+                                        {{ value }}
+                                    </a>
                                 {% else %}
                                     {{ value }}
                                 {% endif %}
@@ -276,6 +280,13 @@
             <p>No player ratings available.</p>
         {% endif %}
         <div>{{ plot_ratings | safe }}</div>
+        <p>
+            Outscoring expectation is how to improve rating<br>
+            The more games you play, the more the model feels confident your performance is "true" and moves your RAPM to match your APM (y=x)<br>
+            Smaller sample players are regressed more toward zero (y=0) when regularized
+        </p>
+
+        <div>{{ plot_rapm_apm | safe }}</div>
     </div>
     <div class="tab-content games">
         <h2>Games</h2>
@@ -296,6 +307,10 @@
                             <td>
                                 {% if key in ['A1', 'A2', 'A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4', 'B5'] %}
                                     <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
+                                {% elif key == "Game Date" %}
+                                    <a href="{{ url_for('date_page', date=value) }}">
+                                        {{ value }}
+                                    </a>
                                 {% else %}
                                     {{ value }}
                                 {% endif %}
@@ -328,6 +343,12 @@
                             {% if key == "Player" %}
                                 <td>
                                     <a href="{{ url_for('player_page', player_name=value) }}">
+                                        {{ value }}
+                                    </a>
+                                </td>
+                            {% elif key == "Game Date" %}
+                                <td>
+                                    <a href="{{ url_for('date_page', date=value) }}">
                                         {{ value }}
                                     </a>
                                 </td>
@@ -390,6 +411,12 @@
                                         {{ value }}
                                     </a>
                                 </td>
+                            {% elif key == "Most Recent Game" %}
+                                <td>
+                                    <a href="{{ url_for('date_page', date=value) }}">
+                                        {{ value }}
+                                    </a>
+                                </td>
                             {% else %}
                                 <td>{{ value }}</td>
                             {% endif %}
@@ -441,7 +468,15 @@
                 {% for row in days %}
                     <tr>
                         {% for key, value in row.items() %}
-                            <td>{{ value }}</td>
+                            {% if key == "Game Date" %}
+                                <td>
+                                    <a href="{{ url_for('date_page', date=value) }}">
+                                        {{ value }}
+                                    </a>
+                                </td>
+                            {% else %}
+                                <td>{{ value }}</td>
+                            {% endif %}
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -455,7 +490,7 @@
     <div class="tab-content glossary">
         <h2>Glossary and Explanation</h2>
         <h3>So what exactly am I looking at?</h3>
-        <p>Good question!  In short, everything here is derived from the score difference of each game.  The <i>only</i> information going into the model is the final score difference, and then ten players on the court.</p>
+        <p>Good question!  In short, everything here is derived from the score difference of each game.  The <i>only</i> information going into the model is the final score difference, and the ten players on the court.</p>
         <p>Essentially, read it as "Player X has a rating of 1.5, so he makes his team 1.5 points better than an average player replacing him when on the court."</p>
         <h3>How did these ratings come to be?</h3>
         <p>Consider a game where a player is on the court with four below average players (say, each worth -1 points), and against five slightly above average players (each worth 0.5).  The ratings of the opponent sum to 2.5, and the teammates sum to -4.  Off the bat, this player is playing at an expected -6.5 point difference.  So, if he were to "cover" that spread, as in win the game, or lose by six or less, than he will have made a <b>positive contribution</b> and it will reflect positively on his rating. </p>

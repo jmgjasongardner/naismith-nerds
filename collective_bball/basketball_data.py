@@ -42,11 +42,14 @@ class BasketballData:
     def compute_rapm(self, rapm_model: RAPMModel, date_to_filter=None):
         """Computes RAPM ratings and updates player data."""
         games_df = self.games.with_columns(
-            pl.col("game_date").str.strptime(pl.Date, "%Y-%m-%d").alias("date_to_filter")
+            pl.col("game_date")
+            .str.strptime(pl.Date, "%Y-%m-%d")
+            .alias("date_to_filter")
         )
         if date_to_filter:
             games_df = games_df.filter(
-                pl.col('date_to_filter') <= pl.lit(date_to_filter).str.strptime(pl.Date, "%Y-%m-%d")
+                pl.col("date_to_filter")
+                <= pl.lit(date_to_filter).str.strptime(pl.Date, "%Y-%m-%d")
             )
         self.ratings, self.best_lambda = rapm_model.run_rapm(
             games_df, self.tiers, self.args
@@ -100,11 +103,15 @@ class BasketballData:
             self.player_games, self.player_days
         )
 
-    def write_to_db(self, conn, date_to_filter = None):
+    def write_to_db(self, conn, date_to_filter=None):
         ratings_df = self.ratings.with_columns(
-            pl.lit(date_to_filter or self.games["game_date"].unique().sort().last()).alias("date")
+            pl.lit(
+                date_to_filter or self.games["game_date"].unique().sort().last()
+            ).alias("date")
         ).to_pandas()
-        conn.execute("INSERT INTO ratings BY NAME SELECT * FROM ratings_df ON CONFLICT(player, date) DO NOTHING")
+        conn.execute(
+            "INSERT INTO ratings BY NAME SELECT * FROM ratings_df ON CONFLICT(player, date) DO NOTHING"
+        )
 
     @staticmethod
     def compute_days(
@@ -194,7 +201,4 @@ class BasketballData:
     def plot_things(self, plots: Plots):
 
         self.plot_ratings = plots.plot_ratings_time()
-
-
-
-
+        self.plot_rapm_apm = plots.plot_rapm_vs_apm(player_data=self.player_data)
