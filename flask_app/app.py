@@ -60,9 +60,7 @@ def home():
     # logging.debug('computed games')
     log_memory_usage()
     ratings = format_stats_for_site(
-        data_cached.ratings.filter(
-            ~pl.col("player").str.contains("Tier")
-        ).with_columns(
+        data_cached.ratings.filter(~pl.col("player").str.contains("Tier")).with_columns(
             pl.col("rating").round(5)
         )
     )
@@ -102,7 +100,8 @@ def home():
         days=days,
         best_lambda=best_lambda,
         main_tooltip=main_tooltip,
-        plot_ratings = data_cached.plot_ratings
+        plot_ratings=data_cached.plot_ratings,
+        plot_rapm_apm=data_cached.plot_rapm_apm,
     )
 
 
@@ -176,6 +175,35 @@ def player_page(player_name):
         # games_of_note=games_of_note.to_pandas()
         # .drop(["Date", "Team", "Favorite"], axis=1)
         # .to_dict(orient="records"),
+        main_tooltip=tooltips.main_tooltip,
+    )
+
+
+@app.route("/date/<date>")
+def date_page(date):
+    data_cached = app.config["DATA_CACHED"]
+
+    return render_template(
+        "date.html",
+        date=date,
+        day_of_week=data_cached.games.filter(pl.col("game_date") == date)
+        .select("day")
+        .item(0, 0),
+        day_data=format_stats_for_site(
+            data_cached.days.filter(pl.col("game_date") == date).drop(
+                ["game_date", "day"]
+            )
+        ),
+        player_day=format_stats_for_site(
+            data_cached.player_days.filter(pl.col("game_date") == date).drop(
+                ["game_date", "day", "rating", "resident"]
+            )
+        ),
+        day_games=format_stats_for_site(
+            data_cached.games.filter(pl.col("game_date") == date).drop(
+                ["game_date", "day"]
+            )
+        ),
         main_tooltip=tooltips.main_tooltip,
     )
 

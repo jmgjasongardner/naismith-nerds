@@ -111,8 +111,16 @@
             <tbody>
                 {% for row in player_stats %}
                     <tr>
-                        {% for value in row.values() %}
-                            <td>{{ value }}</td>
+                        {% for key, value in row.items() %}
+                            <td>
+                                {% if key == "Most Recent Game" %}
+                                    <a href="{{ url_for('date_page', date=value) }}">
+                                        {{ value }}
+                                    </a>
+                                {% else %}
+                                    {{ value }}
+                                {% endif %}
+                            </td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -125,25 +133,33 @@
     <div class="tab-content days">
         <h2>Days</h2>
         {% if player_days %}
-        <table id="daysTable">
-            <thead>
-                <tr>
-                    {% for col in player_days[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-             <tbody>
-                {% for row in player_days %}
+            <table id="daysTable">
+                <thead>
                     <tr>
-                        {% for key, value in row.items() %}
-                            <td>{{ value }}</td>
+                        {% for col in player_days[0].keys() %}
+                            <th title="{{ main_tooltip.get(col, '') }}">
+                                {{ col }}</th>
                         {% endfor %}
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {% for row in player_days %}
+                        <tr>
+                            {% for key, value in row.items() %}
+                                <td>
+                                    {% if key == "Game Date" %}
+                                        <a href="{{ url_for('date_page', date=value) }}">
+                                            {{ value }}
+                                        </a>
+                                    {% else %}
+                                        {{ value }}
+                                    {% endif %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         {% else %}
             <p>No days data available.</p>
         {% endif %}
@@ -167,6 +183,10 @@
                             <td>
                                 {% if key in ['T1', 'T2', 'T3', 'T4', 'O1', 'O2', 'O3', 'O4', 'O5'] %}
                                     <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
+                                {% elif key == "Game Date" %}
+                                    <a href="{{ url_for('date_page', date=value) }}">
+                                        {{ value }}
+                                    </a>
                                 {% else %}
                                     {{ value }}
                                 {% endif %}
@@ -193,7 +213,7 @@
                     {% endfor %}
                 </tr>
             </thead>
-             <tbody>
+            <tbody>
                 {% for row in player_teammates %}
                     <tr>
                         {% for key, value in row.items() %}
@@ -225,7 +245,7 @@
                     {% endfor %}
                 </tr>
             </thead>
-             <tbody>
+            <tbody>
                 {% for row in player_oppponents %}
                     <tr>
                         {% for key, value in row.items() %}
