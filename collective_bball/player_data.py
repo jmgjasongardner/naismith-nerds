@@ -372,6 +372,7 @@ class PlayerData:
                 (pl.count("player") - pl.sum("winner")).alias("losses"),
                 (pl.sum("winner") / pl.count("player")).round(3).alias("win_pct"),
                 pl.mean("win_prob").round(3).alias("exp_win_pct"),
+                pl.mean("score_diff").round(3).alias("avg_score_diff"),
                 pl.mean("proj_score_diff").round(3),
                 pl.mean("teammate_quality").round(3).alias("teammates_avg"),
                 pl.mean("opp_quality").round(3).alias("opps_avg"),
