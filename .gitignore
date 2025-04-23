@@ -27,5 +27,5 @@ __pycache__/
 .idea/.gitignore
 *.csv
 *.docx
-*.xlsm
+static/**/*.xlsm
 *.xlsx
