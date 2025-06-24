@@ -21,7 +21,7 @@ def create_data(args=None):
         args = argparse.Namespace(
             use_tier_data=True,
             min_games_to_not_tier=20,
-            default_lambda=False,
+            default_lambda=True,
             lambda_params=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
             save_csv=False,
             loop_through_ratings_dates=False,
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--use_tier_data", action="store_false")
     parser.add_argument("--min_games_to_not_tier", default=20, type=int)
-    parser.add_argument("--default_lambda", action="store_true")
+    parser.add_argument("--default_lambda", action="store_false")
     parser.add_argument(
         "--lambda_params",
         type=float,
