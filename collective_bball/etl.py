@@ -5,60 +5,78 @@ import requests
 from urllib.parse import quote
 from typing import Tuple
 import msal
+from dotenv import load_dotenv
 
-# Load environment variables
+# Load .env for local runs (Fly injects env vars automatically)
+load_dotenv()
+
+# === ENVIRONMENT VARIABLES ===
 CLIENT_ID = os.getenv("CLIENT_ID")
 TENANT_ID = os.getenv("TENANT_ID")
-AUTHORITY = "https://login.microsoftonline.com/consumers"
-SCOPES = ["Files.Read", "Files.ReadWrite", "User.Read"]
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+USER_ID = os.getenv("USER_ID")  # from Graph Explorer (the "id" field)
+AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+SCOPES = ["https://graph.microsoft.com/.default"]
 
+# === AUTHENTICATION ===
+def get_app_only_token() -> str:
+    """Gets an app-only Microsoft Graph access token (for both local + production)."""
+    if not all([CLIENT_ID, CLIENT_SECRET, TENANT_ID]):
+        raise EnvironmentError("Missing CLIENT_ID, CLIENT_SECRET, or TENANT_ID")
 
-def get_access_token() -> str:
-    """Authenticates via device code flow and caches the token."""
-    app = msal.PublicClientApplication(CLIENT_ID, authority=AUTHORITY)
+    app = msal.ConfidentialClientApplication(
+        CLIENT_ID,
+        authority=AUTHORITY,
+        client_credential=CLIENT_SECRET,
+    )
 
-    # Check if there's a valid cached token
+    # Check for cached token
     result = app.acquire_token_silent(SCOPES, account=None)
+
+    # If not cached, get a new one
     if not result:
-        flow = app.initiate_device_flow(scopes=SCOPES)
-        print(flow["message"])  # Only needed the first time manually
-        result = app.acquire_token_by_device_flow(flow)
+        result = app.acquire_token_for_client(scopes=SCOPES)
 
     if "access_token" not in result:
-        raise Exception("Authentication failed")
+        raise Exception(f"Failed to acquire token: {result.get('error_description')}")
 
     return result["access_token"]
 
-
+# === FILE DOWNLOAD ===
 def download_excel_from_onedrive(filename: str, local_path: str) -> None:
-    """Downloads an Excel file from OneDrive using Graph API."""
-    access_token = get_access_token()
+    """Downloads an Excel file from OneDrive using Graph API (no device flow)."""
+    access_token = get_app_only_token()
     headers = {"Authorization": f"Bearer {access_token}"}
 
-    onedrive_path = "Documents/17th Grade/CodingProjects/naismith-nerds/GameResults.xlsm"
+    # Build the path
+    onedrive_path = f"Documents/17th Grade/CodingProjects/naismith-nerds/{filename}"
     encoded_path = quote(onedrive_path)
 
-    url = f"https://graph.microsoft.com/v1.0/me/drive/root:/{encoded_path}:/content"
+    # Use the /users/{USER_ID} endpoint since app-only tokens can’t use /me
+    url = f"https://graph.microsoft.com/v1.0/users/{USER_ID}/drive/root:/{encoded_path}:/content"
+
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
 
     with open(local_path, "wb") as f:
         f.write(resp.content)
 
+    print(f"✅ Downloaded {filename} → {local_path}")
 
-def load_data(filepath: str) -> Tuple[pl.DataFrame, pl.DataFrame]:
-    """Loads game data from Excel (downloaded from OneDrive) into Polars."""
+# === LOAD DATA ===
+def load_data(filename: str) -> Tuple[pl.DataFrame, pl.DataFrame]:
+    """Downloads Excel from OneDrive, loads it into Polars DataFrames."""
     temp_path = "GameResults.xlsm"
-    download_excel_from_onedrive(filepath, temp_path)
+    download_excel_from_onedrive(filename, temp_path)
 
     raw_games_df = (
         pl.DataFrame(
             pd.read_excel(temp_path, sheet_name="GameResults", engine="openpyxl")
         )
-    ).rename({"Date": "date", "A_SCORE": "a_score", "B_SCORE": "b_score"})
-    raw_games_df = raw_games_df.drop(
-        [col for col in raw_games_df.columns if "Unnamed" in col]
+        .rename({"Date": "date", "A_SCORE": "a_score", "B_SCORE": "b_score"})
+        .drop([c for c in pl.read_excel(temp_path).columns if "Unnamed" in c])
     )
+
     tiers = pl.DataFrame(
         pd.read_excel(filepath, sheet_name="Players", engine="openpyxl", dtype=str)
     ).with_columns(pl.col("birthday").cast(pl.Utf8), pl.col("resident").cast(pl.Int8))
