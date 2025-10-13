@@ -129,6 +129,9 @@
         {% else %}
             <p>No stats available for {{ player_name }}.</p>
         {% endif %}
+        <div class="graph-container">
+          {{ player_games_rolling_html | safe }}
+        </div>
     </div>
     <div class="tab-content days">
         <h2>Days</h2>

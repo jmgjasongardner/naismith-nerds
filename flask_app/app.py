@@ -3,13 +3,14 @@ from flask_app.utility_imports import tooltips
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
-import os
+import duckdb
 import psutil
 
 # from collective_bball.eda_main import generate_stats
 # from collective_bball.win_prob_log_reg import calculate_team_A_win_prob
 # logging.debug("app.py pre data load")
 from collective_bball.main import data  # Get precomputed `data`
+from collective_bball.plots import Plots # to generate player-specific plots
 from flask_app.web_data_loader import (
     format_stats_for_site,
     # get_model_outputs,
@@ -123,6 +124,12 @@ def player_page(player_name):
     full_name, height_str, position = load_player_bio_data(
         player_name=player_name, player_data=data_cached.player_data
     )
+    conn = duckdb.connect("bball_database.duckdb")
+    plots=Plots(conn)
+    player_rating_over_time = plots.plot_player_ratings_time(player_name=player_name).to_html(full_html=False, include_plotlyjs='cdn')
+    player_games_rolling = plots.plot_player_rolling_avg(player_name=player_name, player_games=data_cached.player_games.filter(pl.col("player") == player_name)).to_html(full_html=False,
+                                                                                              include_plotlyjs='cdn')
+
     # logging.debug('computed player bio data')
 
     return render_template(
@@ -133,6 +140,8 @@ def player_page(player_name):
         position=position,
         image_exists=image_exists,
         image_path=image_path if image_exists else None,
+        player_rating_over_time_html=player_rating_over_time,
+        player_games_rolling_html=player_games_rolling,
         player_stats=format_stats_for_site(
             data_cached.player_data.filter(pl.col("player") == player_name).drop(
                 [
