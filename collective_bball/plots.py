@@ -15,6 +15,15 @@ class Plots:
             "SELECT * FROM ratings WHERE player NOT ILIKE '%tier%'"
         ).fetch_df()
 
+        df_pandas["days_since_graduation"] = (
+            df_pandas.groupby("player")["player"].transform("count")
+        )
+
+        df_pandas = df_pandas.sort_values(
+            by=["days_since_graduation", "player", "date"],
+            ascending=[False, False, True]
+        )
+
         # Ensure 'date' is a datetime object for sorting
         df_pandas["date"] = pd.to_datetime(df_pandas["date"])
         fig = px.line(
@@ -75,6 +84,11 @@ class Plots:
         df_pandas = self.conn.execute(
             f"SELECT * FROM ratings WHERE player = '{player_name}'"
         ).fetch_df()
+
+        df_pandas = df_pandas.sort_values(
+            by=["date"],
+            ascending=[True]
+        )
 
         # Ensure 'date' is a datetime object for sorting
         df_pandas["date"] = pd.to_datetime(df_pandas["date"])
