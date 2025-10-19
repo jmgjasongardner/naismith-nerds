@@ -166,6 +166,16 @@ class RAPMModel:
             ),
         )
 
+        # --- add clock and first_poss columns as additional features ---
+        extra_features = games.sort(["game_date", "game_num"]).select([
+            "clock",
+            "first_poss"
+        ]).to_numpy()
+        extra_sparse = sp.csr_matrix(extra_features)  # (n_games, 2)
+        # horizontally stack: [player effects | clock | first_poss]
+        sparse_matrix = sp.hstack([sparse_matrix.tocsr(), extra_sparse]).tocsr()
+        # ---
+
         y = (
             games.sort(["game_date", "game_num"], descending=[False, False])
             .with_columns((pl.col("a_score") - pl.col("b_score")).alias("score_diff"))
