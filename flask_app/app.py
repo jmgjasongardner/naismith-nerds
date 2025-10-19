@@ -10,7 +10,7 @@ import psutil
 # from collective_bball.win_prob_log_reg import calculate_team_A_win_prob
 # logging.debug("app.py pre data load")
 from collective_bball.main import data  # Get precomputed `data`
-from collective_bball.plots import Plots # to generate player-specific plots
+from collective_bball.plots import Plots  # to generate player-specific plots
 from flask_app.web_data_loader import (
     format_stats_for_site,
     # get_model_outputs,
@@ -57,7 +57,30 @@ def home():
     # logging.debug('computed stats')
     log_memory_usage()
     num_days = len(data_cached.days)
-    games = format_stats_for_site(data_cached.games)
+    games = format_stats_for_site(
+        data_cached.games.with_columns(
+            pl.when(pl.col("first_poss") == 1)
+            .then(pl.lit("A"))
+            .when(pl.col("first_poss") == -1)
+            .then(pl.lit("B"))
+            .otherwise(pl.lit("Idk"))
+            .alias("first_poss")
+        ).drop(
+            [
+                "winning_score",
+                "games_waited_B",
+                "games_waited_A",
+                "consecutive_games_B",
+                "consecutive_games_A",
+                "total_games_played_diff",
+                "consecutive_games_waited_diff",
+                "consecutive_games_played_diff",
+                "total_games_played_diff_sq",
+                "consecutive_games_waited_diff_sq",
+                "consecutive_games_played_diff_sq",
+            ]
+        )
+    )
     # logging.debug('computed games')
     log_memory_usage()
     ratings = format_stats_for_site(
@@ -125,10 +148,14 @@ def player_page(player_name):
         player_name=player_name, player_data=data_cached.player_data
     )
     conn = duckdb.connect("bball_database.duckdb")
-    plots=Plots(conn)
-    player_rating_over_time = plots.plot_player_ratings_time(player_name=player_name).to_html(full_html=False, include_plotlyjs='cdn')
-    player_games_rolling = plots.plot_player_rolling_avg(player_name=player_name, player_games=data_cached.player_games.filter(pl.col("player") == player_name)).to_html(full_html=False,
-                                                                                              include_plotlyjs='cdn')
+    plots = Plots(conn)
+    player_rating_over_time = plots.plot_player_ratings_time(
+        player_name=player_name
+    ).to_html(full_html=False, include_plotlyjs="cdn")
+    player_games_rolling = plots.plot_player_rolling_avg(
+        player_name=player_name,
+        player_games=data_cached.player_games.filter(pl.col("player") == player_name),
+    ).to_html(full_html=False, include_plotlyjs="cdn")
 
     # logging.debug('computed player bio data')
 

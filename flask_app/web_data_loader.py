@@ -105,6 +105,10 @@ def format_stats_for_site(df: pl.DataFrame):
         "mon_rate": "Mon Rate",
         "wed_rate": "Wed Rate",
         "sat_rate": "Sat Rate",
+        "first_poss": "First Poss",
+        "clock": "Clock",
+        "team_total_games_played_A": "Team A Games Day",
+        "team_total_games_played_B": "Team B Games Day",
     }
     # logging.debug(f"ratings sample df in web_data_loader as polars: {df.head(5)}")
     # df = df.head(5)
