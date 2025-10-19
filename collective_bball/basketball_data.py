@@ -1,7 +1,7 @@
 import polars as pl
 import duckdb
 
-from collective_bball.etl import load_data, clean_games_data
+from collective_bball.etl import load_data, clean_games_data, compute_clock, compute_starting_poss
 from collective_bball.player_data import PlayerData
 from collective_bball.rapm_model import RAPMModel
 from collective_bball.moneyline_model import BettingGames
@@ -33,6 +33,11 @@ class BasketballData:
     def clean_data(self):
         """Cleans raw game data into structured format."""
         self.games = clean_games_data(self.raw_games_data)
+
+    def compute_clock_and_starting_poss(self):
+        """Uses logic to tease out whether clock was used and starting possession of a game."""
+        self.games = compute_clock(self.games)
+        self.games = compute_starting_poss(self.games)
 
     def compute_player_stats(self):
         """Creates PlayerData object and computes player stats."""

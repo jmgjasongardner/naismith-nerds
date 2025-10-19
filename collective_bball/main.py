@@ -34,6 +34,7 @@ def create_data(args=None):
     data = BasketballData(data_source=util_code.public_data_url, args=args)
     # logging.debug(f"main.py post data load: {data is not None}")
     data.clean_data()
+    data.compute_clock_and_starting_poss()
     # logging.debug(f"main.py post data clean: {data is not None}")
     data.compute_player_stats()
     # logging.debug(f"main.py post data stats: {data is not None}")
