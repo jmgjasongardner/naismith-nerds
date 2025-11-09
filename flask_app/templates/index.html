@@ -63,7 +63,7 @@
         }
         th, td {
             padding: 10px;
-            border: 1px solid black;
+            border: 0.2px blue;
             text-align: left;
         }
         th:first-child {
@@ -99,7 +99,7 @@
 
         .tabs {
             display: flex;
-            justify-content: left;
+            justify-content: center;
             margin: 20px 0;
         }
         .tab {
@@ -202,11 +202,11 @@
 
 
 <body>
-    <h1>Welcome, Naismith Nerds</h1>
+    <h1>🏀 Welcome, Naismith Nerds 🏀</h1>
 
     <!-- Credits Section -->
     <div class="credits">
-        <p>Created by Jason Gardner January 2025</p>
+        <p>Created by Jason Gardner, January 2025</p>
         <p>Stats from thrice-weekly semi-formal pickup basketball in SE Washington, DC beginning January 2025</p>
         <p>Additional credit to Jack Stubblefield for sous-stat-taking, data validation, and further ideas</p>
 
@@ -233,21 +233,123 @@
     <!-- Navigation Tabs -->
     <div class="tabs">
         <div class="tab active" data-target="stats">Stats</div>
-        <div class="tab" data-target="team_builder">Team Builder</div>
         <div class="tab" data-target="ratings">Ratings</div>
+        <div class="tab" data-target="team_builder">Team Builder</div>
         <div class="tab" data-target="games">Games</div>
         <div class="tab" data-target="player_days">Player Days</div>
         <div class="tab" data-target="player_pairings">Player Pairings</div>
         <div class="tab" data-target="days">Days</div>
+    </div>
+    <div class="tabs">
         <div class="tab" data-target="glossary">Glossary and Explanation</div>
         <div class="tab" data-target="methodology">Methodology</div>
     </div>
 
     <input id="minGamesPlayed" type="number" placeholder="Filter Min Games" oninput="filterByMinGamesPlayed()">
 
-    <!-- TEAM BUILDER CONTENT (replace/merge into your template) -->
+    <div class="tab-content stats active">
+        <h2>Stats</h2>
+        <h3>From {{ num_days }} Runs Since January 11, 2025</h3>
+        {% if stats %}
+        <table id="statsTable">
+            <thead>
+                <tr>
+                    {% for col in stats[0].keys() %}
+                        {% if col != 'has_img' %}
+                            <th title="{{ main_tooltip.get(col, '') }}">
+                                {{ col }}</th>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in stats %}
+                    <tr>
+                        {% for key, value in row.items() %}
+                            {% if key != 'has_img' %}
+                                <td class="{% if key in ['Player', 'Most Recent Game'] %}no-wrap{% endif %}">
+                                    {% if key == "Player" %}
+                                        <a href="{{ url_for('player_page', player_name=row['Player']) }}">
+                                            {% if row.has_img %}
+                                                <img
+                                                    src="{{ url_for('static', filename='player_pics/' ~ row['Player'] ~ '.png') }}"
+                                                    alt="{{ row['Player'] }}"
+                                                    style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
+                                            {% endif %}
+                                            {{ row['Player'] }}
+                                        </a>
+                                    {% elif key == "Most Recent Game" %}
+                                        <a href="{{ url_for('date_page', date=value) }}">
+                                            {{ value }}
+                                        </a>
+                                    {% else %}
+                                        {{ value }}
+                                    {% endif %}
+                                </td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>No stats available.</p>
+        {% endif %}
+    </div>
+    <div class="tab-content ratings">
+        <h2>Player Ratings</h2>
+        <h3>Best Lambda: {{ best_lambda }}</h3>  <!-- Display the best_lambda value -->
+        {% if ratings %}
+        <table id="ratingsTable">
+            <thead>
+                <tr>
+                    {% for col in ratings[0].keys() %}
+                        {% if col != 'has_img' %}
+                            <th title="{{ main_tooltip.get(col, '') }}">
+                                {{ col }}</th>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in ratings %}
+                    <tr>
+                        {% for key, value in row.items() %}
+                            {% if key != 'has_img' %}
+                                {% if key == "Player" %}
+                                    <td>
+                                        <a href="{{ url_for('player_page', player_name=row['Player']) }}">
+                                            {% if row.has_img %}
+                                                <img
+                                                    src="{{ url_for('static', filename='player_pics/' ~ row['Player'] ~ '.png') }}"
+                                                    alt="{{ row['Player'] }}"
+                                                    style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
+                                            {% endif %}
+                                            {{ row['Player'] }}
+                                        </a>
+                                    </td>
+                                {% else %}
+                                    <td>{{ value }}</td>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>No player ratings available.</p>
+        {% endif %}
+        <div>{{ plot_ratings | safe }}</div>
+        <p>
+            Outscoring expectation is how to improve rating<br>
+            The more games you play, the more the model feels confident your performance is "true" and moves your RAPM to match your APM (y=x)<br>
+            Smaller sample players are regressed more toward zero (y=0) when regularized
+        </p>
 
-    <div class="tab-content team_builder">
+        <div>{{ plot_rapm_apm | safe }}</div>
+    </div>
+        <div class="tab-content team_builder">
       <h2>Team Builder</h2>
         <h3>Select any combo of 2, 4, 6, 8, or 10 players and either assign them to specific teams, or generate teams based on rating.</h3>
 
@@ -338,98 +440,6 @@
       </div>
     </div>
 
-
-
-
-
-    <div class="tab-content stats active">
-        <h2>Stats</h2>
-        <h3>From {{ num_days }} Runs Since January 11, 2025</h3>
-        {% if stats %}
-        <table id="statsTable">
-            <thead>
-                <tr>
-                    {% for col in stats[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in stats %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            <td class="{% if key in ['Player', 'Most Recent Game'] %}no-wrap{% endif %}">
-                                {% if key == "Player" %}
-                                    <a href="{{ url_for('player_page', player_name=row['Player']) }}">
-                                        {% if row.has_img %}
-                                            <img
-                                                src="{{ url_for('static', filename='player_pics/' ~ row['Player'] ~ '.png') }}"
-                                                alt="{{ row['Player'] }}"
-                                                style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
-                                        {% endif %}
-                                        {{ row['Player'] }}
-                                    </a>
-                                {% elif key == "Most Recent Game" %}
-                                    <a href="{{ url_for('date_page', date=value) }}">
-                                        {{ value }}
-                                    </a>
-                                {% else %}
-                                    {{ value }}
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No stats available.</p>
-        {% endif %}
-    </div>
-    <div class="tab-content ratings">
-        <h2>Player Ratings</h2>
-        <h3>Best Lambda: {{ best_lambda }}</h3>  <!-- Display the best_lambda value -->
-        {% if ratings %}
-        <table id="ratingsTable">
-            <thead>
-                <tr>
-                    {% for col in ratings[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in ratings %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            {% if key == "Player" %}
-                                <td>
-                                    <a href="{{ url_for('player_page', player_name=value) }}">
-                                        {{ value }}
-                                    </a>
-                                </td>
-                            {% else %}
-                                <td>{{ value }}</td>
-                            {% endif %}
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No player ratings available.</p>
-        {% endif %}
-        <div>{{ plot_ratings | safe }}</div>
-        <p>
-            Outscoring expectation is how to improve rating<br>
-            The more games you play, the more the model feels confident your performance is "true" and moves your RAPM to match your APM (y=x)<br>
-            Smaller sample players are regressed more toward zero (y=0) when regularized
-        </p>
-
-        <div>{{ plot_rapm_apm | safe }}</div>
-    </div>
     <div class="tab-content games">
         <h2>Games</h2>
         {% if games %}
@@ -643,7 +653,7 @@
     <div class="tab-content glossary">
         <h2>Glossary and Explanation</h2>
         <h3>So what exactly am I looking at?</h3>
-        <p>Good question!  In short, everything here is derived from the score difference of each game.  The <i>only</i> information going into the model is the final score difference, the ten players on the court, and, as of November 2025, a couple other variables accounting for fatigue/rest based on number of games on/off by team, and also which team had first possession.</p>
+        <p>Good question!  In short, everything here is derived from the score difference of each game.  The <i>only</i> information going into the model is the final score difference, the ten players on the court, and, as of November 2025, a couple other variables accounting for fatigue/rest based on number of games on/off by team, and also which team had first possession.  Lastly, there is a "time decay half-life" of 270 days, which basically means for every nine months since a game is played, it has half the weighting the model as a game played today.</p>
         <p>Essentially, read it as "Player X has a rating of 1.5, so he makes his team 1.5 points better than an average player replacing him when on the court."</p>
         <h3>How did these ratings come to be?</h3>
         <p>Consider a game where a player is on the court with four below average players (say, each worth -1 points), and against five slightly above average players (each worth 0.5).  The ratings of the opponent sum to 2.5, and the teammates sum to -4.  Off the bat, this player is playing at an expected -6.5 point difference.  So, if he were to "cover" that spread, as in win the game, or lose by six or less, than he will have made a <b>positive contribution</b> and it will reflect positively on his rating. </p>

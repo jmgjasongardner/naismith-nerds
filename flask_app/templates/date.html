@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Run on {{ date }}</title>
+    <link rel="icon" type="image/x-icon" href="/static/bballfavicon.ico">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
@@ -18,7 +19,7 @@
         }
         th, td {
             padding: 10px;
-            border: 1px solid black;
+            border: 1px blue;
         }
         th {
             background-color: #f4f4f4;
@@ -82,8 +83,10 @@
             <thead>
                 <tr>
                     {% for col in player_day[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
+                        {% if col != 'has_img' %}
+                            <th title="{{ main_tooltip.get(col, '') }}">
+                                {{ col }}</th>
+                        {% endif %}
                     {% endfor %}
                 </tr>
             </thead>
@@ -91,13 +94,23 @@
                 {% for row in player_day %}
                     <tr>
                         {% for key, value in row.items() %}
-                                {% if key == 'Player' %}
-                                    <td>
-                                        <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
-                                    </td>
-                                {% else %}
-                                    <td>{{ value }}</td>
-                                {% endif %}
+                            {% if key != 'has_img' %}
+                                <td class="{% if key == 'Player' %}no-wrap{% endif %}">
+                                    {% if key == "Player" %}
+                                        <a href="{{ url_for('player_page', player_name=row['Player']) }}">
+                                            {% if row.has_img %}
+                                                <img
+                                                    src="{{ url_for('static', filename='player_pics/' ~ row['Player'] ~ '.png') }}"
+                                                    alt="{{ row['Player'] }}"
+                                                    style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
+                                            {% endif %}
+                                            {{ row['Player'] }}
+                                        </a>
+                                    {% else %}
+                                        {{ value }}
+                                    {% endif %}
+                                </td>
+                            {% endif %}
                         {% endfor %}
                     </tr>
                 {% endfor %}

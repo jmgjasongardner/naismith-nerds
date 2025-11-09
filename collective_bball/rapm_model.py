@@ -2,6 +2,7 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
 import numpy as np
 import polars as pl
+from datetime import date
 import scipy.sparse as sp
 from sklearn.linear_model import Ridge
 from typing import Tuple, List
@@ -29,7 +30,7 @@ class RAPMModel:
     def train_final_model(
         self, games: pl.DataFrame, tiers: pl.DataFrame, args=None, best_lambda=None
     ) -> Tuple[pl.DataFrame, int]:
-        y, players, sparse_matrix, dense_matrix = self.preprocess_data(
+        y, players, sparse_matrix, dense_matrix, decay_weights = self.preprocess_data(
             games=games, tiers=tiers, args=args
         )
         player_to_idx = {
@@ -38,7 +39,9 @@ class RAPMModel:
 
         # Train final model on all data with the best lambda
         model = Ridge(alpha=best_lambda, fit_intercept=False)
-        model.fit(sparse_matrix, y)
+        model.fit(sparse_matrix, y,
+                  sample_weight=decay_weights.ravel()
+                  )
 
         # Get player ratings
         ratings = {player: model.coef_[i] for player, i in player_to_idx.items()}
@@ -58,7 +61,7 @@ class RAPMModel:
         # Store results for each lambda
         results = []
 
-        y, players, sparse_matrix, dense_matrix = self.preprocess_data(
+        y, players, sparse_matrix, dense_matrix, decay_weights = self.preprocess_data(
             games=games, tiers=tiers, args=args
         )
 
@@ -79,7 +82,9 @@ class RAPMModel:
 
                     # Train Ridge model with current lambda
                     model = Ridge(alpha=lambda_val, fit_intercept=False)
-                    model.fit(X_train, y_train)
+                    model.fit(X_train, y_train,
+                              sample_weight=decay_weights.ravel()[train_idx]
+                              )
 
                     # Predict on validation set
                     y_pred = model.predict(X_val)
@@ -87,9 +92,9 @@ class RAPMModel:
                     # Calculate RMSE for the fold
                     fold_rmse.append(np.sqrt(mean_squared_error(y_val, y_pred)))
 
-            # Calculate the average RMSE for this lambda
-            avg_rmse = np.mean(fold_rmse)
-            results.append((lambda_val, avg_rmse))
+        # Calculate the average RMSE for this lambda
+        avg_rmse = np.mean(fold_rmse)
+        results.append((lambda_val, avg_rmse))
 
         # Find the lambda with the lowest average RMSE
         best_lambda = min(results, key=lambda x: x[1])
@@ -99,7 +104,8 @@ class RAPMModel:
 
     def preprocess_data(
         self, games: pl.DataFrame, tiers=None, args=None
-    ) -> Tuple[np.ndarray, pl.DataFrame, sp.coo_matrix, np.ndarray]:
+    ) -> Tuple[np.ndarray, pl.DataFrame, sp.coo_matrix, np.ndarray, np.ndarray]:
+
         if args.use_tier_data:
             games = self.sub_tier_data(
                 games=games,
@@ -196,7 +202,18 @@ class RAPMModel:
 
         dense_matrix = sparse_matrix.toarray()
 
-        return y, players, sparse_matrix, dense_matrix
+        # Calculate time-decay weights
+        days_since_today = (
+            games
+            .with_columns(pl.col("game_date").str.strptime(pl.Date, "%Y-%m-%d"))
+            .with_columns(((pl.lit(date.today()) - pl.col("game_date")).dt.total_days()).alias("days_since_today"))
+            .select("days_since_today")
+            .to_numpy()
+        )
+        lam = np.log(2) / args.decay_half_life
+        decay_weights = np.exp(-lam * days_since_today)
+
+        return y, players, sparse_matrix, dense_matrix, decay_weights
 
     @staticmethod
     def sub_tier_data(

@@ -10,7 +10,7 @@ def log_memory_usage():
     # logging.debug(f"Memory usage: {memory_info.rss / 1024 ** 2} MB")
 
 
-def format_stats_for_site(df: pl.DataFrame):
+def format_stats_for_site(df: pl.DataFrame, does_player_image_exist_row=False):
     # logging.debug(f"In format_stats_for_site")
     """Rename columns and round numeric values before passing to Jinja."""
     column_map = {
@@ -76,6 +76,8 @@ def format_stats_for_site(df: pl.DataFrame):
         "rating_opp": "Opp Rating",
         "opp_teammate_quality": "Opp Teammate Quality",
         "other_8_players_quality_diff": "Other 8 Players Quality Diff",
+        "gospel_as_teammates": "Teammates Result vs Expectation",
+        "gospel_vs_opponent": "Result vs Expectation vs Opponent",
         "teammate": "Teammate",
         "rating_teammate": "Teammate Rating",
         "pairing": "Pairing",
@@ -134,6 +136,12 @@ def format_stats_for_site(df: pl.DataFrame):
     output_dict = df.to_dicts()  # This gives you a list of dictionaries
     # logging.debug(f"dict in web_data_loader: {output_dict}")
     log_memory_usage()
+
+    if does_player_image_exist_row:
+        for row in output_dict:
+            player_name = row["Player"]
+            img_path = os.path.join("static", "player_pics", f"{player_name}.png")
+            row["has_img"] = os.path.exists(img_path)
 
     return output_dict
 

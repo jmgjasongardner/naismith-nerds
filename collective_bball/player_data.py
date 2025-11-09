@@ -744,6 +744,10 @@ class PlayerData:
                 (pl.col("other_9_players_quality_diff") - pl.col("rating_teammate"))
                 .round(3)
                 .alias("other_8_players_quality_diff"),
+            ).with_columns(
+                (pl.col("score_diff") - pl.col("other_8_players_quality_diff"))
+                .round(3)
+                .alias("gospel_as_teammates")
             )
             .drop("other_9_players_quality_diff")
         )
@@ -769,6 +773,10 @@ class PlayerData:
                 (pl.col("other_9_players_quality_diff") + pl.col("rating_opp"))
                 .round(3)
                 .alias("other_8_players_quality_diff"),
+            ).with_columns(
+                (pl.col("score_diff") - pl.col("other_8_players_quality_diff"))
+                .round(3)
+                .alias("gospel_vs_opponent")
             )
             .drop("other_9_players_quality_diff")
         )
@@ -796,6 +804,7 @@ class PlayerData:
                 pl.mean("teammate_quality").round(3),
                 pl.mean("opp_quality").round(3),
                 pl.mean("other_8_players_quality_diff").round(3),
+                pl.mean("gospel_as_teammates").round(3),
             )
             .sort("wins", "wins_over_exp", "pairing", descending=[True, True, False])
         )
@@ -818,6 +827,7 @@ class PlayerData:
                 pl.mean("opp_quality").round(3),
                 pl.mean("opp_teammate_quality").round(3),
                 pl.mean("other_8_players_quality_diff").round(3),
+                pl.mean("gospel_vs_opponent").round(3),
             )
             .sort(
                 "wins",
