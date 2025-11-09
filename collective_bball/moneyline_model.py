@@ -37,7 +37,6 @@ class BettingGames:
 
         games_with_spreads = (
             games.join(games_long, on=["game_date", "game_num"], how="inner")
-            .with_columns((pl.col("b_score") - pl.col("a_score")).alias("score_diff"))
             .with_columns(
                 (pl.col("score_diff") - pl.col("spread"))
                 .round(3)

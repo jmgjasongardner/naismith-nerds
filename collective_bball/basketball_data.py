@@ -1,7 +1,12 @@
 import polars as pl
 import duckdb
 
-from collective_bball.etl import load_data, clean_games_data
+from collective_bball.etl import (
+    load_data,
+    clean_games_data,
+    compute_clock,
+    compute_starting_poss,
+)
 from collective_bball.player_data import PlayerData
 from collective_bball.rapm_model import RAPMModel
 from collective_bball.moneyline_model import BettingGames
@@ -34,10 +39,74 @@ class BasketballData:
         """Cleans raw game data into structured format."""
         self.games = clean_games_data(self.raw_games_data)
 
+    def compute_clock_and_starting_poss(self):
+        """Uses logic to tease out whether clock was used and starting possession of a game."""
+        self.games = compute_clock(self.games)
+        self.games = compute_starting_poss(self.games)
+
     def compute_player_stats(self):
         """Creates PlayerData object and computes player stats."""
         player_stats_obj = PlayerData(self.games, self.player_data)
         self.player_stats = player_stats_obj.compute_stats()
+        self.player_games = player_stats_obj.assemble_player_games()
+
+    def compute_fatigue(self):
+        """Creates two new variables to compute fatigue and warmth effects per game"""
+
+        game_info_by_team = (
+            self.player_games.group_by(pl.col(["game_date", "game_num", "team"]))
+            .agg(
+                (pl.sum("player_day_game_num") - 5).alias("team_total_games_played"),
+                pl.sum("games_waited"),
+                pl.sum("consecutive_games"),
+            )
+            .sort("game_date", "game_num", "team", descending=[True, True, True])
+            .with_columns(
+                [
+                    pl.col("team_total_games_played").cast(pl.Int32),
+                    pl.col("games_waited").cast(pl.Int32),
+                    pl.col("consecutive_games").cast(pl.Int32),
+                ]
+            )
+        )
+
+        game_info_by_game = (
+            game_info_by_team.pivot(
+                "team",
+                index=["game_date", "game_num"],
+                values=["team_total_games_played", "games_waited", "consecutive_games"],
+            )
+            .with_columns(
+                (
+                    (
+                        pl.col("team_total_games_played_A")
+                        - pl.col("team_total_games_played_B")
+                    )
+                    / 5
+                ).alias("total_games_played_diff"),
+                ((pl.col("games_waited_A") - pl.col("games_waited_B")) / 5).alias(
+                    "consecutive_games_waited_diff"
+                ),
+                (
+                    (pl.col("consecutive_games_A") - pl.col("consecutive_games_B")) / 5
+                ).alias("consecutive_games_played_diff"),
+            )
+            .with_columns(
+                (pl.col("total_games_played_diff") ** 2).alias(
+                    "total_games_played_diff_sq"
+                ),
+                (pl.col("consecutive_games_waited_diff") ** 2).alias(
+                    "consecutive_games_waited_diff_sq"
+                ),
+                (pl.col("consecutive_games_played_diff") ** 2).alias(
+                    "consecutive_games_played_diff_sq"
+                ),
+            )
+        )
+
+        self.games = self.games.join(game_info_by_game, on=["game_date", "game_num"])
+
+        return self.games
 
     def compute_rapm(self, rapm_model: RAPMModel, date_to_filter=None):
         """Computes RAPM ratings and updates player data."""
@@ -89,7 +158,7 @@ class BasketballData:
     def assemble_player_data(self):
         """Combines games & player data into one row per player-game."""
         player_data_instance = PlayerData(self.games, self.player_data)
-        self.player_games = player_data_instance.assemble_player_games()
+        self.player_games = player_data_instance.add_ratings_to_player_games()
         self.player_days = player_data_instance.assemble_player_days()
         self.player_data = (
             player_data_instance.combine_player_stats_with_games_groupings()

@@ -492,7 +492,7 @@
     <div class="tab-content glossary">
         <h2>Glossary and Explanation</h2>
         <h3>So what exactly am I looking at?</h3>
-        <p>Good question!  In short, everything here is derived from the score difference of each game.  The <i>only</i> information going into the model is the final score difference, and the ten players on the court.</p>
+        <p>Good question!  In short, everything here is derived from the score difference of each game.  The <i>only</i> information going into the model is the final score difference, the ten players on the court, and, as of November 2025, a couple other variables accounting for fatigue/rest based on number of games on/off by team, and also which team had first possession.</p>
         <p>Essentially, read it as "Player X has a rating of 1.5, so he makes his team 1.5 points better than an average player replacing him when on the court."</p>
         <h3>How did these ratings come to be?</h3>
         <p>Consider a game where a player is on the court with four below average players (say, each worth -1 points), and against five slightly above average players (each worth 0.5).  The ratings of the opponent sum to 2.5, and the teammates sum to -4.  Off the bat, this player is playing at an expected -6.5 point difference.  So, if he were to "cover" that spread, as in win the game, or lose by six or less, than he will have made a <b>positive contribution</b> and it will reflect positively on his rating. </p>
@@ -595,7 +595,7 @@
                     ]
                 }),
                 gamesTable: $("#gamesTable").DataTable({
-                    "order": [[13, "desc"], [14, "desc"]], // Sort by Game Date and Game Nums descending
+                    "order": [[14, "desc"], [15, "desc"]], // Sort by Game Date and Game Nums descending
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ games",
                         "lengthMenu": 'Show <span>_MENU_</span> games'

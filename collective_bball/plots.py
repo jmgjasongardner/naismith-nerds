@@ -15,13 +15,13 @@ class Plots:
             "SELECT * FROM ratings WHERE player NOT ILIKE '%tier%'"
         ).fetch_df()
 
-        df_pandas["days_since_graduation"] = (
-            df_pandas.groupby("player")["player"].transform("count")
-        )
+        df_pandas["days_since_graduation"] = df_pandas.groupby("player")[
+            "player"
+        ].transform("count")
 
         df_pandas = df_pandas.sort_values(
             by=["days_since_graduation", "player", "date"],
-            ascending=[False, False, True]
+            ascending=[False, False, True],
         )
 
         # Ensure 'date' is a datetime object for sorting
@@ -85,10 +85,7 @@ class Plots:
             f"SELECT * FROM ratings WHERE player = '{player_name}'"
         ).fetch_df()
 
-        df_pandas = df_pandas.sort_values(
-            by=["date"],
-            ascending=[True]
-        )
+        df_pandas = df_pandas.sort_values(by=["date"], ascending=[True])
 
         # Ensure 'date' is a datetime object for sorting
         df_pandas["date"] = pd.to_datetime(df_pandas["date"])
@@ -102,36 +99,55 @@ class Plots:
 
         return fig
 
-    def plot_player_rolling_avg(self, player_name: str, player_games: pl.DataFrame, rolling_games=20):
+    def plot_player_rolling_avg(
+        self, player_name: str, player_games: pl.DataFrame, rolling_games=20
+    ):
         df = (
-            player_games
-            .filter(pl.col("player") == player_name)
-            .select([
-                "player_game_num",
-                "game_date",
-                "result_vs_expectation",
-                "other_9_players_quality_diff",
-                "teammate_quality",
-                "opp_quality",
-                "winner"
-            ])
+            player_games.filter(pl.col("player") == player_name)
+            .select(
+                [
+                    "player_game_num",
+                    "game_date",
+                    "result_vs_expectation",
+                    "other_9_players_quality_diff",
+                    "teammate_quality",
+                    "opp_quality",
+                    "winner",
+                ]
+            )
             .sort("player_game_num")
-            .with_columns([
-                # rolling averages for all metrics
-                pl.col("result_vs_expectation").rolling_mean(window_size=rolling_games).alias(
-                    "rolling_result_vs_expectation"),
-                pl.col("other_9_players_quality_diff").rolling_mean(window_size=rolling_games).alias(
-                    "rolling_other_9_players_quality_diff"),
-                pl.col("teammate_quality").rolling_mean(window_size=rolling_games).alias("rolling_teammate_quality"),
-                pl.col("opp_quality").rolling_mean(window_size=rolling_games).alias("rolling_opp_quality"),
-                pl.col("winner").rolling_mean(window_size=rolling_games).alias("rolling_winner"),
-                # start date of rolling window
-                pl.col("game_date").shift(rolling_games - 1).alias("rolling_start_date")
-            ])
-            .with_columns([
-                # rolling date range for tooltip
-                (pl.col("rolling_start_date") + " to " + pl.col("game_date")).alias("rolling_date_range")
-            ])
+            .with_columns(
+                [
+                    # rolling averages for all metrics
+                    pl.col("result_vs_expectation")
+                    .rolling_mean(window_size=rolling_games)
+                    .alias("rolling_result_vs_expectation"),
+                    pl.col("other_9_players_quality_diff")
+                    .rolling_mean(window_size=rolling_games)
+                    .alias("rolling_other_9_players_quality_diff"),
+                    pl.col("teammate_quality")
+                    .rolling_mean(window_size=rolling_games)
+                    .alias("rolling_teammate_quality"),
+                    pl.col("opp_quality")
+                    .rolling_mean(window_size=rolling_games)
+                    .alias("rolling_opp_quality"),
+                    pl.col("winner")
+                    .rolling_mean(window_size=rolling_games)
+                    .alias("rolling_winner"),
+                    # start date of rolling window
+                    pl.col("game_date")
+                    .shift(rolling_games - 1)
+                    .alias("rolling_start_date"),
+                ]
+            )
+            .with_columns(
+                [
+                    # rolling date range for tooltip
+                    (pl.col("rolling_start_date") + " to " + pl.col("game_date")).alias(
+                        "rolling_date_range"
+                    )
+                ]
+            )
         )
 
         # Convert to pandas
@@ -145,12 +161,11 @@ class Plots:
                 "rolling_other_9_players_quality_diff",
                 "rolling_teammate_quality",
                 "rolling_opp_quality",
-                "rolling_winner"
+                "rolling_winner",
             ],
             var_name="Metric",
-            value_name="Rolling Value"
+            value_name="Rolling Value",
         )
-
 
         # Map the metric names to nicer labels
         metric_labels = {
@@ -158,7 +173,7 @@ class Plots:
             "rolling_other_9_players_quality_diff": "Other 9 Players Quality Diff",
             "rolling_teammate_quality": "Teammate Quality",
             "rolling_opp_quality": "Opponent Quality",
-            "rolling_winner": "Winning Pct"
+            "rolling_winner": "Winning Pct",
         }
 
         # Replace Metric names in the melted DataFrame
@@ -174,9 +189,9 @@ class Plots:
             labels={
                 "player_game_num": "Player Game Number",
                 "rolling_date_range": "Dates",
-                "Rolling Value": "Rolling Average"
+                "Rolling Value": "Rolling Average",
             },
-            title=f"{player_name}: {rolling_games}-Game Rolling Averages"
+            title=f"{player_name}: {rolling_games}-Game Rolling Averages",
         )
 
         fig.update_layout(
@@ -184,9 +199,7 @@ class Plots:
                 text=f"{player_name}: {rolling_games}-Game Rolling Averages<br><sup>Double click on a metric to isolate it click to add others. Draw area to zoom.</sup>",
             ),
             xaxis_title="Player Game Number",
-            yaxis_title="Rolling Values"
+            yaxis_title="Rolling Values",
         )
 
         return fig
-
-
