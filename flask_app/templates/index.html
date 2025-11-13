@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Naismith Nerds</title>
+    <link rel="icon" type="image/x-icon" href="/static/bballfavicon.ico">
 
     <!-- Include jQuery and DataTables.js -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -78,6 +79,24 @@
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
+        /* Team Builder row colors override zebra striping */
+        tr.team1 td, tr.team2 td, tr.on td, tr.off td {
+          background-color: inherit !important;
+        }
+
+        tr.team1 {
+          background-color: #e0f7fa !important; /* light cyan */
+        }
+        tr.team2 {
+          background-color: #fce4ec !important; /* light pink */
+        }
+        tr.on {
+          background-color: #f1f8e9 !important; /* light green */
+        }
+        tr.off {
+          background-color: #f5f5f5 !important; /* light gray */
+        }
+
         .tabs {
             display: flex;
             justify-content: left;
@@ -160,6 +179,22 @@
             width: 100% !important; /* Ensure the plot itself takes up the full width */
             height: 100% !important; /* Set the plot's height to fill the container */
         }
+        #playerSearch {
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          font-size: 1em;
+        }
+        #playerSearch:focus {
+          outline: none;
+          border-color: #007bff;
+          box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+        }
+        #minGamesPlayed {
+            display: none;
+        }
+        .no-wrap {
+            white-space: nowrap;
+        }
 
     </style>
 </head>
@@ -175,7 +210,7 @@
         <p>Stats from thrice-weekly semi-formal pickup basketball in SE Washington, DC beginning January 2025</p>
         <p>Additional credit to Jack Stubblefield for sous-stat-taking, data validation, and further ideas</p>
 
-        <p><a href="http://www.pierrewhatley.com">Support Pierre Whatley for Congress!</a></p>
+        <p><a href="http://www.pierrewhatley.com">Support Collective Hooper Pierre Whatley for Congress!</a></p>
     </div>
 
     <!-- Social Media Icons -->
@@ -198,6 +233,7 @@
     <!-- Navigation Tabs -->
     <div class="tabs">
         <div class="tab active" data-target="stats">Stats</div>
+        <div class="tab" data-target="team_builder">Team Builder</div>
         <div class="tab" data-target="ratings">Ratings</div>
         <div class="tab" data-target="games">Games</div>
         <div class="tab" data-target="player_days">Player Days</div>
@@ -209,7 +245,103 @@
 
     <input id="minGamesPlayed" type="number" placeholder="Filter Min Games" oninput="filterByMinGamesPlayed()">
 
-    <!-- Tab Content -->
+    <!-- TEAM BUILDER CONTENT (replace/merge into your template) -->
+
+    <div class="tab-content team_builder">
+      <h2>Team Builder</h2>
+        <h3>Select any combo of 2, 4, 6, 8, or 10 players and either assign them to specific teams, or generate teams based on rating.</h3>
+
+      <!-- Controls -->
+      <div style="margin-bottom: 10px; display:flex; gap:8px; justify-content:center; align-items:center;">
+        <input
+          type="text"
+          id="playerSearch"
+          placeholder="Search player name..."
+          style="padding: 6px; width: 220px;"
+        >
+        <button id="generateBtn" class="btn">Generate Teams</button>
+        <button id="resetBtn" class="btn">Reset Teams</button>
+        <button id="returnBtn" class="btn" style="display:none;">Return to Team Selection</button>
+        <div id="comboCount" style="margin-left: 12px; font-weight:600;"></div>
+      </div>
+
+      <!-- Text headers -->
+      <div id="numplayers" style="margin-top: 1em; text-align:center;">
+          <strong>Number of Players:</strong> <span id="numPlayersOnCourt">0</span>
+      </div>
+      <div id="teambuilderratings" style="margin-top: 0.5em; text-align:center;">
+          <strong>Team 1 Rating:</strong> <span id="team1Total">0</span> |
+          <strong>Team 2 Rating:</strong> <span id="team2Total">0</span> |
+          <strong>Unassigned ON Rating:</strong> <span id="onTotal">0</span>
+      </div>
+
+      <div id="spread" style="margin-top: 0.5em; text-align:center;">
+          <strong>Point Spread (T1 − T2):</strong> <span id="spreadTotal">0</span>
+      </div>
+
+      <!-- SELECTION VIEW -->
+      <div id="selectionView" style="margin-top: 1em;">
+        {% if ratings %}
+        <table id="teamBuilderTable" style="min-width:60%; margin:auto;">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Rating</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in ratings %}
+            <tr data-player="{{ row['Player']|e }}" data-rating="{{ row['Rating'] }}">
+              <td class="player-name">{{ row["Player"] }}</td>
+              <td class="rating">{{ row["Rating"] }}</td>
+              <td>
+                <select class="status-select">
+                  <option value="OFF">OFF</option>
+                  <option value="ON">ON</option>
+                  <option value="Team 1">Team 1</option>
+                  <option value="Team 2">Team 2</option>
+                </select>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <p>No player ratings available.</p>
+        {% endif %}
+      </div>
+
+      <!-- COMBINATIONS VIEW (initially hidden) -->
+      <div id="combosView" style="display:none; margin-top:1em;">
+        <div style="text-align:center; margin-bottom: 8px;">
+          <strong>Generated team combinations</strong>
+        </div>
+
+        <div style="overflow:auto; max-height:60vh; border:1px solid #ddd; padding:8px; margin: 0 16px;">
+          <table id="combosTable" style="width:100%; border-collapse: collapse;">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Team 1 Players</th>
+                <th>Team 1 Rating</th>
+                <th>Team 2 Players</th>
+                <th>Team 2 Rating</th>
+                <th>Spread (T1 − T2)</th>
+                <th>|Spread|</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+
+
+
+
     <div class="tab-content stats active">
         <h2>Stats</h2>
         <h3>From {{ num_days }} Runs Since January 11, 2025</h3>
@@ -227,9 +359,17 @@
                 {% for row in stats %}
                     <tr>
                         {% for key, value in row.items() %}
-                            <td>
+                            <td class="{% if key in ['Player', 'Most Recent Game'] %}no-wrap{% endif %}">
                                 {% if key == "Player" %}
-                                    <a href="{{ url_for('player_page', player_name=row['Player']) }}">{{ value }}</a>
+                                    <a href="{{ url_for('player_page', player_name=row['Player']) }}">
+                                        {% if row.has_img %}
+                                            <img
+                                                src="{{ url_for('static', filename='player_pics/' ~ row['Player'] ~ '.png') }}"
+                                                alt="{{ row['Player'] }}"
+                                                style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
+                                        {% endif %}
+                                        {{ row['Player'] }}
+                                    </a>
                                 {% elif key == "Most Recent Game" %}
                                     <a href="{{ url_for('date_page', date=value) }}">
                                         {{ value }}
@@ -379,11 +519,24 @@
                     {% endfor %}
                 </tr>
             </thead>
-             <tbody>
+            <tbody>
                 {% for row in teammates %}
                     <tr>
                         {% for key, value in row.items() %}
-                            <td>{{ value }}</td>
+                            <td class="{% if key in ['Pairing', 'Most Recent Game'] %}no-wrap{% endif %}">
+                                {% if key == "Pairing" %}
+                                    {% set p1, p2 = value.split(" - ") %}
+                                        <a href="{{ url_for('player_page', player_name=p1) }}">{{ p1 }}</a>
+                                        &nbsp;–&nbsp;
+                                        <a href="{{ url_for('player_page', player_name=p2) }}">{{ p2 }}</a>
+                                {% elif key == "Most Recent Game" %}
+                                    <a href="{{ url_for('date_page', date=value) }}">
+                                        {{ value }}
+                                    </a>
+                                {% else %}
+                                    {{ value }}
+                                {% endif %}
+                            </td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -407,21 +560,19 @@
                 {% for row in opponents %}
                     <tr>
                         {% for key, value in row.items() %}
-                            {% if key in ["Player", "Opp"]  %}
-                                <td>
+                            <td class="{% if key == 'Most Recent Game' %}no-wrap{% endif %}">
+                                {% if key in ["Player", "Opp"] %}
                                     <a href="{{ url_for('player_page', player_name=value) }}">
                                         {{ value }}
                                     </a>
-                                </td>
-                            {% elif key == "Most Recent Game" %}
-                                <td>
+                                {% elif key == "Most Recent Game" %}
                                     <a href="{{ url_for('date_page', date=value) }}">
                                         {{ value }}
                                     </a>
-                                </td>
-                            {% else %}
-                                <td>{{ value }}</td>
-                            {% endif %}
+                                {% else %}
+                                    {{ value }}
+                                {% endif %}
+                            </td>
                         {% endfor %}
                     </tr>
                 {% endfor %}
@@ -556,6 +707,7 @@
             let allTables = {
                 statsTable: $("#statsTable").DataTable({
                     "order": [[3, "desc"], [6, "desc"]], // Sort by Wins and Win Pct descending
+                    "pageLength": 25,
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ players",
                         "lengthMenu": "Show _MENU_ players "
@@ -576,6 +728,7 @@
                 }),
                 ratingsTable: $("#ratingsTable").DataTable({
                     "order": [[1, "desc"]], // Sort by Rating descending
+                    "pageLength": 25,
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ players",
                         "lengthMenu": "Show _MENU_ players"
@@ -596,6 +749,7 @@
                 }),
                 gamesTable: $("#gamesTable").DataTable({
                     "order": [[14, "desc"], [15, "desc"]], // Sort by Game Date and Game Nums descending
+                    "pageLength": 25,
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ games",
                         "lengthMenu": 'Show <span>_MENU_</span> games'
@@ -613,6 +767,7 @@
                 }),
                 playerDaysTable: $("#playerDaysTable").DataTable({
                     "order": [[1, "desc"], [4, "desc"], [6, "desc"], [0, "desc"]], // Sort by Game Date, Wins, Win%, Name descending
+                    "pageLength": 25,
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ player-days",
                         "lengthMenu": 'Show <span>_MENU_</span> player-days'
@@ -633,6 +788,7 @@
                 }),
                 teammatesTable: $("#teammatesTable").DataTable({
                     "order": [[3, "desc"], [8, "desc"]], // Sort by Wins, then Wins Over Exp descending
+                    "pageLength": 25,
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ teammate combos",
                         "lengthMenu": 'Show _MENU_ teammate combos'
@@ -653,6 +809,7 @@
                 }),
                 opponentsTable: $("#opponentsTable").DataTable({
                     "order": [[4, "desc"], [9, "desc"]], // Sort by Wins, then Wins Over Exp descending
+                    "pageLength": 25,
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ opponent combos",
                         "lengthMenu": 'Show _MENU_ opponent combos'
@@ -693,6 +850,7 @@
                 }),
                 daysTable: $("#daysTable").DataTable({
                     "order": [[0, "desc"]], // Sort by Game Date
+                    "pageLength": 25,
                     "language": {
                         "info": "Showing _START_ to _END_ of _TOTAL_ days",
                         "lengthMenu": 'Show <span>_MENU_</span> days'
@@ -715,11 +873,20 @@
 
             // Tab functionality
             $(".tab").click(function() {
-                var target = $(this).data("target");
-                $(".tab").removeClass("active");
-                $(this).addClass("active");
+                var target = $(this).data("target");  // e.g., "stats"
+                $(".tab").removeClass("active");       // deactivate all tabs
+                $(this).addClass("active");            // activate clicked tab
                 $(".tab-content").removeClass("active");
-                $("." + target).addClass("active");
+                $("." + target).addClass("active");    // show tab-content.<target>
+
+                // Show/hide minGamesPlayed input
+                const tabsWithFilter = ["stats", "player_days", "player_pairings"];
+
+                if (tabsWithFilter.includes(target)) {
+                    $("#minGamesPlayed").show();
+                } else {
+                    $("#minGamesPlayed").hide();
+                }
             });
 
             // Manually trigger export when clicking the button
@@ -789,6 +956,264 @@
             });
         });
     </script>
+
+    <!-- Scripting -->
+    <script>
+    $(document).ready(function() {
+
+      // --- Utilities ---
+      function parseFloatSafe(x) {
+        const v = parseFloat(x);
+        return Number.isFinite(v) ? v : 0;
+      }
+
+      function updateSummary() {
+        let team1 = 0, team2 = 0, on = 0, spread = 0, numPlayers = 0;
+        $("#teamBuilderTable tbody tr").each(function() {
+          const rating = parseFloatSafe($(this).data("rating") ?? $(this).find(".rating").text());
+          const status = $(this).find(".status-select").val();
+          if (status === "Team 1") {
+            team1 += rating;
+            spread += rating;
+            numPlayers++;
+          } else if (status === "Team 2") {
+            team2 += rating;
+            spread -= rating;
+            numPlayers++;
+          } else if (status === "ON") {
+            on += rating;
+            numPlayers++;
+          }
+          // OFF ignored
+        });
+        $("#team1Total").text(team1.toFixed(2));
+        $("#team2Total").text(team2.toFixed(2));
+        $("#onTotal").text(on.toFixed(2));
+        $("#numPlayersOnCourt").text(numPlayers);
+        $("#spreadTotal").text(spread.toFixed(2));
+      }
+
+      // status -> row color
+      function applyRowColor(row, status) {
+        row.removeClass("team1 team2 on off");
+        if (status === "Team 1") row.addClass("team1");
+        else if (status === "Team 2") row.addClass("team2");
+        else if (status === "ON") row.addClass("on");
+        else row.addClass("off");
+      }
+
+      // Attach change listener to existing selects (and future ones via delegation)
+      $(document).on("change", ".status-select", function() {
+        const val = $(this).val();
+        const row = $(this).closest("tr");
+        applyRowColor(row, val);
+        updateSummary();
+      });
+
+      // Initialize colors for any pre-rendered selects (if you ever preset)
+      $("#teamBuilderTable tbody tr").each(function() {
+        const status = $(this).find(".status-select").val();
+        applyRowColor($(this), status);
+      });
+      updateSummary();
+
+      // --- Search bar ---
+      $("#playerSearch").on("keyup", function() {
+        const filter = $(this).val().toLowerCase().trim();
+        $("#teamBuilderTable tbody tr").each(function() {
+          const name = $(this).find("td.player-name").text().toLowerCase();
+          $(this).toggle(name.includes(filter));
+        });
+      });
+
+      // --- Reset button ---
+      $("#resetBtn").on("click", function() {
+        $("#teamBuilderTable tbody tr").each(function() {
+          $(this).find(".status-select").val("OFF").trigger("change");
+        });
+        updateSummary();
+      });
+
+      // --- Combinatorics helper (generate k-combinations of array indices) ---
+      function combinations(arr, k) {
+        const out = [];
+        const n = arr.length;
+        if (k < 0 || k > n) return out;
+        const combo = Array.from({length: k}, (_, i) => i);
+        while (true) {
+          out.push(combo.map(i => arr[i]));
+          let i = k - 1;
+          while (i >= 0 && combo[i] === i + n - k) i--;
+          if (i < 0) break;
+          combo[i]++;
+          for (let j = i + 1; j < k; j++) combo[j] = combo[j - 1] + 1;
+        }
+        return out;
+      }
+
+      // --- Generate Teams logic ---
+      function generateTeams() {
+        // Read current players and statuses
+        const rows = [];
+        $("#teamBuilderTable tbody tr:visible").each(function() { // visible allows filtering compatibility
+          const $r = $(this);
+          const name = $r.find("td.player-name").text();
+          const rating = parseFloatSafe($r.data("rating") ?? $r.find(".rating").text());
+          const status = $r.find(".status-select").val();
+          rows.push({ name, rating, status });
+        });
+
+        // Filter to selected players (OFF are excluded)
+        const locked1 = rows.filter(r => r.status === "Team 1");
+        const locked2 = rows.filter(r => r.status === "Team 2");
+        const onPlayers = rows.filter(r => r.status === "ON");
+
+        const locked1Count = locked1.length;
+        const locked2Count = locked2.length;
+        const onCount = onPlayers.length;
+        const totalSelected = locked1Count + locked2Count + onCount;
+
+        // Validate total selected is 2,4,6,8,10
+        if (![2,4,6,8,10].includes(totalSelected)) {
+          alert("Invalid selection: Total selected players in the gym (Team1 + Team2 + ON) must be 2, 4, 6, 8, or 10. Currently selected: " + totalSelected);
+          return;
+        }
+
+        const teamSize = totalSelected / 2;
+
+        // Validate locked players don't exceed team size
+        if (locked1Count > teamSize || locked2Count > teamSize) {
+          alert("Invalid selection: Too many players are on one team for a gym with " + totalSelected + " players.");
+          return;
+        }
+
+        // required number of additional players to add to Team1 from ON group
+        const requireFromOnForTeam1 = teamSize - locked1Count;
+        const requireFromOnForTeam2 = teamSize - locked2Count;
+        if (requireFromOnForTeam1 + requireFromOnForTeam2 !== onCount) {
+          // This condition should hold; if not, it's an internal check failure
+          alert("Internal mismatch in ON player allocation. Please check selections.");
+          return;
+        }
+
+        // If requireFromOnForTeam1 is out of bounds, invalid
+        if (requireFromOnForTeam1 < 0 || requireFromOnForTeam1 > onCount) {
+          alert("Invalid ON allocation. Please check locked players and ON players.");
+          return;
+        }
+
+        // Create list of ON indices
+        const onIndices = onPlayers.map((p, idx) => idx);
+
+        // When no locked players on either side, we need to avoid mirrored duplicates (S vs complement).
+        // We'll enforce that the smallest-index ON player is always included in Team1 to cut duplicates in half (126 instead of 252 teams).
+        const avoidMirrors = (locked1Count === 0 && locked2Count === 0 && onCount > 0);
+
+        // Generate combinations of which ON players go to Team1 (choose requireFromOnForTeam1 out of onCount)
+        let chosenCombos = combinations(onIndices, requireFromOnForTeam1);
+
+        // If avoiding mirrors, filter combos that do not include the minimal ON index
+        if (avoidMirrors && requireFromOnForTeam1 > 0) {
+          const minIdx = Math.min(...onIndices);
+          chosenCombos = chosenCombos.filter(c => c.includes(minIdx));
+        }
+
+        // Build final combos array
+        const combos = [];
+        chosenCombos.forEach((comboIndices) => {
+          // Team1 players = locked1 + ON players whose index in comboIndices
+          const team1Players = locked1.map(p => ({...p}));
+          const team2Players = locked2.map(p => ({...p}));
+
+          // Add ON players appropriately
+          onPlayers.forEach((p, idx) => {
+            if (comboIndices.includes(idx)) team1Players.push({...p});
+            else team2Players.push({...p});
+          });
+
+          // Compute ratings
+          const team1Rating = team1Players.reduce((s,p) => s + p.rating, 0);
+          const team2Rating = team2Players.reduce((s,p) => s + p.rating, 0);
+          const spread = team1Rating - team2Rating;
+          combos.push({
+            team1Players,
+            team2Players,
+            team1Rating,
+            team2Rating,
+            spread,
+            absSpread: Math.abs(spread)
+          });
+        });
+
+        // Sort by abs(spread) ascending then by spread ascending
+        combos.sort((a,b) => a.absSpread - b.absSpread || a.spread - b.spread);
+
+        // Render combos table
+        const $tbody = $("#combosTable tbody").empty();
+        combos.forEach((c, i) => {
+          const t1Names = c.team1Players.map(x => x.name).join(", ");
+          const t2Names = c.team2Players.map(x => x.name).join(", ");
+          const row = $("<tr></tr>");
+          row.append($("<td></td>").text(i+1));
+          row.append($("<td></td>").text(t1Names));
+          row.append($("<td></td>").text(c.team1Rating.toFixed(2)));
+          row.append($("<td></td>").text(t2Names));
+          row.append($("<td></td>").text(c.team2Rating.toFixed(2)));
+          row.append($("<td></td>").text(c.spread.toFixed(2)));
+          row.append($("<td></td>").text(c.absSpread.toFixed(2)));
+          $tbody.append(row);
+        });
+
+        $("#comboCount").text("Combinations: " + combos.length);
+        // Toggle views: hide selection, show combos
+        $("#selectionView").hide();
+        $("#combosView").show();
+        $("#generateBtn").hide();
+        $("#returnBtn").show();
+        $("#playerSearch").hide();
+      }
+
+      // --- Buttons ---
+      $("#generateBtn").on("click", function() {
+        generateTeams();
+      });
+
+      $("#returnBtn").on("click", function() {
+        // Show selection view, hide combos view (preserve selections)
+        $("#combosView").hide();
+        $("#selectionView").show();
+        $("#generateBtn").show();
+        $("#returnBtn").hide();
+        $("#comboCount").text("");
+        $("#playerSearch").show();
+      });
+
+      // initial summary
+      updateSummary();
+
+    });
+    </script>
+
+    <!-- Minimal CSS to keep combos table readable -->
+    <style>
+      /* ensure our generated combos table looks decent */
+      #combosTable th, #combosTable td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+      }
+      #combosTable thead th {
+        position: sticky;
+        top: 0;
+        background: #f4f4f4;
+      }
+      /* reuse your row classes for the selection table */
+      tr.team1 { background-color: #e0f7fa !important; }
+      tr.team2 { background-color: #fce4ec !important; }
+      tr.on { background-color: #f1f8e9 !important; }
+      tr.off { background-color: #fff !important; }
+    </style>
+
 
 </body>
 </html>

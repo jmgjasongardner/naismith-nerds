@@ -110,6 +110,11 @@ def home():
     # logging.debug('computed all pre-processed')
     log_memory_usage()
 
+    for row in stats:
+        player_name = row["Player"]
+        img_path = os.path.join("static", "player_pics", f"{player_name}.png")
+        row["has_img"] = os.path.exists(img_path)
+
     # Return only after all data is prepared
     return render_template(
         "index.html",
