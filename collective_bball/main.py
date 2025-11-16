@@ -23,6 +23,7 @@ def create_data(args=None):
             min_games_to_not_tier=20,
             default_lambda=True,
             lambda_params=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
+            decay_half_life=270,
             save_csv=False,
             loop_through_ratings_dates=False,
         )
@@ -89,6 +90,7 @@ if __name__ == "__main__":
         nargs="*",
         default=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
     )
+    parser.add_argument("--decay_half_life", default=270, type=int)
     parser.add_argument("--save_csv", action="store_true")
     parser.add_argument("--loop_through_ratings_dates", action="store_true")
     args, unknown = parser.parse_known_args()

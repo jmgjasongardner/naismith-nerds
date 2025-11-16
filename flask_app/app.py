@@ -52,7 +52,8 @@ def home():
     stats = format_stats_for_site(
         data_cached.player_data.drop(
             ["rating", "tiered_rating", "full_name", "height", "position", "resident"]
-        )
+        ),
+        does_player_image_exist_row=True
     )
     # logging.debug('computed stats')
     log_memory_usage()
@@ -86,7 +87,8 @@ def home():
     ratings = format_stats_for_site(
         data_cached.ratings.filter(~pl.col("player").str.contains("Tier")).with_columns(
             pl.col("rating").round(5)
-        )
+        ),
+        does_player_image_exist_row=True
     )
     # logging.debug('computed ratings')
     log_memory_usage()
@@ -109,11 +111,6 @@ def home():
     main_tooltip = tooltips.main_tooltip
     # logging.debug('computed all pre-processed')
     log_memory_usage()
-
-    for row in stats:
-        player_name = row["Player"]
-        img_path = os.path.join("static", "player_pics", f"{player_name}.png")
-        row["has_img"] = os.path.exists(img_path)
 
     # Return only after all data is prepared
     return render_template(
@@ -238,7 +235,8 @@ def date_page(date):
         player_day=format_stats_for_site(
             data_cached.player_days.filter(pl.col("game_date") == date).drop(
                 ["game_date", "day", "rating", "resident"]
-            )
+            ),
+            does_player_image_exist_row=True
         ),
         day_games=format_stats_for_site(
             data_cached.games.filter(pl.col("game_date") == date).drop(
