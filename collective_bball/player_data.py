@@ -744,7 +744,8 @@ class PlayerData:
                 (pl.col("other_9_players_quality_diff") - pl.col("rating_teammate"))
                 .round(3)
                 .alias("other_8_players_quality_diff"),
-            ).with_columns(
+            )
+            .with_columns(
                 (pl.col("score_diff") - pl.col("other_8_players_quality_diff"))
                 .round(3)
                 .alias("gospel_as_teammates")
@@ -773,7 +774,8 @@ class PlayerData:
                 (pl.col("other_9_players_quality_diff") + pl.col("rating_opp"))
                 .round(3)
                 .alias("other_8_players_quality_diff"),
-            ).with_columns(
+            )
+            .with_columns(
                 (pl.col("score_diff") - pl.col("other_8_players_quality_diff"))
                 .round(3)
                 .alias("gospel_vs_opponent")

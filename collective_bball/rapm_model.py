@@ -39,9 +39,7 @@ class RAPMModel:
 
         # Train final model on all data with the best lambda
         model = Ridge(alpha=best_lambda, fit_intercept=False)
-        model.fit(sparse_matrix, y,
-                  sample_weight=decay_weights.ravel()
-                  )
+        model.fit(sparse_matrix, y, sample_weight=decay_weights.ravel())
 
         # Get player ratings
         ratings = {player: model.coef_[i] for player, i in player_to_idx.items()}
@@ -82,9 +80,9 @@ class RAPMModel:
 
                     # Train Ridge model with current lambda
                     model = Ridge(alpha=lambda_val, fit_intercept=False)
-                    model.fit(X_train, y_train,
-                              sample_weight=decay_weights.ravel()[train_idx]
-                              )
+                    model.fit(
+                        X_train, y_train, sample_weight=decay_weights.ravel()[train_idx]
+                    )
 
                     # Predict on validation set
                     y_pred = model.predict(X_val)
@@ -204,9 +202,12 @@ class RAPMModel:
 
         # Calculate time-decay weights
         days_since_today = (
-            games
-            .with_columns(pl.col("game_date").str.strptime(pl.Date, "%Y-%m-%d"))
-            .with_columns(((pl.lit(date.today()) - pl.col("game_date")).dt.total_days()).alias("days_since_today"))
+            games.with_columns(pl.col("game_date").str.strptime(pl.Date, "%Y-%m-%d"))
+            .with_columns(
+                ((pl.lit(date.today()) - pl.col("game_date")).dt.total_days()).alias(
+                    "days_since_today"
+                )
+            )
             .select("days_since_today")
             .to_numpy()
         )

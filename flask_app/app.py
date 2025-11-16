@@ -53,7 +53,7 @@ def home():
         data_cached.player_data.drop(
             ["rating", "tiered_rating", "full_name", "height", "position", "resident"]
         ),
-        does_player_image_exist_row=True
+        does_player_image_exist_row=True,
     )
     # logging.debug('computed stats')
     log_memory_usage()
@@ -88,7 +88,7 @@ def home():
         data_cached.ratings.filter(~pl.col("player").str.contains("Tier")).with_columns(
             pl.col("rating").round(5)
         ),
-        does_player_image_exist_row=True
+        does_player_image_exist_row=True,
     )
     # logging.debug('computed ratings')
     log_memory_usage()
@@ -236,7 +236,7 @@ def date_page(date):
             data_cached.player_days.filter(pl.col("game_date") == date).drop(
                 ["game_date", "day", "rating", "resident"]
             ),
-            does_player_image_exist_row=True
+            does_player_image_exist_row=True,
         ),
         day_games=format_stats_for_site(
             data_cached.games.filter(pl.col("game_date") == date).drop(
