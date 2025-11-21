@@ -1,10 +1,11 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 from flask_app.utility_imports import tooltips
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
 import duckdb
 import psutil
+from datetime import date, datetime
 
 # from collective_bball.eda_main import generate_stats
 # from collective_bball.win_prob_log_reg import calculate_team_A_win_prob
@@ -41,6 +42,124 @@ def log_memory_usage():
     memory_info = process.memory_info()
     # logging.debug(f"Memory usage: {memory_info.rss / 1024 ** 2} MB")
 
+@app.route("/api/birthdays")
+@app.route("/api/birthdays")
+def birthday_api():
+    data_cached = app.config["DATA_CACHED"]
+
+    # Already list of dicts from format_stats_for_site
+    bday_rows = format_stats_for_site(
+        data_cached.player_data.select(["player", "birthday"])
+    )
+
+    today = date.today()
+    processed = []
+
+    for row in bday_rows:
+        player = row["Player"]
+        raw = row["birthday"]
+
+        # Skip players without birthdays
+        if not raw:
+            continue
+
+        # Parse birthday
+        try:
+            # Full date: YYYY-MM-DD
+            bday = datetime.strptime(raw, "%Y-%m-%d").date()
+            has_year = True
+        except ValueError:
+            # Month-Day only: MM-DD (no year)
+            bday = datetime.strptime(raw, "%m-%d").date().replace(year=today.year)
+            has_year = False
+
+        # ---- DATE LOGIC ----
+
+        # Birthday this year
+        this_year = bday.replace(year=today.year)
+
+        # How many days since this year's birthday (negative if past)
+        days_since = (this_year - today).days
+
+        # Next birthday (always future)
+        if days_since < 0:  # already happened this year
+            next_birthday = bday.replace(year=today.year + 1)
+        else:
+            next_birthday = this_year
+
+        # Always positive or zero
+        days_until = (next_birthday - today).days
+
+        # Final "days_away" number used for sorting:
+        #   past 7 days → negative
+        #   upcoming → positive
+        if -7 <= days_since <= 0:
+            days_diff = days_since
+        else:
+            days_diff = days_until
+
+        # ---- LABEL LOGIC ----
+
+        if has_year:
+            age = today.year - bday.year + 1
+            # If next birthday hasn't happened yet this year, subtract 1
+            if days_diff <= 0:
+                age -= 1
+
+            # Suffix
+            if age % 10 == 1 and age % 100 != 11:
+                suffix = 'st'
+            elif age % 10 == 2 and age % 100 != 12:
+                suffix = 'nd'
+            elif age % 10 == 3 and age % 100 != 13:
+                suffix = 'rd'
+            else:
+                suffix = 'th'
+
+            label = f"{player}'s {age}{suffix} birthday!"
+        else:
+            label = f"{player}'s birthday!"
+
+        # Display date always shows the *next occurrence*
+        display_date = next_birthday.strftime("%b %d")
+
+        processed.append({
+            "raw": raw,
+            "display_date": display_date,
+            "days_away": days_diff,
+            "days_from_today": f"{days_diff} days from now",
+            "label": label,
+        })
+
+    # ---- SORTING ----
+    # Bucket:
+    #   0 = last 7 days (negative numbers)
+    #   1 = upcoming birthdays (positive numbers)
+    #   2 = older past birthdays (large positive from next year)
+    def sort_key(x):
+        d = x["days_away"]
+
+        if -7 <= d <= 0:  # recent past → top
+            bucket = 0
+            inner = -d  # today first, then 1 day ago, etc.
+        elif d > 0:  # upcoming
+            bucket = 1
+            inner = d  # soonest upcoming first
+        else:
+            # This case won't actually happen with our corrected logic,
+            # but we keep it for safety.
+            bucket = 2
+            inner = abs(d)
+
+        return (bucket, inner)
+
+    processed.sort(key=sort_key)
+
+    return jsonify(processed)
+
+
+
+
 
 @app.route("/")
 def home():
@@ -51,7 +170,7 @@ def home():
     log_memory_usage()
     stats = format_stats_for_site(
         data_cached.player_data.drop(
-            ["rating", "tiered_rating", "full_name", "height", "position", "resident"]
+            ["rating", "tiered_rating", "full_name", "height", "position", "resident", "birthday"]
         ),
         does_player_image_exist_row=True,
     )
@@ -146,7 +265,7 @@ def player_page(player_name):
     # logging.debug('image exists')
 
     # logging.debug('loading player bio data')
-    full_name, height_str, position = load_player_bio_data(
+    full_name, height_str, position, birthday = load_player_bio_data(
         player_name=player_name, player_data=data_cached.player_data
     )
     conn = duckdb.connect("bball_database.duckdb")
@@ -167,6 +286,7 @@ def player_page(player_name):
         full_name=full_name,
         height_str=height_str,
         position=position,
+        birthday=birthday,
         image_exists=image_exists,
         image_path=image_path if image_exists else None,
         player_rating_over_time_html=player_rating_over_time,

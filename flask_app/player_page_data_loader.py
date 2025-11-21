@@ -238,7 +238,12 @@ def load_player_bio_data(player_name: str, player_data: pl.DataFrame):
         if bio_row["position"].item() is not None
         else "No position listed"
     )
-    logging.debug("got position")
+    birthday = (
+        bio_row["birthday"].item()
+        if bio_row["birthday"].item() is not None
+        else "No birthday listed"
+    )
+    logging.debug("got position and birthday")
 
     # Convert height from inches to "ft, in" format if available
     if bio_row["height"].item() is not None:
@@ -253,4 +258,4 @@ def load_player_bio_data(player_name: str, player_data: pl.DataFrame):
         height_str = "No height listed"  # No height available
 
     logging.debug("end of load player bio data")
-    return full_name, height_str, position
+    return full_name, height_str, position, birthday
