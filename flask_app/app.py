@@ -98,7 +98,7 @@ def home():
     # logging.debug('computed player days')
     log_memory_usage()
     teammates = format_stats_for_site(
-        data_cached.teammates.drop(["player", "teammate"]).unique()
+        data_cached.teammates.drop(["player", "teammate"]).unique('pairing')
     )
     # logging.debug('computed teammates')
     log_memory_usage()
