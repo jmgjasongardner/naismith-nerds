@@ -45,193 +45,269 @@
 
 
 <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-        }
-        table {
-            min-width: 50%;
-            margin: auto;
-            border-collapse: collapse;
-        }
-        /* Sticky Header */
-        th {
-            position: sticky;
-            top: 0;
-            background-color: #f4f4f4 !important;
-            color: black;
-        }
-        th, td {
-            padding: 10px;
-            border: 0.2px blue;
-            text-align: left;
-        }
-        th:first-child {
-          position: sticky;
-          left: 0;
-          z-index: 1000;
-        }
-        @media (max-width: 768px) {
-            th, td {
-                position: sticky;
-            }
-        }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        /* Team Builder row colors override zebra striping */
-        tr.team1 td, tr.team2 td, tr.on td, tr.off td {
-          background-color: inherit !important;
-        }
-
-        tr.team1 {
-          background-color: #e0f7fa !important; /* light cyan */
-        }
-        tr.team2 {
-          background-color: #fce4ec !important; /* light pink */
-        }
-        tr.on {
-          background-color: #f1f8e9 !important; /* light green */
-        }
-        tr.off {
-          background-color: #f5f5f5 !important; /* light gray */
-        }
-
-        .tabs {
-            display: flex;
-            justify-content: left;
-            margin: 20px 0;
-        }
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            border: 1px solid #ccc;
-            border-radius: 5px 5px 0 0;
-            margin: 0 10px;
-        }
-        .tab.active {
-            background-color: #007bff;
-            color: white;
-        }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        .credits {
-            margin-top: 20px;
-            font-size: 1.2em;
-        }
-        .credits a {
-            color: blue;
-            text-decoration: none;
-        }
-        .credits a:hover {
-            text-decoration: underline;
-        }
-        .social-icons {
-            margin-top: 20px;
-        }
-        .social-icons a {
-            font-size: 2em;
-            margin: 0 15px;
-            color: #333;
-            text-decoration: none;
-        }
-        .social-icons a:hover {
-            color: #0077b5;
-        }
-        .methodology {
-            font-size: 1.2em;
-            padding: 20px;
-            background-color: #f4f4f4;
-            margin-top: 20px;
-            text-align: left; /* Left justify methodology text */
-        }
-        .methodology h2 {
-            text-align: center; /* Keep h2 centered */
-        }
-        .glossary {
-            font-size: 1.2em;
-            padding: 20px;
-            background-color: #f4f4f4;
-            margin-top: 20px;
-            text-align: left; /* Left justify glossary text */
-        }
-        .glossary h2 {
-            text-align: center; /* Keep h3 centered */
-        }
-        .images-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .images-container img {
-            width: 200px; /* Set a fixed width for both images */
-            margin: 0 10px;
-        }
-        .plot-container {
-            width: 100%; /* Set the container to take up the full width */
-            height: 500px; /* Set a height to keep the plot visible, adjust as needed */
-        }
-        .plot-container .plotly-graph-div {
-            width: 100% !important; /* Ensure the plot itself takes up the full width */
-            height: 100% !important; /* Set the plot's height to fill the container */
-        }
-        #playerSearch {
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          font-size: 1em;
-        }
-        #playerSearch:focus {
-          outline: none;
-          border-color: #007bff;
-          box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
-        }
-        #minGamesPlayed {
-            display: none;
-        }
-        .no-wrap {
-            white-space: nowrap;
-        }
-
-    .birthday-container {
-      max-width: 400px;
-      margin: 20px auto;
+    /* ---------------------------------------------------------
+       GLOBAL
+    --------------------------------------------------------- */
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        overflow-x: hidden; /* prevents horizontal scroll on mobile */
     }
 
+    /* ---------------------------------------------------------
+       TABLE STYLES
+    --------------------------------------------------------- */
+    table {
+        width: 100%;
+        min-width: 50%;
+        margin: auto;
+        border-collapse: collapse;
+        display: block;        /* allow horizontal scroll on mobile */
+        overflow-x: auto;
+    }
+
+    th {
+        position: sticky;
+        top: 0;
+        background-color: #f4f4f4 !important;
+        color: black;
+    }
+
+    th, td {
+        padding: 10px;
+        border: 0.2px blue;
+        text-align: left;
+    }
+
+    th:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1000;
+    }
+
+    tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+
+    /* Team Builder row color overrides */
+    tr.team1 td, tr.team2 td, tr.on td, tr.off td {
+        background-color: inherit !important;
+    }
+    tr.team1 { background-color: #e0f7fa !important; }
+    tr.team2 { background-color: #fce4ec !important; }
+    tr.on    { background-color: #f1f8e9 !important; }
+    tr.off   { background-color: #f5f5f5 !important; }
+
+    .no-wrap { white-space: nowrap; }
+
+    /* Sticky cells on mobile */
+    @media (max-width: 768px) {
+        th, td { position: sticky; }
+    }
+
+    /* ---------------------------------------------------------
+       TABS
+    --------------------------------------------------------- */
+    .tabs {
+        display: flex;
+        justify-content: center;   /* desktop centered */
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 20px 0;
+    }
+
+    .tab {
+        padding: 10px 20px;
+        cursor: pointer;
+        border: 1px solid #ccc;
+        border-radius: 5px 5px 0 0;
+        margin: 0 10px;
+    }
+
+    .tab.active {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Mobile horizontal scroll for tabs */
+    @media (max-width: 768px) {
+        .tabs {
+            justify-content: flex-start;
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 10px;
+        }
+        .tab { flex: 0 0 auto; }
+    }
+
+    /* ---------------------------------------------------------
+       SOCIAL / CREDITS / EXTRA SECTIONS
+    --------------------------------------------------------- */
+    .credits {
+        margin-top: 20px;
+        font-size: 1.2em;
+    }
+    .credits a {
+        color: blue;
+        text-decoration: none;
+    }
+    .credits a:hover { text-decoration: underline; }
+
+    .social-icons {
+        margin-top: 20px;
+    }
+    .social-icons a {
+        font-size: 2em;
+        margin: 0 15px;
+        color: #333;
+        text-decoration: none;
+    }
+    .social-icons a:hover { color: #0077b5; }
+
+    .methodology, .glossary {
+        font-size: 1.2em;
+        padding: 20px;
+        background-color: #f4f4f4;
+        margin-top: 20px;
+        text-align: left;
+    }
+    .methodology h2,
+    .glossary h2 {
+        text-align: center;
+    }
+
+    /* ---------------------------------------------------------
+       BIRTHDAY CARDS
+    --------------------------------------------------------- */
     .birthday-scroll {
-      max-height: 300px;
-      overflow-y: auto;
-      padding-right: 10px;
+        max-height: 300px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 10px;
     }
 
     .bday-card {
-      background: #232db8;
-      padding: 12px;
-      margin-bottom: 12px;
-      border-radius: 10px;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        background: #232db8;
+        padding: 12px;
+        margin-bottom: 12px;
+        border-radius: 10px;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.4);
     }
 
     .bday-card .name {
-      font-size: 1.2em;
-      font-weight: bold;
+        font-size: 1.2em;
+        font-weight: bold;
     }
 
     .bday-card .date {
-      font-size: 0.9em;
-      opacity: 0.8;
+        font-size: 0.9em;
+        opacity: 0.8;
     }
 
     .bday-card .days_from_today {
-      font-size: 0.7em;
+        font-size: 0.7em;
     }
+
+    /* ---------------------------------------------------------
+       HOMEPAGE IMAGE + BIRTHDAY LAYOUT
+    --------------------------------------------------------- */
+
+    .home-layout {
+        display: grid;
+        grid-template-columns: auto auto auto;
+        gap: 30px;
+        align-items: center;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 10px;
+    }
+
+    .left-col img,
+    .middle-col img,
+    .right-col {
+        width: 300px;
+    }
+
+    .right-col {
+        display: flex;
+        justify-content: center;
+    }
+
+    .birthday-scroll {
+        width: 100%;
+        max-height: 420px;
+        overflow-y: auto;
+    }
+
+    @media (max-width: 768px) {
+        .home-layout {
+            grid-template-columns: 1fr;
+            justify-items: center;
+        }
+
+        .left-col img,
+        .middle-col img,
+        .right-col {
+            width: 90%;
+            max-width: 400px;
+        }
+    }
+
+
+    /* Mobile behavior */
+    @media (max-width: 768px) {
+        .home-flex {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .home-left img,
+        .home-right {
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .birthday-scroll {
+            max-height: 320px;
+        }
+    }
+
+    /* ---------------------------------------------------------
+       PLOT CONTAINER
+    --------------------------------------------------------- */
+    .plot-container {
+        width: 100%;
+        height: 500px;
+    }
+    .plot-container .plotly-graph-div {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    /* ---------------------------------------------------------
+       SEARCH INPUT
+    --------------------------------------------------------- */
+    #playerSearch {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 1em;
+    }
+    #playerSearch:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+    }
+
+    #minGamesPlayed { display: none; }
+
 
     </style>
 </head>
@@ -259,14 +335,28 @@
         <a href="https://bsky.app/profile/jmgard.bsky.social" target="_blank"><i class="fab fa-bluesky"></i></a>
     </div>
 
-    <!-- Image Container for Naismith and Collective and Birthdays -->
-    <div class="images-container">
-        <img src="{{ url_for('static', filename='naismith.jpeg') }}"
-             alt="Naismith Nerds">
-        <img src="{{ url_for('static', filename='nbamath.jpg') }}"
-             alt="NBA Math">
-        <div id="birthdayScroll" class="birthday-scroll"></div>
+    <div class="home-layout">
+
+        <div class="left-col">
+            <img class="naismith-img"
+                 src="{{ url_for('static', filename='naismith.jpeg') }}"
+                 alt="Naismith Nerds">
+        </div>
+
+        <div class="middle-col">
+            <img class="color-img"
+                 src="{{ url_for('static', filename='nbamath.jpg') }}"
+                 alt="NBA Math">
+        </div>
+
+        <div class="right-col">
+            <div id="birthdayScroll" class="birthday-scroll"></div>
+        </div>
+
     </div>
+
+
+
 
 
     <!-- Navigation Tabs -->
