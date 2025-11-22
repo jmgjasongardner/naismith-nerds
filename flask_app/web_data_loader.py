@@ -140,7 +140,7 @@ def format_stats_for_site(df: pl.DataFrame, does_player_image_exist_row=False):
     if does_player_image_exist_row:
         for row in output_dict:
             player_name = row["Player"]
-            img_path = os.path.join("static", "player_pics", f"{player_name}.png")
+            img_path = os.path.join("static", "player_pics_thumbs", f"{player_name}.webp")
             row["has_img"] = os.path.exists(img_path)
 
     return output_dict
