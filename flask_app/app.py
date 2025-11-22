@@ -6,6 +6,7 @@ logging.basicConfig(level=logging.DEBUG)
 import duckdb
 import psutil
 from datetime import date, datetime
+import zoneinfo
 
 # from collective_bball.eda_main import generate_stats
 # from collective_bball.win_prob_log_reg import calculate_team_A_win_prob
@@ -49,10 +50,10 @@ def birthday_api():
 
     # Already list of dicts from format_stats_for_site
     bday_rows = format_stats_for_site(
-        data_cached.player_data.select(["player", "birthday"])
+        data_cached.player_data.select(["player", "birthday"]).drop_nulls()
     )
 
-    today = date.today()
+    today = datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
     processed = []
 
     for row in bday_rows:
@@ -101,9 +102,9 @@ def birthday_api():
         # ---- LABEL LOGIC ----
 
         if has_year:
-            age = today.year - bday.year + 1
-            # If next birthday hasn't happened yet this year, subtract 1
-            if days_diff <= 0:
+            age = today.year - bday.year + 1 # Age of next birthday
+            # If next birthday hasn't happened yet this year (or happened within last week), subtract 1
+            if days_since >= -7:
                 age -= 1
 
             # Suffix
@@ -122,38 +123,26 @@ def birthday_api():
 
         # Display date always shows the *next occurrence*
         display_date = next_birthday.strftime("%b %d")
+        if -7 <= days_since <= -2:
+            display_day_text = f"{-days_diff} days ago"
+        elif days_since == -1:
+            display_day_text = "Yesterday!"
+        elif days_since == 0:
+            display_day_text = "🎉Today!!🥳"
+        elif days_since == 1:
+            display_day_text = "Tomorrow!"
+        else:
+            display_day_text = f"{days_diff} days from now"
 
         processed.append({
             "raw": raw,
             "display_date": display_date,
             "days_away": days_diff,
-            "days_from_today": f"{days_diff} days from now",
+            "days_from_today": display_day_text,
             "label": label,
         })
 
-    # ---- SORTING ----
-    # Bucket:
-    #   0 = last 7 days (negative numbers)
-    #   1 = upcoming birthdays (positive numbers)
-    #   2 = older past birthdays (large positive from next year)
-    def sort_key(x):
-        d = x["days_away"]
-
-        if -7 <= d <= 0:  # recent past → top
-            bucket = 0
-            inner = -d  # today first, then 1 day ago, etc.
-        elif d > 0:  # upcoming
-            bucket = 1
-            inner = d  # soonest upcoming first
-        else:
-            # This case won't actually happen with our corrected logic,
-            # but we keep it for safety.
-            bucket = 2
-            inner = abs(d)
-
-        return (bucket, inner)
-
-    processed.sort(key=sort_key)
+    processed.sort(key=lambda x: x["days_away"])
 
     return jsonify(processed)
 

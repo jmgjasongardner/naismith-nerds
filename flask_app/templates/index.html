@@ -100,21 +100,18 @@
 
     .no-wrap { white-space: nowrap; }
 
-    /* Sticky cells on mobile */
-    @media (max-width: 768px) {
-        th, td { position: sticky; }
-    }
-
     /* ---------------------------------------------------------
        TABS
     --------------------------------------------------------- */
     .tabs {
+        width: 100%;
         display: flex;
-        justify-content: center;   /* desktop centered */
-        flex-wrap: wrap;
+        justify-content: center;
+        flex-wrap: wrap;   /* allows mobile wrapping */
         gap: 10px;
         margin: 20px 0;
     }
+
 
     .tab {
         padding: 10px 20px;
@@ -132,17 +129,6 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Mobile horizontal scroll for tabs */
-    @media (max-width: 768px) {
-        .tabs {
-            justify-content: flex-start;
-            overflow-x: auto;
-            white-space: nowrap;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 10px;
-        }
-        .tab { flex: 0 0 auto; }
-    }
 
     /* ---------------------------------------------------------
        SOCIAL / CREDITS / EXTRA SECTIONS
