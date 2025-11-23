@@ -9,46 +9,160 @@
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <style>
+        /* ---------------------------------------------------------
+           GLOBAL
+        --------------------------------------------------------- */
         body {
             font-family: Arial, sans-serif;
+            text-align: center;
+            overflow-x: hidden;
         }
+
+        /* ---------------------------------------------------------
+           Name and Image
+        --------------------------------------------------------- */
+        .player-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;   /* centers horizontally */
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            text-align: center;    /* ensures name is centered */
+        }
+
+        .player-header img {
+            width: 180px;          /* bigger and consistent */
+            border-radius: 10px;   /* optional: cleaner look */
+        }
+
+
+        /* ---------------------------------------------------------
+           TABLE BASE STYLE (shared with index)
+        --------------------------------------------------------- */
+        /* Player page tables follow same behavior as index.html */
+
         table {
-            width: 80%;
-            margin: auto;
+            width: 100%;
+            min-width: 600px;     /* enforce scroll on mobile like ratings page */
             border-collapse: collapse;
+            margin: 0 auto;
+            display: block;
+            overflow-x: auto;     /* MOBILE SCROLL FIX */
         }
-        th, td {
-            padding: 10px;
-            border: 1px blue;
-        }
+
         th {
             background-color: #f4f4f4;
+            position: sticky;
+            top: 0;
+            z-index: 2;
         }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
+
+
+        .no-wrap { white-space: nowrap; }
+
+        /* ---------------------------------------------------------
+           SMALL-TABLE — used for Stats, Days, Games, Pairings
+           Same as index.html Ratings Table
+        --------------------------------------------------------- */
+        .small-table {
+            width: 600px;
+            max-width: 95%;
+            margin: 0 auto;
+        }
+
+        .small-table td,
+        .small-table th {
+            text-align: center;
+        }
+
+        .small-table td:first-child,
+        .small-table th:first-child {
+            text-align: left;
+        }
+
+        .small-table th:first-child {
+            position: static !important;
+            left: auto !important;
+        }
+
+        /* ---------------------------------------------------------
+           WIDE TABLE — for large pairings tables (optional)
+        --------------------------------------------------------- */
+        .wide-table {
+            width: 100%;
+            border-collapse: collapse;
+            display: block;        /* allow mobile scroll */
+            overflow-x: auto;      /* enable horizontal scroll */
+        }
+        .wide-table th {
+            position: sticky;
+            top: 0;
+            background: #f4f4f4;
+            z-index: 5;
+        }
+
+        /* ---------------------------------------------------------
+           TABS (same as index, unified look)
+        --------------------------------------------------------- */
         .tabs {
+            width: 100%;
             display: flex;
             justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
             margin: 20px 0;
         }
+
         .tab {
             padding: 10px 20px;
             cursor: pointer;
             border: 1px solid #ccc;
             border-radius: 5px 5px 0 0;
-            margin: 0 10px;
         }
+
         .tab.active {
             background-color: #007bff;
             color: white;
         }
+
         .tab-content {
             display: none;
         }
         .tab-content.active {
             display: block;
         }
+
+        /* ---------------------------------------------------------
+           DESKTOP-ONLY center DataTables controls
+           (DataTables injects its own wrapper markup)
+        --------------------------------------------------------- */
+        @media (min-width: 769px) {
+            .dataTables_wrapper .dataTables_length,
+            .dataTables_wrapper .dataTables_filter,
+            .dataTables_wrapper .dt-buttons {
+                display: flex !important;
+                justify-content: center !important;
+                text-align: center !important;
+                width: 100% !important;
+                margin-bottom: 8px;
+            }
+
+            .dataTables_wrapper .dataTables_filter {
+                margin-top: 6px;
+            }
+        }
+
     </style>
 </head>
 
@@ -64,7 +178,7 @@
 <!link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 
 <body>
-    <div style="display: flex; align-items: center; gap: 15px;">
+    <div class="player-header">
         <h1>{{ full_name if full_name else player_name }}</h1>
 
         {% if image_exists %}
@@ -72,6 +186,7 @@
                  alt="{{ player_name }}'s photo" width="100">
         {% endif %}
     </div>
+
 
     {% if position %}
         <p style="margin: 0;">{{ position }}</p>
@@ -103,7 +218,7 @@
     <div class="tab-content stats active">
         <h2>Stats</h2>
         {% if player_stats %}
-        <table id="statsTable" class="display">
+        <table id="statsTable" class="wide-table">
             <thead>
                 <tr>
                     {% for col in player_stats[0].keys() %}
@@ -140,7 +255,7 @@
     <div class="tab-content days">
         <h2>Days</h2>
         {% if player_days %}
-            <table id="daysTable">
+            <table id="daysTable" class="wide-table">
                 <thead>
                     <tr>
                         {% for col in player_days[0].keys() %}
@@ -174,7 +289,7 @@
     <div class="tab-content games">
         <h2>All Games</h2>
         {% if player_games %}
-        <table id="gamesTable" class="display">
+        <table id="gamesTable" class="wide-table">
             <thead>
                 <tr>
                     {% for col in player_games[0].keys() %}
@@ -211,7 +326,7 @@
         <h2>Player Pairings</h2>
         <h3>Teammate Combos</h3>
         {% if player_teammates %}
-        <table id="teammatesTable">
+        <table id="teammatesTable" class="wide-table">
             <thead>
                 <tr>
                     {% for col in player_teammates[0].keys() %}
@@ -243,7 +358,7 @@
         {% endif %}
         <h3>Opponent Combos</h3>
         {% if player_oppponents %}
-        <table id="opponentsTable">
+        <table id="opponentsTable" class="wide-table">
             <thead>
                 <tr>
                     {% for col in player_oppponents[0].keys() %}
