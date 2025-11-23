@@ -1,464 +1,213 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ player_name }}'s Stats</title>
-    <link rel="icon" type="image/x-icon" href="/static/bballfavicon.ico">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <!-- DataTables CSS -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-    <style>
-        /* ---------------------------------------------------------
-           GLOBAL
-        --------------------------------------------------------- */
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            overflow-x: hidden;
-        }
+{% extends "base.html" %}
 
-        /* ---------------------------------------------------------
-           Name and Image
-        --------------------------------------------------------- */
-        .player-header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;   /* centers horizontally */
-            justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
-            text-align: center;    /* ensures name is centered */
-        }
+{% block title %}{{ player_name }}'s Stats{% endblock %}
+{% block body_class %}page-player{% endblock %}
 
-        .player-header img {
-            width: 180px;          /* bigger and consistent */
-            border-radius: 10px;   /* optional: cleaner look */
-        }
+{% block content %}
+<div class="player-header">
+    <h1>{{ full_name if full_name else player_name }}</h1>
 
-
-        /* ---------------------------------------------------------
-           TABLE BASE STYLE (shared with index)
-        --------------------------------------------------------- */
-        /* Player page tables follow same behavior as index.html */
-
-        table {
-            width: 100%;
-            min-width: 600px;     /* enforce scroll on mobile like ratings page */
-            border-collapse: collapse;
-            margin: 0 auto;
-            display: block;
-            overflow-x: auto;     /* MOBILE SCROLL FIX */
-        }
-
-        th {
-            background-color: #f4f4f4;
-            position: sticky;
-            top: 0;
-            z-index: 2;
-        }
-
-        th, td {
-            padding: 10px;
-            border: 1px solid #ccc;
-            text-align: left;
-        }
-
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-
-        .no-wrap { white-space: nowrap; }
-
-        /* ---------------------------------------------------------
-           SMALL-TABLE — used for Stats, Days, Games, Pairings
-           Same as index.html Ratings Table
-        --------------------------------------------------------- */
-        .small-table {
-            width: 600px;
-            max-width: 95%;
-            margin: 0 auto;
-        }
-
-        .small-table td,
-        .small-table th {
-            text-align: center;
-        }
-
-        .small-table td:first-child,
-        .small-table th:first-child {
-            text-align: left;
-        }
-
-        .small-table th:first-child {
-            position: static !important;
-            left: auto !important;
-        }
-
-        /* ---------------------------------------------------------
-           WIDE TABLE — for large pairings tables (optional)
-        --------------------------------------------------------- */
-        .wide-table {
-            width: 100%;
-            border-collapse: collapse;
-            display: block;        /* allow mobile scroll */
-            overflow-x: auto;      /* enable horizontal scroll */
-        }
-        .wide-table th {
-            position: sticky;
-            top: 0;
-            background: #f4f4f4;
-            z-index: 5;
-        }
-
-        /* ---------------------------------------------------------
-           TABS (same as index, unified look)
-        --------------------------------------------------------- */
-        .tabs {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin: 20px 0;
-        }
-
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            border: 1px solid #ccc;
-            border-radius: 5px 5px 0 0;
-        }
-
-        .tab.active {
-            background-color: #007bff;
-            color: white;
-        }
-
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-
-        /* ---------------------------------------------------------
-           DESKTOP-ONLY center DataTables controls
-           (DataTables injects its own wrapper markup)
-        --------------------------------------------------------- */
-        @media (min-width: 769px) {
-            .dataTables_wrapper .dataTables_length,
-            .dataTables_wrapper .dataTables_filter,
-            .dataTables_wrapper .dt-buttons {
-                display: flex !important;
-                justify-content: center !important;
-                text-align: center !important;
-                width: 100% !important;
-                margin-bottom: 8px;
-            }
-
-            .dataTables_wrapper .dataTables_filter {
-                margin-top: 6px;
-            }
-        }
-
-    </style>
-</head>
-
-<!-- jQuery and DataTables JS -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-
-<!-- Include Custom CSS Styles -->
-<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-
-<!-- Include Bootstrap CSS Styles -->
-<!link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/dataTables.bootstrap5.min.css">
-<!link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-
-<body>
-    <div class="player-header">
-        <h1>{{ full_name if full_name else player_name }}</h1>
-
-        {% if image_exists %}
-            <img src="{{ url_for('static', filename='player_pics/' + player_name + '.png') }}"
-                 alt="{{ player_name }}'s photo" width="100">
-        {% endif %}
-    </div>
-
-
-    {% if position %}
-        <p style="margin: 0;">{{ position }}</p>
+    {% if image_exists %}
+        <img src="{{ url_for('static', filename='player_pics/' + player_name + '.png') }}"
+             alt="{{ player_name }}'s photo" width="180">
     {% endif %}
-    {% if height_str %}
-        <p style="margin: 0;">{{ height_str }}</p>
-    {% endif %}
-    {% if birthday %}
-        <p style="margin: 0;">{{ birthday }}</p>
-    {% endif %}
+</div>
 
+{% if position %}
+    <p class="player-meta">{{ position }}</p>
+{% endif %}
+{% if height_str %}
+    <p class="player-meta">{{ height_str }}</p>
+{% endif %}
+{% if birthday %}
+    <p class="player-meta">{{ birthday }}</p>
+{% endif %}
 
-    <h3>RAPM Rating</h3>
-    {% if player_rating %}
-        {% set values_list = player_rating[0].values() | list %}
-        <h3>{{ values_list[1] }}</h3>
+<h3>RAPM Rating</h3>
+{% if player_rating %}
+    {% set values_list = player_rating[0].values() | list %}
+    <h3>{{ values_list[1] }}</h3>
+{% else %}
+    <p>No rating data available for {{ player_name }} (not yet played 20 games).</p>
+{% endif %}
+
+<!-- Navigation Tabs -->
+<div class="tabs">
+    <div class="tab active" data-target="stats">Stats</div>
+    <div class="tab" data-target="days">Days</div>
+    <div class="tab" data-target="games">Games</div>
+    <div class="tab" data-target="player_pairings">Player Pairings</div>
+</div>
+
+<!-- Min games filter, shared with index (will apply to Stats + Pairings) -->
+<input id="minGamesPlayed" type="number" placeholder="Filter Min Games" oninput="filterByMinGamesPlayed()">
+
+<div class="tab-content stats active">
+    <h2>Stats</h2>
+    {% if player_stats %}
+    <table id="statsTable" class="wide-table" data-page-table="player-stats">
+        <thead>
+        <tr>
+            {% for col in player_stats[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in player_stats %}
+            <tr>
+                {% for key, value in row.items() %}
+                    <td>
+                        {% if key == "Most Recent Game" %}
+                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
     {% else %}
-        <p>No rating data available for {{ player_name }} (not yet played 20 games).</p>
+        <p>No stats available for {{ player_name }}.</p>
     {% endif %}
 
-    <!-- Navigation Tabs -->
-    <div class="tabs">
-        <div class="tab active" data-target="stats">Stats</div>
-        <div class="tab" data-target="days">Days</div>
-        <div class="tab" data-target="games">Games</div>
-        <div class="tab" data-target="player_pairings">Player Pairings</div>
+    <div class="graph-container">
+        {{ player_games_rolling_html | safe }}
     </div>
+</div>
 
-    <div class="tab-content stats active">
-        <h2>Stats</h2>
-        {% if player_stats %}
-        <table id="statsTable" class="wide-table">
-            <thead>
-                <tr>
-                    {% for col in player_stats[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in player_stats %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            <td>
-                                {% if key == "Most Recent Game" %}
-                                    <a href="{{ url_for('date_page', date=value) }}">
-                                        {{ value }}
-                                    </a>
-                                {% else %}
-                                    {{ value }}
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                    </tr>
+<div class="tab-content days">
+    <h2>Days</h2>
+    {% if player_days %}
+    <table id="daysTable" class="wide-table">
+        <thead>
+        <tr>
+            {% for col in player_days[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in player_days %}
+            <tr>
+                {% for key, value in row.items() %}
+                    <td>
+                        {% if key == "Game Date" %}
+                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
+                    </td>
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No stats available for {{ player_name }}.</p>
-        {% endif %}
-        <div class="graph-container">
-          {{ player_games_rolling_html | safe }}
-        </div>
-    </div>
-    <div class="tab-content days">
-        <h2>Days</h2>
-        {% if player_days %}
-            <table id="daysTable" class="wide-table">
-                <thead>
-                    <tr>
-                        {% for col in player_days[0].keys() %}
-                            <th title="{{ main_tooltip.get(col, '') }}">
-                                {{ col }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in player_days %}
-                        <tr>
-                            {% for key, value in row.items() %}
-                                <td>
-                                    {% if key == "Game Date" %}
-                                        <a href="{{ url_for('date_page', date=value) }}">
-                                            {{ value }}
-                                        </a>
-                                    {% else %}
-                                        {{ value }}
-                                    {% endif %}
-                                </td>
-                            {% endfor %}
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <p>No days data available.</p>
-        {% endif %}
-    </div>
-    <div class="tab-content games">
-        <h2>All Games</h2>
-        {% if player_games %}
-        <table id="gamesTable" class="wide-table">
-            <thead>
-                <tr>
-                    {% for col in player_games[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in player_games %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            <td>
-                                {% if key in ['T1', 'T2', 'T3', 'T4', 'O1', 'O2', 'O3', 'O4', 'O5'] %}
-                                    <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
-                                {% elif key == "Game Date" %}
-                                    <a href="{{ url_for('date_page', date=value) }}">
-                                        {{ value }}
-                                    </a>
-                                {% else %}
-                                    {{ value }}
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                    </tr>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No days data available.</p>
+    {% endif %}
+</div>
+
+<div class="tab-content games">
+    <h2>All Games</h2>
+    {% if player_games %}
+    <table id="gamesTable" class="wide-table" data-page-table="player-games">
+        <thead>
+        <tr>
+            {% for col in player_games[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in player_games %}
+            <tr>
+                {% for key, value in row.items() %}
+                    <td>
+                        {% if key in ['T1', 'T2', 'T3', 'T4', 'O1', 'O2', 'O3', 'O4', 'O5'] %}
+                            <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
+                        {% elif key == "Game Date" %}
+                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
+                    </td>
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No games found for {{ player_name }}.</p>
-        {% endif %}
-    </div>
-    <div class="tab-content player_pairings">
-        <h2>Player Pairings</h2>
-        <h3>Teammate Combos</h3>
-        {% if player_teammates %}
-        <table id="teammatesTable" class="wide-table">
-            <thead>
-                <tr>
-                    {% for col in player_teammates[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in player_teammates %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            {% if key == "Teammate" %}
-                                <td>
-                                    <a href="{{ url_for('player_page', player_name=value) }}">
-                                        {{ value }}
-                                    </a>
-                                </td>
-                            {% else %}
-                                <td>{{ value }}</td>
-                            {% endif %}
-                        {% endfor %}
-                    </tr>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No games found for {{ player_name }}.</p>
+    {% endif %}
+</div>
+
+<div class="tab-content player_pairings">
+    <h2>Player Pairings</h2>
+
+    <h3>Teammate Combos</h3>
+    {% if player_teammates %}
+    <table id="teammatesTable" class="wide-table">
+        <thead>
+        <tr>
+            {% for col in player_teammates[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in player_teammates %}
+            <tr>
+                {% for key, value in row.items() %}
+                    {% if key == "Teammate" %}
+                        <td>
+                            <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
+                        </td>
+                    {% else %}
+                        <td>{{ value }}</td>
+                    {% endif %}
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No teammate data available.</p>
-        {% endif %}
-        <h3>Opponent Combos</h3>
-        {% if player_oppponents %}
-        <table id="opponentsTable" class="wide-table">
-            <thead>
-                <tr>
-                    {% for col in player_oppponents[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in player_oppponents %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            {% if key == "Opp" %}
-                                <td>
-                                    <a href="{{ url_for('player_page', player_name=value) }}">
-                                        {{ value }}
-                                    </a>
-                                </td>
-                            {% else %}
-                                <td>{{ value }}</td>
-                            {% endif %}
-                        {% endfor %}
-                    </tr>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No teammate data available.</p>
+    {% endif %}
+
+    <h3>Opponent Combos</h3>
+    {% if player_oppponents %}
+    <table id="opponentsTable" class="wide-table">
+        <thead>
+        <tr>
+            {% for col in player_oppponents[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in player_oppponents %}
+            <tr>
+                {% for key, value in row.items() %}
+                    {% if key == "Opp" %}
+                        <td>
+                            <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
+                        </td>
+                    {% else %}
+                        <td>{{ value }}</td>
+                    {% endif %}
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No opponent data available.</p>
-        {% endif %}
-    </div>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No opponent data available.</p>
+    {% endif %}
+</div>
 
-    <br>
-    <a href="{{ url_for('home') }}">Back to Home</a>
-    <script>
-        $(document).ready(function() {
-             $('#statsTable').DataTable({
-                "paging": false,  // Enable pagination
-                "searching": false,  // Enable search bar
-                "ordering": false,  // Enable sorting
-                "info": false,  // Show table info (e.g., "Showing 1 to 10 of 50 entries")
-            });
-            $('#daysTable').DataTable({
-                "paging": true,  // Enable pagination
-                "searching": true,  // Enable search bar
-                "ordering": true,  // Enable sorting
-                "order": [[0, "desc"]], // Game Date
-            });
-            $('#gamesTable').DataTable({
-                "paging": true,  // Enable pagination
-                "searching": true,  // Enable search bar
-                "ordering": true,  // Enable sorting
-                "order": [[0, "desc"], [1, "desc"]],
-            });
-            $('#teammatesTable').DataTable({
-                "paging": true,  // Enable pagination
-                "searching": true,  // Enable search bar
-                "ordering": true,  // Enable sorting
-                "order": [[1, "desc"], [3, "desc"]], // Games then Wins
-            });
-            $('#opponentsTable').DataTable({
-                "paging": true,  // Enable pagination
-                "searching": true,  // Enable search bar
-                "ordering": true,  // Enable sorting
-                "order": [[1, "desc"], [3, "desc"]], // Games then Wins
-            });
-        });
-    </script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const tabs = document.querySelectorAll(".tab");
-            const tabContents = document.querySelectorAll(".tab-content");
-
-            tabs.forEach(tab => {
-                tab.addEventListener("click", function () {
-                    // Remove active class from all tabs and contents
-                    tabs.forEach(t => t.classList.remove("active"));
-                    tabContents.forEach(tc => tc.classList.remove("active"));
-
-                    // Add active class to the clicked tab and corresponding content
-                    this.classList.add("active");
-                    document.querySelector(`.${this.dataset.target}`).classList.add("active");
-                });
-            });
-        });
-    </script>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>
-    <script>
-        $(document).ready(function() {
-            var table = $('#statsTable').DataTable();
-
-            // Enable Bootstrap tooltips for column headers
-            $('#statsTable thead th').tooltip({
-                delay: 0,
-                track: true,
-                fade: 250
-            });
-        });
-    </script>
-</body>
-</html>
+<br>
+<a href="{{ url_for('home') }}">Back to Home</a>
+{% endblock %}

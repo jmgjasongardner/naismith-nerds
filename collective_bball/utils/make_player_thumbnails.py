@@ -14,7 +14,7 @@ THUMB_DIR = PROJECT_ROOT / "static" / "player_pics_thumbs"
 
 # Thumbnail settings
 THUMB_SIZE = (40, 40)  # this matches your 30x30 display with a bit of buffer
-WEBP_QUALITY = 80      # 0–100; 80 is a good balance
+WEBP_QUALITY = 80  # 0–100; 80 is a good balance
 
 
 def make_thumbnail(src_path: Path, dst_dir: Path) -> None:
@@ -40,8 +40,7 @@ def main() -> None:
         raise SystemExit(f"Source directory does not exist: {SOURCE_DIR}")
 
     image_files = [
-        p for p in SOURCE_DIR.iterdir()
-        if p.suffix.lower() in {".png", ".jpg", ".jpeg"}
+        p for p in SOURCE_DIR.iterdir() if p.suffix.lower() in {".png", ".jpg", ".jpeg"}
     ]
 
     if not image_files:

@@ -1,0 +1,437 @@
+/* ---------------------------------------------------------
+   GLOBAL
+--------------------------------------------------------- */
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+.no-wrap {
+    white-space: nowrap;
+}
+
+/* ---------------------------------------------------------
+   TABLES – BASE STYLES
+--------------------------------------------------------- */
+table {
+    width: 100%;
+    margin: 0 auto;
+    border-collapse: collapse;
+    display: block;
+    overflow-x: auto;
+}
+
+th, td {
+    padding: 10px;
+    border: 1px solid #ccc;
+    text-align: left;
+}
+
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* Sticky header row */
+table th {
+    position: sticky;
+    top: 0;
+    background-color: #f4f4f4 !important;
+    z-index: 10;
+}
+
+/* Sticky first column (header + body) */
+table th:first-child,
+table td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: #ffffff !important;
+    white-space: nowrap;
+    z-index: 15;
+}
+
+/* DataTables wrapper overrides for desktop */
+@media (min-width: 769px) {
+    .dataTables_wrapper .dt-buttons,
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+        display: flex !important;
+        justify-content: center !important;
+        text-align: center !important;
+        width: 100% !important;
+        margin-bottom: 10px;
+    }
+
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+}
+
+/* ---------------------------------------------------------
+   SMALL TABLES
+--------------------------------------------------------- */
+.small-table {
+    width: 600px !important;
+    max-width: 95% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    display: table !important;
+}
+
+/* Center text by default */
+.small-table td,
+.small-table th {
+    text-align: center;
+}
+
+/* First column left for names */
+.small-table td:first-child,
+.small-table th:first-child {
+    text-align: left;
+}
+
+/* Remove sticky behavior for first column in small tables */
+.small-table th:first-child {
+    position: static !important;
+    left: auto !important;
+}
+
+/* ---------------------------------------------------------
+   WIDE TABLES
+--------------------------------------------------------- */
+.wide-table {
+    width: 100%;
+    border-collapse: collapse;
+    display: block;       /* restore scroll behavior */
+    overflow-x: auto;     /* ensure scroll exists */
+    -webkit-overflow-scrolling: touch;
+}
+
+.wide-table thead,
+.wide-table tbody {
+    width: 100%;
+}
+
+.wide-table th {
+    position: sticky;
+    top: 0;
+    background: #f4f4f4;
+    z-index: 5;
+}
+
+/* Combos table styling */
+#combosTable th,
+#combosTable td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+/* ---------------------------------------------------------
+   TABS
+--------------------------------------------------------- */
+.tabs {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-radius: 5px 5px 0 0;
+    margin: 0 10px;
+    background: white;
+}
+
+.tab.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* ---------------------------------------------------------
+   HOMEPAGE LAYOUT & BIRTHDAYS
+--------------------------------------------------------- */
+.credits {
+    margin-top: 20px;
+    font-size: 1.2em;
+}
+
+.credits a {
+    color: blue;
+    text-decoration: none;
+}
+
+.credits a:hover {
+    text-decoration: underline;
+}
+
+.social-icons {
+    margin-top: 20px;
+}
+
+.social-icons a {
+    font-size: 2em;
+    margin: 0 15px;
+    color: #333;
+    text-decoration: none;
+}
+
+.social-icons a:hover {
+    color: #0077b5;
+}
+
+.home-layout {
+    display: grid;
+    grid-template-columns: auto auto auto;
+    gap: 30px;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 10px;
+}
+
+.left-col img,
+.middle-col img,
+.right-col {
+    width: 300px;
+}
+
+.right-col {
+    display: flex;
+    justify-content: center;
+}
+
+.birthday-scroll {
+    width: 100%;
+    max-height: 420px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 10px;
+}
+
+.bday-card {
+    background: #232db8;
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+.bday-card .name {
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.bday-card .date {
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+.bday-card .days_from_today {
+    font-size: 0.7em;
+}
+
+@media (max-width: 768px) {
+    .home-layout {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+
+    .left-col img,
+    .middle-col img,
+    .right-col {
+        width: 90%;
+        max-width: 400px;
+    }
+
+    .birthday-scroll {
+        max-height: 320px;
+    }
+}
+
+/* ---------------------------------------------------------
+   PLAYER PAGE
+--------------------------------------------------------- */
+.player-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.player-header img {
+    width: 180px;
+    border-radius: 10px;
+}
+
+.player-meta {
+    margin: 0;
+}
+
+/* ---------------------------------------------------------
+   DATE PAGE
+--------------------------------------------------------- */
+.date-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+/* ---------------------------------------------------------
+   TEAM BUILDER
+--------------------------------------------------------- */
+.team1 { background-color: #e0f7fa !important; }
+.team2 { background-color: #fce4ec !important; }
+.on    { background-color: #f1f8e9 !important; }
+.off   { background-color: #f5f5f5 !important; }
+
+.team-builder-controls {
+    margin-bottom: 10px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+}
+
+#playerSearch {
+    padding: 6px;
+    width: 220px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+#playerSearch:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+}
+
+.btn {
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background: #f4f4f4;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background: #e0e0e0;
+}
+
+.combo-count {
+    margin-left: 12px;
+    font-weight: 600;
+}
+
+.combos-header {
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.combos-container {
+    overflow: auto;
+    max-height: 60vh;
+    border: 1px solid #ddd;
+    padding: 8px;
+    margin: 0 16px;
+}
+
+/* ---------------------------------------------------------
+   PLOT CONTAINERS
+--------------------------------------------------------- */
+.plot-container {
+    width: 100%;
+    height: 500px;
+}
+
+.plot-container .plotly-graph-div {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ---------------------------------------------------------
+   MISC
+--------------------------------------------------------- */
+.graph-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Min-games filter input alignment */
+#minGamesPlayed {
+    margin-bottom: 10px;
+}
+
+/* ---------------------------------------------------------
+   TOOLTIP OVERRIDES (from legacy stylesheet)
+--------------------------------------------------------- */
+
+.tooltip-icon {
+    display: inline-block;
+    margin-left: 5px;
+    color: #007bff;
+    font-weight: bold;
+    cursor: help;
+    position: relative;
+}
+
+.tooltip-icon:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    top: 120%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 5px 8px;
+    border-radius: 5px;
+    white-space: nowrap;
+    font-size: 12px;
+    z-index: 10;
+}
+
+.dataTables_length label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.dataTables_length select {
+    appearance: auto;
+    padding: 5px;
+    margin-left: 5px;
+}
+
+.dataTables_sort_icon {
+    display: none !important;
+}
+
+th.sorting:after,
+th.sorting_asc:after,
+th.sorting_desc:after {
+    display: none !important;
+}
