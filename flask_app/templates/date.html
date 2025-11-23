@@ -9,47 +9,113 @@
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <style>
+        /* ---------------------------------------------------------
+           GLOBAL
+        --------------------------------------------------------- */
         body {
             font-family: Arial, sans-serif;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
         }
-        table {
-            width: 80%;
-            margin: auto;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 10px;
-            border: 1px blue;
-        }
-        th {
-            background-color: #f4f4f4;
-        }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
+
+        /* ---------------------------------------------------------
+           TABS (match index & player pages)
+        --------------------------------------------------------- */
         .tabs {
+            width: 100%;
             display: flex;
             justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
             margin: 20px 0;
         }
+
         .tab {
             padding: 10px 20px;
             cursor: pointer;
             border: 1px solid #ccc;
             border-radius: 5px 5px 0 0;
+            background: white;
             margin: 0 10px;
         }
+
         .tab.active {
             background-color: #007bff;
             color: white;
         }
+
         .tab-content {
             display: none;
         }
+
         .tab-content.active {
             display: block;
         }
-    </style>
+
+        /* ---------------------------------------------------------
+           TABLES — ALL THREE DATE TABLES ARE “WIDE TABLES”
+           (match index + player scrollable tables)
+        --------------------------------------------------------- */
+
+        table {
+            width: 100%;
+            min-width: 600px;         /* Required for mobile scroll */
+            border-collapse: collapse;
+            margin: 20px auto;
+            display: block;           /* Required for horizontal scroll */
+            overflow-x: auto;         /* MOBILE SCROLL */
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        /* ---------------------------------------------------------
+           STICKY HEADER + STICKY FIRST COLUMN
+           (IDENTICAL to index.html behavior)
+        --------------------------------------------------------- */
+
+        /* Sticky header row */
+        table th {
+            position: sticky;
+            top: 0;
+            background-color: #f4f4f4 !important;
+            z-index: 10; /* must be above left sticky column */
+        }
+
+        /* Sticky first column (header + body) */
+        table th:first-child,
+        table td:first-child {
+            position: sticky;
+            left: 0;
+            background-color: #ffffff !important;  /* avoid Safari transparency bug */
+            white-space: nowrap;
+            z-index: 15; /* highest so corner cell stays on top */
+        }
+
+        /* Non-wrapping helper */
+        .no-wrap {
+            white-space: nowrap;
+        }
+
+        /* ---------------------------------------------------------
+           MOBILE TWEAKS
+        --------------------------------------------------------- */
+        @media (max-width: 768px) {
+            table {
+                min-width: 650px;   /* smooth scrolling on small screens */
+            }
+        }
+        </style>
+
+
 </head>
 
 <!-- jQuery and DataTables JS -->
@@ -191,7 +257,7 @@
                 "searching": true,  // Enable search bar
                 "ordering": true,  // Enable sorting
                 "info": false,  // Show table info (e.g., "Showing 1 to 10 of 50 entries")
-                "order": [[2, "desc"], [4, "desc"], [10, "desc"]],
+                "order": [[11, "desc"]],
             });
             $('#gamesTable').DataTable({
                 "paging": false,  // Enable pagination
