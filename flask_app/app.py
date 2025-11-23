@@ -43,6 +43,7 @@ def log_memory_usage():
     memory_info = process.memory_info()
     # logging.debug(f"Memory usage: {memory_info.rss / 1024 ** 2} MB")
 
+
 @app.route("/api/birthdays")
 @app.route("/api/birthdays")
 def birthday_api():
@@ -102,20 +103,20 @@ def birthday_api():
         # ---- LABEL LOGIC ----
 
         if has_year:
-            age = today.year - bday.year + 1 # Age of next birthday
+            age = today.year - bday.year + 1  # Age of next birthday
             # If next birthday hasn't happened yet this year (or happened within last week), subtract 1
             if days_since >= -7:
                 age -= 1
 
             # Suffix
             if age % 10 == 1 and age % 100 != 11:
-                suffix = 'st'
+                suffix = "st"
             elif age % 10 == 2 and age % 100 != 12:
-                suffix = 'nd'
+                suffix = "nd"
             elif age % 10 == 3 and age % 100 != 13:
-                suffix = 'rd'
+                suffix = "rd"
             else:
-                suffix = 'th'
+                suffix = "th"
 
             label = f"{player}'s {age}{suffix} birthday!"
         else:
@@ -134,20 +135,19 @@ def birthday_api():
         else:
             display_day_text = f"{days_diff} days from now"
 
-        processed.append({
-            "raw": raw,
-            "display_date": display_date,
-            "days_away": days_diff,
-            "days_from_today": display_day_text,
-            "label": label,
-        })
+        processed.append(
+            {
+                "raw": raw,
+                "display_date": display_date,
+                "days_away": days_diff,
+                "days_from_today": display_day_text,
+                "label": label,
+            }
+        )
 
     processed.sort(key=lambda x: x["days_away"])
 
     return jsonify(processed)
-
-
-
 
 
 @app.route("/")
@@ -159,7 +159,15 @@ def home():
     log_memory_usage()
     stats = format_stats_for_site(
         data_cached.player_data.drop(
-            ["rating", "tiered_rating", "full_name", "height", "position", "resident", "birthday"]
+            [
+                "rating",
+                "tiered_rating",
+                "full_name",
+                "height",
+                "position",
+                "resident",
+                "birthday",
+            ]
         ),
         does_player_image_exist_row=True,
     )
@@ -206,7 +214,7 @@ def home():
     # logging.debug('computed player days')
     log_memory_usage()
     teammates = format_stats_for_site(
-        data_cached.teammates.drop(["player", "teammate"]).unique('pairing')
+        data_cached.teammates.drop(["player", "teammate"]).unique("pairing")
     )
     # logging.debug('computed teammates')
     log_memory_usage()
@@ -347,15 +355,17 @@ def date_page(date):
             ),
             does_player_image_exist_row=True,
         ),
-        day_games = format_stats_for_site(
-            data_cached.games.filter(pl.col("game_date") == date).with_columns(
+        day_games=format_stats_for_site(
+            data_cached.games.filter(pl.col("game_date") == date)
+            .with_columns(
                 pl.when(pl.col("first_poss") == 1)
                 .then(pl.lit("A"))
                 .when(pl.col("first_poss") == -1)
                 .then(pl.lit("B"))
                 .otherwise(pl.lit("Idk"))
                 .alias("first_poss")
-            ).drop(
+            )
+            .drop(
                 [
                     "winning_score",
                     "games_waited_B",

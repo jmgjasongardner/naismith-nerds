@@ -15,10 +15,7 @@ def load_data(filepath: str) -> Tuple[pl.DataFrame, pl.DataFrame]:
     )
     tiers = pl.DataFrame(
         pd.read_excel(filepath, sheet_name="Players", engine="openpyxl", dtype=str)
-    ).with_columns(
-        pl.col("birthday").cast(pl.Utf8),
-        pl.col("resident").cast(pl.Int8)
-    )
+    ).with_columns(pl.col("birthday").cast(pl.Utf8), pl.col("resident").cast(pl.Int8))
 
     return raw_games_df, tiers
 
