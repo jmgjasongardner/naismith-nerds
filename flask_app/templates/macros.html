@@ -1,0 +1,65 @@
+{% macro glossary_content() %}
+<h2>Glossary and Explanation</h2>
+<h3>So what exactly is shown?</h3>
+<p>Everything is derived from the score difference of each game. The only information going into the model is the final score difference, the ten players on the court, and a few variables for fatigue/rest and first possession. A time decay half-life of 270 days means games gradually lose weight over time.</p>
+<p>Interpretation: “Player X has a rating of 1.5, so that player makes the team 1.5 points better than an average replacement.”</p>
+
+<h3>How the ratings are formed</h3>
+<p>Consider a game with four below-average teammates and five slightly above-average opponents. The expected point differential is determined by those nine players, and performance relative to that expectation drives rating changes.</p>
+
+<p>For this reason it is neither inherently good nor bad to have better or worse teammates or opponents. The only barometer is performance versus expectation (the other nine players).</p>
+
+<h3>Stats</h3>
+<p><b>Proj Score Diff</b> – Sum of team ratings minus opponent ratings.</p>
+<p><b>Teammate Quality</b> – Sum of teammate ratings (excluding the player).</p>
+<p><b>Team Quality</b> – Sum of team ratings.</p>
+<p><b>Opp Quality</b> – Sum of opponent ratings.</p>
+<p><b>Pct Positive Teammates</b> – Share of games where teammates are net positive.</p>
+<p><b>Pct Positive Opps</b> – Share of games where opponents are net positive.</p>
+<p><b>Pct Games as Favorite</b> – Share of games where the team is favored.</p>
+<p><b>Pct Games w/ Better Teammates</b> – Share of games with better teammates than opponents.</p>
+<p><b>Other 9 Players Quality Diff</b> – Average difference between teammate and opponent ratings.</p>
+<p><b>First Game Day Rate</b> – Percent of days the player appears in the first game.</p>
+<p><b>Last Game Day Rate</b> – Percent of days the player appears in the last game.</p>
+
+<h3>Games</h3>
+<p><b>Team X Quality</b> – Sum of team player ratings.</p>
+<p><b>Spread</b> – Team A Quality minus Team B Quality.</p>
+<p><b>Diff From Spread</b> – Actual score difference minus spread.</p>
+<p><b>Abs</b> – Absolute value of the difference.</p>
+<p><b>Team A Win Prob</b> – Win probability from a logistic regression of team qualities.</p>
+<p><b>Moneyline</b> – Win probability converted to moneyline.</p>
+
+<h3>Player Days</h3>
+<p><b>First Game Day</b> – Game number where the player first appeared that day.</p>
+<p><b>Last Game Day</b> – Game number where the player last appeared that day.</p>
+<p><b>Longest Run on Court/Bench</b> – Longest consecutive stretch playing or sitting.</p>
+
+<h3>Player Pairings</h3>
+<p><b>Teammate / Other 9 Players Quality</b> – Ratings with the two listed players removed.</p>
+
+<h3>Days</h3>
+<p><b>Mean Rating Players</b> – Mean rating of all players present, weighted equally.</p>
+<p><b>Mean Rating Player Games</b> – Mean rating of all player-games.</p>
+<p><b>Longest Run on Court/Bench</b> – Maximum consecutive games for any player that day.</p>
+<p><b>Avg Longest Run on Court/Bench</b> – Average of each player’s longest run.</p>
+<p><b>Unique Winners Rate</b> – Share of attendees who won at least one game.</p>
+<p><b>Avg Parity of Teammates</b> – Standard deviation of teammate ratings (lower is more even).</p>
+<p><b>Avg Parity of Teams</b> – Standard deviation of team ratings.</p>
+<p><b>Avg Parity of Score Diff/Spread/Win Probs</b> – Standard deviation of those metrics.</p>
+{% endmacro %}
+
+{% macro methodology_content() %}
+<h2>Methodology</h2>
+<h3>Overview</h3>
+<p>This is a RAPM-style model, inspired by work such as <a href="https://jecutter.github.io/blog/rapm-model/" target="_blank">Jacob Cutter’s RAPM writeup</a>.</p>
+
+<p>Basic plus-minus measures point differential while a player is on the floor. Adjusted plus-minus uses regression to control for the other nine players, attributing impact more fairly. Regularized adjusted plus-minus (RAPM) uses ridge regression to shrink coefficients, stabilizing estimates for small samples.</p>
+
+<h3>Conceptual chain</h3>
+<p>Game results → score differential → minutes and on/off stints → regression with one regressor per player → ridge regularization → per-player ratings representing impact in points per game.</p>
+
+<h3>Further resources</h3>
+<p><a href="https://www.youtube.com/watch?v=Mkgcln0rrxA" target="_blank">Video: How does RAPM work?</a></p>
+<p><a href="https://squared2020.com/2017/09/18/deep-dive-on-regularized-adjusted-plus-minus-i-introductory-example/" target="_blank">Deep Dive on Regularized Adjusted Plus-Minus</a></p>
+{% endmacro %}

@@ -1,1468 +1,480 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Naismith Nerds</title>
-    <link rel="icon" type="image/x-icon" href="/static/bballfavicon.ico">
-
-    <!-- Include jQuery and DataTables.js -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Keep only the latest DataTables version -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css">
-    <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.5/js/dataTables.bootstrap5.min.js"></script>
-
-
-    <!-- Include Font Awesome for icons -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
-
-    <!-- Include Custom CSS Styles -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-
-    <!-- Include Bootstrap CSS Styles -->
-    <!link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/dataTables.bootstrap5.min.css">
-    <!link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-
-    <!-- DataTables Buttons Extension -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
-
-    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.colVis.min.js"></script>
-
-    <!-- FixedHeader Extension -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.2.4/css/fixedHeader.dataTables.min.css">
-    <script src="https://cdn.datatables.net/fixedheader/3.2.4/js/dataTables.fixedHeader.min.js"></script>
-
-    <!-- FixedColumns Extension -->
-    <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.0.2/css/fixedColumns.dataTables.min.css">
-    <script src="https://cdn.datatables.net/fixedcolumns/4.0.2/js/dataTables.fixedColumns.min.js"></script>
-
-
-
-
-
-<style>
-    /* ---------------------------------------------------------
-       GLOBAL
-    --------------------------------------------------------- */
-    body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        overflow-x: hidden; /* prevents horizontal scroll on mobile */
-    }
-
-    /* ---------------------------------------------------------
-       TABLE STYLES
-    --------------------------------------------------------- */
-    table {
-        width: 100%;
-        min-width: 50%;
-        margin: auto;
-        border-collapse: collapse;
-        display: block;        /* allow horizontal scroll on mobile */
-        overflow-x: auto;
-    }
-
-    th {
-        position: sticky;
-        top: 0;
-        background-color: #f4f4f4 !important;
-        color: black;
-    }
-
-    th, td {
-        padding: 10px;
-        border: 0.2px blue;
-        text-align: left;
-    }
-
-    th:first-child {
-        position: sticky;
-        left: 0;
-        z-index: 1000;
-    }
-
-    tr:nth-child(even) {
-        background-color: #f9f9f9;
-    }
-
-    /* Team Builder row color overrides */
-    tr.team1 td, tr.team2 td, tr.on td, tr.off td {
-        background-color: inherit !important;
-    }
-    tr.team1 { background-color: #e0f7fa !important; }
-    tr.team2 { background-color: #fce4ec !important; }
-    tr.on    { background-color: #f1f8e9 !important; }
-    tr.off   { background-color: #f5f5f5 !important; }
-
-    .no-wrap { white-space: nowrap; }
-
-    /* ---------------------------------------------------------
-       SMALL TABLE FIX – center & enlarge small tables
-    --------------------------------------------------------- */
-
-    .small-table {
-        width: 600px !important;
-        max-width: 95% !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
-        display: table !important;
-    }
-
-    /* Center text by default */
-    .small-table td,
-    .small-table th {
-        text-align: center;
-    }
-
-    /* But first column stays left for player names */
-    .small-table td:first-child,
-    .small-table th:first-child {
-        text-align: left;
-    }
-
-    /* Remove sticky left column for small tables */
-    .small-table th:first-child {
-        position: static !important;
-        left: auto !important;
-    }
-
-    /* ---------------------------------------------------------
-       WIDE TABLE (for combos)
-    --------------------------------------------------------- */
-
-    .wide-table {
-        width: 100%;
-        border-collapse: collapse;
-        display: table;      /* IMPORTANT: prevent block mode from shrinking */
-    }
-
-    .wide-table th {
-        position: sticky;
-        top: 0;
-        background: #f4f4f4;
-        z-index: 5;
-    }
-
-    /* Desktop-only centering of DataTables controls */
-    @media (min-width: 769px) {
-        .dataTables_wrapper .dt-buttons,
-        .dataTables_wrapper .dataTables_length,
-        .dataTables_wrapper .dataTables_filter {
-            display: flex !important;
-            justify-content: center !important;
-            text-align: center !important;
-            width: 100% !important;
-            margin-bottom: 10px;
-        }
-
-        /* make the whole control block centered together */
-        .dataTables_wrapper .dataTables_length,
-        .dataTables_wrapper .dataTables_filter {
-            margin-left: auto !important;
-            margin-right: auto !important;
-        }
-    }
-
-
-
-
-
-    /* ---------------------------------------------------------
-       TABS
-    --------------------------------------------------------- */
-    .tabs {
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        flex-wrap: wrap;   /* allows mobile wrapping */
-        gap: 10px;
-        margin: 20px 0;
-    }
-
-
-    .tab {
-        padding: 10px 20px;
-        cursor: pointer;
-        border: 1px solid #ccc;
-        border-radius: 5px 5px 0 0;
-        margin: 0 10px;
-    }
-
-    .tab.active {
-        background-color: #007bff;
-        color: white;
-    }
-
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-
-
-    /* ---------------------------------------------------------
-       SOCIAL / CREDITS / EXTRA SECTIONS
-    --------------------------------------------------------- */
-    .credits {
-        margin-top: 20px;
-        font-size: 1.2em;
-    }
-    .credits a {
-        color: blue;
-        text-decoration: none;
-    }
-    .credits a:hover { text-decoration: underline; }
-
-    .social-icons {
-        margin-top: 20px;
-    }
-    .social-icons a {
-        font-size: 2em;
-        margin: 0 15px;
-        color: #333;
-        text-decoration: none;
-    }
-    .social-icons a:hover { color: #0077b5; }
-
-    .methodology, .glossary {
-        font-size: 1.2em;
-        padding: 20px;
-        background-color: #f4f4f4;
-        margin-top: 20px;
-        text-align: left;
-    }
-    .methodology h2,
-    .glossary h2 {
-        text-align: center;
-    }
-
-    /* ---------------------------------------------------------
-       BIRTHDAY CARDS
-    --------------------------------------------------------- */
-    .birthday-scroll {
-        max-height: 300px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        padding-right: 10px;
-    }
-
-    .bday-card {
-        background: #232db8;
-        padding: 12px;
-        margin-bottom: 12px;
-        border-radius: 10px;
-        color: white;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-    }
-
-    .bday-card .name {
-        font-size: 1.2em;
-        font-weight: bold;
-    }
-
-    .bday-card .date {
-        font-size: 0.9em;
-        opacity: 0.8;
-    }
-
-    .bday-card .days_from_today {
-        font-size: 0.7em;
-    }
-
-    /* ---------------------------------------------------------
-       HOMEPAGE IMAGE + BIRTHDAY LAYOUT
-    --------------------------------------------------------- */
-
-    .home-layout {
-        display: grid;
-        grid-template-columns: auto auto auto;
-        gap: 30px;
-        align-items: center;
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 10px;
-    }
-
-    .left-col img,
-    .middle-col img,
-    .right-col {
-        width: 300px;
-    }
-
-    .right-col {
-        display: flex;
-        justify-content: center;
-    }
-
-    .birthday-scroll {
-        width: 100%;
-        max-height: 420px;
-        overflow-y: auto;
-    }
-
-    @media (max-width: 768px) {
-        .home-layout {
-            grid-template-columns: 1fr;
-            justify-items: center;
-        }
-
-        .left-col img,
-        .middle-col img,
-        .right-col {
-            width: 90%;
-            max-width: 400px;
-        }
-    }
-
-
-    /* Mobile behavior */
-    @media (max-width: 768px) {
-        .home-flex {
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .home-left img,
-        .home-right {
-            width: 90%;
-            max-width: 400px;
-        }
-
-        .birthday-scroll {
-            max-height: 320px;
-        }
-    }
-
-    /* ---------------------------------------------------------
-       PLOT CONTAINER
-    --------------------------------------------------------- */
-    .plot-container {
-        width: 100%;
-        height: 500px;
-    }
-    .plot-container .plotly-graph-div {
-        width: 100% !important;
-        height: 100% !important;
-    }
-
-    /* ---------------------------------------------------------
-       SEARCH INPUT
-    --------------------------------------------------------- */
-    #playerSearch {
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 1em;
-    }
-    #playerSearch:focus {
-        outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
-    }
-
-    /* ---------------------------------------------------------
-       COMBOS TABLE (Team Builder Output)
-    --------------------------------------------------------- */
-
-    #combosTable {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    #combosTable th,
-    #combosTable td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: left;
-    }
-
-    #combosTable thead th {
-        position: sticky;
-        top: 0;
-        background: #f4f4f4;
-        z-index: 5;
-    }
-
-    /* Reuse standard row-color classes */
-    tr.team1 { background-color: #e0f7fa !important; }
-    tr.team2 { background-color: #fce4ec !important; }
-    tr.on    { background-color: #f1f8e9 !important; }
-    tr.off   { background-color: #ffffff !important; }
-
-    </style>
-</head>
-
-
-
-<body>
-    <h1>🏀 Welcome, Naismith Nerds 🏀</h1>
-
-    <!-- Credits Section -->
-    <div class="credits">
-        <p>Created by Jason Gardner, January 2025</p>
-        <p>Stats from thrice-weekly semi-formal pickup basketball in SE Washington, DC beginning January 2025</p>
-        <p>Additional credit to Jack Stubblefield for sous-stat-taking, data validation, and further ideas</p>
-
-        <p><a href="http://www.pierrewhatley.com">Support Collective Hooper Pierre Whatley for Congress!</a></p>
+{% extends "base.html" %}
+{% from "macros.html" import glossary_content, methodology_content %}
+
+{% block title %}Naismith Nerds{% endblock %}
+{% block body_class %}page-index{% endblock %}
+
+{% block content %}
+<h1>🏀 Welcome, Naismith Nerds 🏀</h1>
+
+<!-- Credits -->
+<div class="credits">
+    <p>Created by Jason Gardner, January 2025</p>
+    <p>Stats from thrice-weekly semi-formal pickup basketball in SE Washington, DC beginning January 2025</p>
+    <p>Additional credit to Jack Stubblefield for sous-stat-taking, data validation, and further ideas</p>
+    <p><a href="http://www.pierrewhatley.com">Support Collective Hooper Pierre Whatley for Congress!</a></p>
+</div>
+
+<!-- Social media icons -->
+<div class="social-icons">
+    <a href="https://www.linkedin.com/in/jasonmgardner99" target="_blank"><i class="fab fa-linkedin"></i></a>
+    <a href="https://github.com/jmgjasongardner/naismith-nerds" target="_blank"><i class="fab fa-github"></i></a>
+    <a href="https://www.instagram.com/jmgjasongardner" target="_blank"><i class="fab fa-instagram"></i></a>
+    <a href="https://twitter.com/jmgjasongardner" target="_blank"><i class="fab fa-twitter"></i></a>
+    <a href="https://bsky.app/profile/jmgard.bsky.social" target="_blank"><i class="fab fa-bluesky"></i></a>
+</div>
+
+<!-- Top layout: images + birthdays -->
+<div class="home-layout">
+    <div class="left-col">
+        <img class="naismith-img"
+             src="{{ url_for('static', filename='naismith.jpeg') }}"
+             alt="Naismith Nerds">
     </div>
 
-    <!-- Social Media Icons -->
-    <div class="social-icons">
-        <a href="https://www.linkedin.com/in/jasonmgardner99" target="_blank"><i class="fab fa-linkedin"></i></a>
-        <a href="https://github.com/jmgjasongardner/naismith-nerds" target="_blank"><i class="fab fa-github"></i></a>
-        <a href="https://www.instagram.com/jmgjasongardner" target="_blank"><i class="fab fa-instagram"></i></a>
-        <a href="https://twitter.com/jmgjasongardner" target="_blank"><i class="fab fa-twitter"></i></a>
-        <a href="https://bsky.app/profile/jmgard.bsky.social" target="_blank"><i class="fab fa-bluesky"></i></a>
+    <div class="middle-col">
+        <img class="color-img"
+             src="{{ url_for('static', filename='nbamath.jpg') }}"
+             alt="NBA Math">
     </div>
 
-    <div class="home-layout">
-
-        <div class="left-col">
-            <img class="naismith-img"
-                 src="{{ url_for('static', filename='naismith.jpeg') }}"
-                 alt="Naismith Nerds">
-        </div>
-
-        <div class="middle-col">
-            <img class="color-img"
-                 src="{{ url_for('static', filename='nbamath.jpg') }}"
-                 alt="NBA Math">
-        </div>
-
-        <div class="right-col">
-            <div id="birthdayScroll" class="birthday-scroll"></div>
-        </div>
-
+    <div class="right-col">
+        <div id="birthdayScroll" class="birthday-scroll"></div>
     </div>
+</div>
 
+<!-- Navigation Tabs -->
+<div class="tabs">
+    <div class="tab active" data-target="stats">Stats</div>
+    <div class="tab" data-target="ratings">Ratings</div>
+    <div class="tab" data-target="team_builder">Team Builder</div>
+    <div class="tab" data-target="games">Games</div>
+    <div class="tab" data-target="player_days">Player Days</div>
+    <div class="tab" data-target="player_pairings">Player Pairings</div>
+    <div class="tab" data-target="days">Days</div>
+</div>
+<div class="tabs">
+    <div class="tab" data-target="glossary">Glossary and Explanation</div>
+    <div class="tab" data-target="methodology">Methodology</div>
+</div>
 
+<!-- Min games filter (shared logic in tables.js) -->
+<input id="minGamesPlayed" type="number" placeholder="Filter Min Games" oninput="filterByMinGamesPlayed()">
 
-
-
-    <!-- Navigation Tabs -->
-    <div class="tabs">
-        <div class="tab active" data-target="stats">Stats</div>
-        <div class="tab" data-target="ratings">Ratings</div>
-        <div class="tab" data-target="team_builder">Team Builder</div>
-        <div class="tab" data-target="games">Games</div>
-        <div class="tab" data-target="player_days">Player Days</div>
-        <div class="tab" data-target="player_pairings">Player Pairings</div>
-        <div class="tab" data-target="days">Days</div>
-    </div>
-    <div class="tabs">
-        <div class="tab" data-target="glossary">Glossary and Explanation</div>
-        <div class="tab" data-target="methodology">Methodology</div>
-    </div>
-
-    <input id="minGamesPlayed" type="number" placeholder="Filter Min Games" oninput="filterByMinGamesPlayed()">
-
-    <div class="tab-content stats active">
-        <h2>Stats</h2>
-        <h3>From {{ num_days }} Runs Since January 11, 2025</h3>
-        {% if stats %}
-        <table id="statsTable">
-            <thead>
-                <tr>
-                    {% for col in stats[0].keys() %}
-                        {% if col != 'has_img' %}
-                            <th title="{{ main_tooltip.get(col, '') }}">
-                                {{ col }}</th>
-                        {% endif %}
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in stats %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            {% if key != 'has_img' %}
-                                <td class="{% if key in ['Player', 'Most Recent Game'] %}no-wrap{% endif %}">
-                                    {% if key == "Player" %}
-                                        <a href="{{ url_for('player_page', player_name=row['Player']) }}">
-                                            {% if row.has_img %}
-                                                <img
-                                                    loading="lazy"
-                                                    src="{{ url_for('static', filename='player_pics_thumbs/' ~ row['Player'] ~ '.webp') }}"
-                                                    alt="{{ row['Player'] }}"
-                                                    style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
-                                            {% endif %}
-                                            {{ row['Player'] }}
-                                        </a>
-                                    {% elif key == "Most Recent Game" %}
-                                        <a href="{{ url_for('date_page', date=value) }}">
-                                            {{ value }}
-                                        </a>
-                                    {% else %}
-                                        {{ value }}
+<!-- Stats tab -->
+<div class="tab-content stats active">
+    <h2>Stats</h2>
+    <h3>From {{ num_days }} Runs Since January 11, 2025</h3>
+    {% if stats %}
+    <table id="statsTable" data-page-table="index-stats">
+        <thead>
+        <tr>
+            {% for col in stats[0].keys() %}
+                {% if col != 'has_img' %}
+                    <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+                {% endif %}
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in stats %}
+            <tr>
+                {% for key, value in row.items() %}
+                    {% if key != 'has_img' %}
+                        <td class="{% if key in ['Player', 'Most Recent Game'] %}no-wrap{% endif %}">
+                            {% if key == "Player" %}
+                                <a href="{{ url_for('player_page', player_name=row['Player']) }}">
+                                    {% if row.has_img %}
+                                        <img
+                                            loading="lazy"
+                                            src="{{ url_for('static', filename='player_pics_thumbs/' ~ row['Player'] ~ '.webp') }}"
+                                            alt="{{ row['Player'] }}"
+                                            style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
                                     {% endif %}
-                                </td>
+                                    {{ row['Player'] }}
+                                </a>
+                            {% elif key == "Most Recent Game" %}
+                                <a href="{{ url_for('date_page', date=value) }}">
+                                    {{ value }}
+                                </a>
+                            {% else %}
+                                {{ value }}
                             {% endif %}
-                        {% endfor %}
-                    </tr>
+                        </td>
+                    {% endif %}
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No stats available.</p>
-        {% endif %}
-    </div>
-    <div class="tab-content ratings">
-        <h2>Player Ratings</h2>
-        <h3>Best Lambda: {{ best_lambda }}</h3>  <!-- Display the best_lambda value -->
-        {% if ratings %}
-        <table id="ratingsTable" class="small-table">
-            <thead>
-                <tr>
-                    {% for col in ratings[0].keys() %}
-                        {% if col != 'has_img' %}
-                            <th title="{{ main_tooltip.get(col, '') }}">
-                                {{ col }}</th>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No stats available.</p>
+    {% endif %}
+</div>
+
+<!-- Ratings tab -->
+<div class="tab-content ratings">
+    <h2>Player Ratings</h2>
+    <h3>Best Lambda: {{ best_lambda }}</h3>
+    {% if ratings %}
+    <table id="ratingsTable" class="small-table">
+        <thead>
+        <tr>
+            {% for col in ratings[0].keys() %}
+                {% if col != 'has_img' %}
+                    <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+                {% endif %}
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in ratings %}
+            <tr>
+                {% for key, value in row.items() %}
+                    {% if key != 'has_img' %}
+                        {% if key == "Player" %}
+                            <td>
+                                <a href="{{ url_for('player_page', player_name=row['Player']) }}">
+                                    {% if row.has_img %}
+                                        <img
+                                            loading="lazy"
+                                            src="{{ url_for('static', filename='player_pics_thumbs/' ~ row['Player'] ~ '.webp') }}"
+                                            alt="{{ row['Player'] }}"
+                                            style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
+                                    {% endif %}
+                                    {{ row['Player'] }}
+                                </a>
+                            </td>
+                        {% else %}
+                            <td>{{ value }}</td>
                         {% endif %}
-                    {% endfor %}
-                </tr>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No player ratings available.</p>
+    {% endif %}
+
+    <div class="plot-container">
+        {{ plot_ratings | safe }}
+    </div>
+
+    <p>
+        Outscoring expectation is how to improve rating<br>
+        The more games played, the more the model moves RAPM to match APM (y=x)<br>
+        Smaller sample players are regressed more toward zero (y=0) when regularized
+    </p>
+
+    <div class="plot-container">
+        {{ plot_rapm_apm | safe }}
+    </div>
+</div>
+
+<!-- Team Builder tab -->
+<div class="tab-content team_builder">
+    <h2>Team Builder</h2>
+    <h3>Select any combo of 2, 4, 6, 8, or 10 players and either assign them to specific teams, or generate teams based on rating.</h3>
+
+    <!-- Controls -->
+    <div class="team-builder-controls">
+        <input
+            type="text"
+            id="playerSearch"
+            placeholder="Search player name..."
+        >
+        <button id="generateBtn" class="btn">Generate Teams</button>
+        <button id="resetBtn" class="btn">Reset Teams</button>
+        <button id="returnBtn" class="btn" style="display:none;">Return to Team Selection</button>
+        <div id="comboCount" class="combo-count"></div>
+    </div>
+
+    <!-- Summary -->
+    <div id="numplayers">
+        <strong>Number of Players:</strong> <span id="numPlayersOnCourt">0</span>
+    </div>
+    <div id="teambuilderratings">
+        <strong>Team 1 Rating:</strong> <span id="team1Total">0</span> |
+        <strong>Team 2 Rating:</strong> <span id="team2Total">0</span> |
+        <strong>Unassigned ON Rating:</strong> <span id="onTotal">0</span>
+    </div>
+    <div id="spread">
+        <strong>Point Spread (T1 − T2):</strong> <span id="spreadTotal">0</span>
+    </div>
+
+    <!-- Selection view -->
+    <div id="selectionView">
+        {% if ratings %}
+        <table id="teamBuilderTable" class="small-table">
+            <thead>
+            <tr>
+                <th>Player</th>
+                <th>Rating</th>
+                <th>Status</th>
+            </tr>
             </thead>
             <tbody>
-                {% for row in ratings %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            {% if key != 'has_img' %}
-                                {% if key == "Player" %}
-                                    <td>
-                                        <a href="{{ url_for('player_page', player_name=row['Player']) }}">
-                                            {% if row.has_img %}
-                                                <img
-                                                    loading="lazy"
-                                                    src="{{ url_for('static', filename='player_pics_thumbs/' ~ row['Player'] ~ '.webp') }}"
-                                                    alt="{{ row['Player'] }}"
-                                                    style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
-                                            {% endif %}
-                                            {{ row['Player'] }}
-                                        </a>
-                                    </td>
-                                {% else %}
-                                    <td>{{ value }}</td>
-                                {% endif %}
-                            {% endif %}
-                        {% endfor %}
-                    </tr>
-                {% endfor %}
+            {% for row in ratings %}
+                <tr data-player="{{ row['Player']|e }}" data-rating="{{ row['Rating'] }}">
+                    <td class="player-name">{{ row["Player"] }}</td>
+                    <td class="rating">{{ row["Rating"] }}</td>
+                    <td>
+                        <select class="status-select">
+                            <option value="OFF">OFF</option>
+                            <option value="ON">ON</option>
+                            <option value="Team 1">Team 1</option>
+                            <option value="Team 2">Team 2</option>
+                        </select>
+                    </td>
+                </tr>
+            {% endfor %}
             </tbody>
         </table>
         {% else %}
             <p>No player ratings available.</p>
         {% endif %}
-        <div>{{ plot_ratings | safe }}</div>
-        <p>
-            Outscoring expectation is how to improve rating<br>
-            The more games you play, the more the model feels confident your performance is "true" and moves your RAPM to match your APM (y=x)<br>
-            Smaller sample players are regressed more toward zero (y=0) when regularized
-        </p>
-
-        <div>{{ plot_rapm_apm | safe }}</div>
     </div>
-        <div class="tab-content team_builder">
-      <h2>Team Builder</h2>
-        <h3>Select any combo of 2, 4, 6, 8, or 10 players and either assign them to specific teams, or generate teams based on rating.</h3>
 
-      <!-- Controls -->
-      <div style="margin-bottom: 10px; display:flex; gap:8px; justify-content:center; align-items:center;">
-        <input
-          type="text"
-          id="playerSearch"
-          placeholder="Search player name..."
-          style="padding: 6px; width: 220px;"
-        >
-        <button id="generateBtn" class="btn">Generate Teams</button>
-        <button id="resetBtn" class="btn">Reset Teams</button>
-        <button id="returnBtn" class="btn" style="display:none;">Return to Team Selection</button>
-        <div id="comboCount" style="margin-left: 12px; font-weight:600;"></div>
-      </div>
+    <!-- Combinations view -->
+    <div id="combosView" style="display:none;">
+        <div class="combos-header">
+            <strong>Generated team combinations</strong>
+        </div>
+        <div class="combos-container">
+            <table id="combosTable" class="wide-table">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Team 1 Players</th>
+                    <th>Team 1 Rating</th>
+                    <th>Team 2 Players</th>
+                    <th>Team 2 Rating</th>
+                    <th>Spread (T1 − T2)</th>
+                    <th>|Spread|</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
-      <!-- Text headers -->
-      <div id="numplayers" style="margin-top: 1em; text-align:center;">
-          <strong>Number of Players:</strong> <span id="numPlayersOnCourt">0</span>
-      </div>
-      <div id="teambuilderratings" style="margin-top: 0.5em; text-align:center;">
-          <strong>Team 1 Rating:</strong> <span id="team1Total">0</span> |
-          <strong>Team 2 Rating:</strong> <span id="team2Total">0</span> |
-          <strong>Unassigned ON Rating:</strong> <span id="onTotal">0</span>
-      </div>
-
-      <div id="spread" style="margin-top: 0.5em; text-align:center;">
-          <strong>Point Spread (T1 − T2):</strong> <span id="spreadTotal">0</span>
-      </div>
-
-      <!-- SELECTION VIEW -->
-      <div id="selectionView" style="margin-top: 1em;">
-        {% if ratings %}
-        <table id="teamBuilderTable" class="small-table">
-          <thead>
-            <tr>
-              <th>Player</th>
-              <th>Rating</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in ratings %}
-            <tr data-player="{{ row['Player']|e }}" data-rating="{{ row['Rating'] }}">
-              <td class="player-name">{{ row["Player"] }}</td>
-              <td class="rating">{{ row["Rating"] }}</td>
-              <td>
-                <select class="status-select">
-                  <option value="OFF">OFF</option>
-                  <option value="ON">ON</option>
-                  <option value="Team 1">Team 1</option>
-                  <option value="Team 2">Team 2</option>
-                </select>
-              </td>
-            </tr>
+<!-- Games tab -->
+<div class="tab-content games">
+    <h2>Games</h2>
+    {% if games %}
+    <table id="gamesTable" data-page-table="index-games">
+        <thead>
+        <tr>
+            {% for col in games[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
             {% endfor %}
-          </tbody>
-        </table>
-        {% else %}
-          <p>No player ratings available.</p>
-        {% endif %}
-      </div>
-
-      <!-- COMBINATIONS VIEW (initially hidden) -->
-      <div id="combosView" style="display:none; margin-top:1em;">
-        <div style="text-align:center; margin-bottom: 8px;">
-          <strong>Generated team combinations</strong>
-        </div>
-
-        <div style="overflow:auto; max-height:60vh; border:1px solid #ddd; padding:8px; margin: 0 16px;">
-          <table id="combosTable" class="wide-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Team 1 Players</th>
-                <th>Team 1 Rating</th>
-                <th>Team 2 Players</th>
-                <th>Team 2 Rating</th>
-                <th>Spread (T1 − T2)</th>
-                <th>|Spread|</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-      </div>
-    </div>
-
-    <div class="tab-content games">
-        <h2>Games</h2>
-        {% if games %}
-        <table id="gamesTable">
-            <thead>
-                <tr>
-                    {% for col in games[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in games %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            <td>
-                                {% if key in ['A1', 'A2', 'A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4', 'B5'] %}
-                                    <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
-                                {% elif key == "Game Date" %}
-                                    <a href="{{ url_for('date_page', date=value) }}">
-                                        {{ value }}
-                                    </a>
-                                {% else %}
-                                    {{ value }}
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                    </tr>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in games %}
+            <tr>
+                {% for key, value in row.items() %}
+                    <td>
+                        {% if key in ['A1', 'A2', 'A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4', 'B5'] %}
+                            <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
+                        {% elif key == "Game Date" %}
+                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
+                    </td>
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No game data available.</p>
-        {% endif %}
-    </div>
-    <div class="tab-content player_days">
-        <h2>Player Days</h2>
-        {% if player_days %}
-        <table id="playerDaysTable">
-            <thead>
-                <tr>
-                    {% for col in player_days[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-             <tbody>
-                {% for row in player_days %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            {% if key == "Player" %}
-                                <td>
-                                    <a href="{{ url_for('player_page', player_name=value) }}">
-                                        {{ value }}
-                                    </a>
-                                </td>
-                            {% elif key == "Game Date" %}
-                                <td>
-                                    <a href="{{ url_for('date_page', date=value) }}">
-                                        {{ value }}
-                                    </a>
-                                </td>
-                            {% else %}
-                                <td>{{ value }}</td>
-                            {% endif %}
-                        {% endfor %}
-                    </tr>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No game data available.</p>
+    {% endif %}
+</div>
+
+<!-- Player Days tab -->
+<div class="tab-content player_days">
+    <h2>Player Days</h2>
+    {% if player_days %}
+    <table id="playerDaysTable">
+        <thead>
+        <tr>
+            {% for col in player_days[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in player_days %}
+            <tr>
+                {% for key, value in row.items() %}
+                    {% if key == "Player" %}
+                        <td>
+                            <a href="{{ url_for('player_page', player_name=value) }}">
+                                {{ value }}
+                            </a>
+                        </td>
+                    {% elif key == "Game Date" %}
+                        <td>
+                            <a href="{{ url_for('date_page', date=value) }}">
+                                {{ value }}
+                            </a>
+                        </td>
+                    {% else %}
+                        <td>{{ value }}</td>
+                    {% endif %}
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No player day data available.</p>
-        {% endif %}
-    </div>
-    <div class="tab-content player_pairings">
-        <h2>Player Pairings</h2>
-        <h3>Teammate Combos</h3>
-        {% if teammates %}
-        <table id="teammatesTable">
-            <thead>
-                <tr>
-                    {% for col in teammates[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in teammates %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            <td class="{% if key in ['Pairing', 'Most Recent Game'] %}no-wrap{% endif %}">
-                                {% if key == "Pairing" %}
-                                    {% set p1, p2 = value.split(" - ") %}
-                                        <a href="{{ url_for('player_page', player_name=p1) }}">{{ p1 }}</a>
-                                        &nbsp;–&nbsp;
-                                        <a href="{{ url_for('player_page', player_name=p2) }}">{{ p2 }}</a>
-                                {% elif key == "Most Recent Game" %}
-                                    <a href="{{ url_for('date_page', date=value) }}">
-                                        {{ value }}
-                                    </a>
-                                {% else %}
-                                    {{ value }}
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                    </tr>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No player day data available.</p>
+    {% endif %}
+</div>
+
+<!-- Player Pairings tab -->
+<div class="tab-content player_pairings">
+    <h2>Player Pairings</h2>
+
+    <h3>Teammate Combos</h3>
+    {% if teammates %}
+    <table id="teammatesTable">
+        <thead>
+        <tr>
+            {% for col in teammates[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in teammates %}
+            <tr>
+                {% for key, value in row.items() %}
+                    <td class="{% if key in ['Pairing', 'Most Recent Game'] %}no-wrap{% endif %}">
+                        {% if key == "Pairing" %}
+                            {% set p1, p2 = value.split(" - ") %}
+                            <a href="{{ url_for('player_page', player_name=p1) }}">{{ p1 }}</a>
+                            &nbsp;–&nbsp;
+                            <a href="{{ url_for('player_page', player_name=p2) }}">{{ p2 }}</a>
+                        {% elif key == "Most Recent Game" %}
+                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
+                    </td>
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No teammate data available.</p>
-        {% endif %}
-        <h3>Opponent Combos</h3>
-        {% if opponents %}
-        <table id="opponentsTable">
-            <thead>
-                <tr>
-                    {% for col in opponents[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-             <tbody>
-                {% for row in opponents %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            <td class="{% if key == 'Most Recent Game' %}no-wrap{% endif %}">
-                                {% if key in ["Player", "Opp"] %}
-                                    <a href="{{ url_for('player_page', player_name=value) }}">
-                                        {{ value }}
-                                    </a>
-                                {% elif key == "Most Recent Game" %}
-                                    <a href="{{ url_for('date_page', date=value) }}">
-                                        {{ value }}
-                                    </a>
-                                {% else %}
-                                    {{ value }}
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                    </tr>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No teammate data available.</p>
+    {% endif %}
+
+    <h3>Opponent Combos</h3>
+    {% if opponents %}
+    <table id="opponentsTable">
+        <thead>
+        <tr>
+            {% for col in opponents[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in opponents %}
+            <tr>
+                {% for key, value in row.items() %}
+                    <td class="{% if key == 'Most Recent Game' %}no-wrap{% endif %}">
+                        {% if key in ["Player", "Opp"] %}
+                            <a href="{{ url_for('player_page', player_name=value) }}">
+                                {{ value }}
+                            </a>
+                        {% elif key == "Most Recent Game" %}
+                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
+                    </td>
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No opponent data available.</p>
-        {% endif %}
-    </div>
-    <div class="tab-content days">
-        <h2>Days</h2>
-        {% if days_of_week %}
-        <table id="daysOfWeekTable">
-            <thead>
-                <tr>
-                    {% for col in days_of_week[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-             <tbody>
-                {% for row in days_of_week %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            <td>{{ value }}</td>
-                        {% endfor %}
-                    </tr>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No opponent data available.</p>
+    {% endif %}
+</div>
+
+<!-- Days tab -->
+<div class="tab-content days">
+    <h2>Days</h2>
+
+    {% if days_of_week %}
+    <table id="daysOfWeekTable">
+        <thead>
+        <tr>
+            {% for col in days_of_week[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in days_of_week %}
+            <tr>
+                {% for key, value in row.items() %}
+                    <td>{{ value }}</td>
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No days of week data available.</p>
-        {% endif %}
-        {% if days %}
-        <table id="daysTable">
-            <thead>
-                <tr>
-                    {% for col in days[0].keys() %}
-                        <th title="{{ main_tooltip.get(col, '') }}">
-                            {{ col }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-             <tbody>
-                {% for row in days %}
-                    <tr>
-                        {% for key, value in row.items() %}
-                            {% if key == "Game Date" %}
-                                <td>
-                                    <a href="{{ url_for('date_page', date=value) }}">
-                                        {{ value }}
-                                    </a>
-                                </td>
-                            {% else %}
-                                <td>{{ value }}</td>
-                            {% endif %}
-                        {% endfor %}
-                    </tr>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No days of week data available.</p>
+    {% endif %}
+
+    {% if days %}
+    <table id="daysTable">
+        <thead>
+        <tr>
+            {% for col in days[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in days %}
+            <tr>
+                {% for key, value in row.items() %}
+                    {% if key == "Game Date" %}
+                        <td>
+                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
+                        </td>
+                    {% else %}
+                        <td>{{ value }}</td>
+                    {% endif %}
                 {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-            <p>No days data available.</p>
-        {% endif %}
-    </div>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No days data available.</p>
+    {% endif %}
+</div>
 
-    <div class="tab-content glossary">
-        <h2>Glossary and Explanation</h2>
-        <h3>So what exactly am I looking at?</h3>
-        <p>Good question!  In short, everything here is derived from the score difference of each game.  The <i>only</i> information going into the model is the final score difference, the ten players on the court, and, as of November 2025, a couple other variables accounting for fatigue/rest based on number of games on/off by team, and also which team had first possession.  Lastly, there is a "time decay half-life" of 270 days, which basically means for every nine months since a game is played, it has half the weighting the model as a game played today.</p>
-        <p>Essentially, read it as "Player X has a rating of 1.5, so he makes his team 1.5 points better than an average player replacing him when on the court."</p>
-        <h3>How did these ratings come to be?</h3>
-        <p>Consider a game where a player is on the court with four below average players (say, each worth -1 points), and against five slightly above average players (each worth 0.5).  The ratings of the opponent sum to 2.5, and the teammates sum to -4.  Off the bat, this player is playing at an expected -6.5 point difference.  So, if he were to "cover" that spread, as in win the game, or lose by six or less, than he will have made a <b>positive contribution</b> and it will reflect positively on his rating. </p>
+<!-- Glossary tab -->
+<div class="tab-content glossary">
+    {{- glossary_content() -}}
+</div>
 
-    </p><p>Another perspective from the same example: Pretend the aforementioned player was already a positive 2.0 rating player.  Now, let's look at the perspective of his teammate.  His opponents still have a rating of 2.5, but his teammates have a rating of 2-1-1-1=-1.  This player is stepping onto the court at an expected -3.5 point difference.  So, <i>he</i> must "cover" that spread of 3.5 to reflect positively, because he had the luxury of playing with a better teammate than the first player did.</p>
-        <p>For this reason <b>it is neither inherently good nor bad to have better or worse teammates or opponents!</b>  The only barometer of your success is how well <i>you do versus expectation (which is the sum of the other nine players' ratings on the court).</i>  If your team outscores that expectation, then you will have accrued a positive rating, and vice versa.  <b>To see this in action, sort on "Result vs Expectation".</b></p>
-        <h3>Stats</h3>
-        <p><b>Proj Score Diff</b> -- The sum of a team's player ratings minus the others</p>
-        <p><b>Teammate Quality</b> -- Sum of a team's player ratings (outside of that player's)</p>
-        <p><b>Team Quality</b> -- Sum of a team's player ratings</p>
-        <p><b>Opp Quality</b> -- Sum of the opponent's player ratings</p>
-        <p><b>Pct Positive Teammates</b> -- Percentage of games a player's teammates sum to better than average</p>
-        <p><b>Pct Positive Opps</b> -- Percentage of games a player's opponents sum to better than average</p>
-        <p><b>Pct Games as Favorite</b> -- Percentage of games a player's team is projected better than the opponent</p>
-        <p><b>Pct Games w/ Better Teammates</b> -- Percentage of games a player's teammates are projected better than the opponent</p>
-        <p><b>Other 9 Players Quality Diff</b> -- The average rating of a player's teammates minus opponents</p>
-        <p><b>First Game Day Rate</b> -- Percent of days the player showed up that they played the first game</p>
-        <p><b>Last Game Day Rate</b> -- Percent of days the player showed up that they played the last game</p>
-        <h3>Games</h3>
-        <p><b>Team X Quality</b> -- Sum of team player ratings</p>
-        <p><b>Spread</b> -- Team A Quality minus Team B Quality (More positive means A is better)</p>
-        <p><b>Diff From Spread</b> -- Actual game score difference minus pregame spread (More positive means A performed better)</p>
-        <p><b>Abs</b> -- Absolute value (for ease of sorting)</p>
-        <p><b>Team A Win Prob</b> -- Probability of winning the game based on a logistic regression model of Team A and B Quality</p>
-        <p><b>Moneyline</b> -- Win probability converted to moneyline (More negative means A is favored more)</p>
-        <h3>Player Days</h3>
-        <p><b>First Game Day</b> -- The game number for that day that the player first appeared in</p>
-        <p><b>Last Game Day</b> -- The game number for that day that the player last appeared in</p>
-        <p><b>Longest Run on Court/Bench</b> -- Longest number of consecutive games spent playing or sitting after starting</p>
-        <h3>Player Pairings</h3>
-        <p><b>Teammate/Other 9 Player's Quality Ratings</b> -- Ratings with the two players listed removed</p>
-        <h3>Days</h3>
-        <p><b>Mean Rating Players</b> -- Mean rating of all of the players there, each weighted equally</p>
-        <p><b>Mean Rating Player Games</b> -- Mean rating of all of the players there, weighted by the number of games played</p>
-        <p><b>Longest Run on Court/Bench</b> -- The most a <i>single player</i> played/sat on that day</p>
-        <p><b>Avg Longest Run on Court/Bench</b> -- Average of how much every player's longest played/sat was on that day</p>
-        <p><b>Unique Winners Rate</b> -- Percentage of players that showed up that day that won at least one game</p>
-        <p><b>Avg Parity of Teammates</b> -- Standard deviation of the teammates for each player (lesser equals more even)</p>
-        <p><b>Avg Parity of Teams</b> -- Standard deviation of all of the teams for the day (lesser equals more even)</p>
-        <p><b>Avg Parity of Score Diff/Spread/Win Probs</b> -- Standard deviation of all of those values (lesser equals more even)</p>
-    </div>
-
-    <div class="tab-content methodology">
-        <h2>Methodology</h2>
-        <h3>Hello, my fellow hoops nerd!</h3>
-        <p>This is my attempt at a very basic RAPM-model, the exact type of nerddom that appreciates my favorite athlete of all-time, <a href="https://www.youtube.com/watch?v=t65ZAGM_kSA"> someone for whom I offer my direct thanks to God</a> at least one or two mornings and evenings a week.</p>
-        <p>Anyway, <a href="https://jecutter.github.io/blog/rapm-model/" target="_blank">Jacob Cutter</a> does a remarkable job of explaining the math behind the NBA application of a RAPM model.</p>
-        <h3>Let's break RAPM down</h3>
-        <p> First, <a href="https://iscoresports.com/basketball/kb/faq_general/what_is_pm.php" target="_blank">plus-minus</a> is a well-known concept known in basketball (and other sports) that is simply a measure of the point-difference for a given player when they're on the court.</p>
-        <p> The problem with this, however, is that players are often at the mercy (detriment or benefit) of the other nine players on the court, and they might thus <a href="https://www.instagram.com/foreversnappnn2/" target="_blank">run the gym</a> despite not necessarily being the lead contributor.  To account for this, we create an adjustment, the "A" in RAPM, with a <a href="https://www.xlstat.com/en/solutions/features/ordinary-least-squares-regression-ols" target="_blank">linear regression</a> model that accounts for each of the ten players on the court, to solve for the relative contributions that each player made to the final score differential on an adjusted scale.</p>
-        <p> There are, however, problems with this as well, given that small sample sizes can lead to absurdly high or low coefficient values for a given player (their adjusted plus minus).  To account for this, we regularize the model, the "R" in RAPM, by adding an L2 regularization term to the OLS linear model to instead create a <a href="https://www.ibm.com/think/topics/ridge-regression" target="_blank">ridge regression model.</a>  This "penalizes" coefficient (read: adjusted plus-minus rating prediction) values that stray too far either side of zero with smaller samples.  What you get at the end is a:</p>
-        <h2>Regularized Adjusted Plus-Minus model to measure the relative point differential a player adds to their team over the course of one game!</h2>
-        <h3>Further resources:</h3>
-        <p><a href="https://www.youtube.com/watch?v=Mkgcln0rrxA" target="_blank">Video: How does regularized adjusted plus-minus ratings work?</a></p>
-        <p><a href="https://squared2020.com/2017/09/18/deep-dive-on-regularized-adjusted-plus-minus-i-introductory-example/" target="_blank">Deep Dive on Regularized Adjusted Plus-Minus I: Introductory Example</a></p>
-    </div>
-
-    <script>
-        $(document).ready(function() {
-            // Initialize all tables, even those that don't require filtering
-            let allTables = {
-                statsTable: $("#statsTable").DataTable({
-                    "order": [[3, "desc"], [6, "desc"]], // Sort by Wins and Win Pct descending
-                    "pageLength": 25,
-                    "language": {
-                        "info": "Showing _START_ to _END_ of _TOTAL_ players",
-                        "lengthMenu": "Show _MENU_ players "
-                    },
-                    
-                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
-                    fixedHeader: true,  // Keep header fixed when scrolling
-                    responsive: true,  // Helps with mobile layout
-                    autoWidth: true,  // Prevents incorrect column sizing
-                    fixedColumns: {
-                        leftColumns: 1 // This should keep the first column sticky
-                    },
-                    dom: 'lBfrtip',  // Add buttons
-                    buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
-                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
-                    ]
-                }),
-                ratingsTable: $("#ratingsTable").DataTable({
-                    "order": [[1, "desc"]], // Sort by Rating descending
-                    "pageLength": 25,
-                    "language": {
-                        "info": "Showing _START_ to _END_ of _TOTAL_ players",
-                        "lengthMenu": "Show _MENU_ players"
-                    },
-                    
-                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
-                    fixedHeader: true,  // Keep header fixed when scrolling
-                    responsive: true,  // Helps with mobile layout
-                    autoWidth: true,  // Prevents incorrect column sizing
-                    fixedColumns: {
-                        leftColumns: 1 // This should keep the first column sticky
-                    },
-                    dom: 'lBfrtip',  // Add buttons
-                    buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
-                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
-                    ]
-                }),
-                gamesTable: $("#gamesTable").DataTable({
-                    "order": [[14, "desc"], [15, "desc"]], // Sort by Game Date and Game Nums descending
-                    "pageLength": 25,
-                    "language": {
-                        "info": "Showing _START_ to _END_ of _TOTAL_ games",
-                        "lengthMenu": 'Show <span>_MENU_</span> games'
-                    },
-                    
-                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
-                    fixedHeader: true,  // Keep header fixed when scrolling
-                    responsive: true,  // Helps with mobile layout
-                    autoWidth: true,  // Prevents incorrect column sizing
-                    dom: 'lBfrtip',  // Add buttons
-                    buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
-                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
-                    ]
-                }),
-                playerDaysTable: $("#playerDaysTable").DataTable({
-                    "order": [[1, "desc"], [4, "desc"], [6, "desc"], [0, "desc"]], // Sort by Game Date, Wins, Win%, Name descending
-                    "pageLength": 25,
-                    "language": {
-                        "info": "Showing _START_ to _END_ of _TOTAL_ player-days",
-                        "lengthMenu": 'Show <span>_MENU_</span> player-days'
-                    },
-                    
-                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
-                    fixedHeader: true,  // Keep header fixed when scrolling
-                    responsive: true,  // Helps with mobile layout
-                    autoWidth: true,  // Prevents incorrect column sizing
-                    fixedColumns: {
-                        leftColumns: 1 // This should keep the first column sticky
-                    },
-                    dom: 'lBfrtip',  // Add buttons
-                    buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
-                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
-                    ]
-                }),
-                teammatesTable: $("#teammatesTable").DataTable({
-                    "order": [[3, "desc"], [8, "desc"]], // Sort by Wins, then Wins Over Exp descending
-                    "pageLength": 25,
-                    "language": {
-                        "info": "Showing _START_ to _END_ of _TOTAL_ teammate combos",
-                        "lengthMenu": 'Show _MENU_ teammate combos'
-                    },
-                    
-                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
-                    fixedHeader: true,  // Keep header fixed when scrolling
-                    responsive: true,  // Helps with mobile layout
-                    autoWidth: true,  // Prevents incorrect column sizing
-                    fixedColumns: {
-                        leftColumns: 1 // This should keep the first column sticky
-                    },
-                    dom: 'lBfrtip',  // Add buttons
-                    buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
-                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
-                    ]
-                }),
-                opponentsTable: $("#opponentsTable").DataTable({
-                    "order": [[4, "desc"], [9, "desc"]], // Sort by Wins, then Wins Over Exp descending
-                    "pageLength": 25,
-                    "language": {
-                        "info": "Showing _START_ to _END_ of _TOTAL_ opponent combos",
-                        "lengthMenu": 'Show _MENU_ opponent combos'
-                    },
-                    
-                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
-                    fixedHeader: true,  // Keep header fixed when scrolling
-                    responsive: true,  // Helps with mobile layout
-                    autoWidth: true,  // Prevents incorrect column sizing
-                    fixedColumns: {
-                        leftColumns: 1 // This should keep the first column sticky
-                    },
-                    dom: 'lBfrtip',  // Add buttons
-                    buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
-                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
-                    ]
-                }),
-                daysOfWeekTable: $("#daysOfWeekTable").DataTable({
-                    "order": [[6, "desc"]], // Sort by Mean Player Game
-                    "language": {
-                        "info": "Showing _START_ to _END_ of _TOTAL_ days",
-                        "lengthMenu": 'Show <span>_MENU_</span> days'
-                    },
-                    
-                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
-                    fixedHeader: true,  // Keep header fixed when scrolling
-                    responsive: true,  // Helps with mobile layout
-                    autoWidth: true,  // Prevents incorrect column sizing
-                    fixedColumns: {
-                        leftColumns: 1 // This should keep the first column sticky
-                    },
-                    dom: 'lBfrtip',  // Add buttons
-                    buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success"},
-                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
-                    ]
-                }),
-                daysTable: $("#daysTable").DataTable({
-                    "order": [[0, "desc"]], // Sort by Game Date
-                    "pageLength": 25,
-                    "language": {
-                        "info": "Showing _START_ to _END_ of _TOTAL_ days",
-                        "lengthMenu": 'Show <span>_MENU_</span> days'
-                    },
-                    
-                    scrollCollapse: true,  // Allow the table to collapse horizontally when there’s little data
-                    fixedHeader: true,  // Keep header fixed when scrolling
-                    responsive: true,  // Helps with mobile layout
-                    autoWidth: true,  // Prevents incorrect column sizing
-                    fixedColumns: {
-                        leftColumns: 1 // This should keep the first column sticky
-                    },
-                    dom: 'lBfrtip',  // Add buttons
-                    buttons: [
-                        { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
-                        { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
-                    ]
-                })
-            };
-
-            // Tab functionality
-            $(".tab").click(function() {
-                var target = $(this).data("target");  // e.g., "stats"
-                $(".tab").removeClass("active");       // deactivate all tabs
-                $(this).addClass("active");            // activate clicked tab
-                $(".tab-content").removeClass("active");
-                $("." + target).addClass("active");    // show tab-content.<target>
-
-                // Show/hide minGamesPlayed input
-                const tabsWithFilter = ["stats", "player_days", "player_pairings"];
-
-                if (tabsWithFilter.includes(target)) {
-                    $("#minGamesPlayed").show();
-                } else {
-                    $("#minGamesPlayed").hide();
-                }
-            });
-
-            // Manually trigger export when clicking the button
-            $("#exportExcel").click(function() {
-                let activeTableId = $("table:visible").attr("id"); // Find the visible table
-                if (allTables[activeTableId]) {
-                    // Trigger the export button by targeting its container
-                    allTables[activeTableId].buttons().container().find('.buttons-excel').click();
-                } else {
-                    alert("No active table found for export.");
-                }
-            });
-
-
-            // Function to filter only specific tables
-            window.filterByMinGamesPlayed = function() {
-                let minGames = parseInt($("#minGamesPlayed").val(), 10) || 0;
-
-                // Remove existing filters before applying a new one
-                $.fn.dataTable.ext.search = [];
-
-                // Only apply filtering to specific tables
-                $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
-                    let tableId = settings.nTable.id;
-                    let columnIndex;
-
-                    switch (tableId) {
-                        case "statsTable":
-                            columnIndex = 1; // Adjust based on actual column index
-                            break;
-                        case "playerDaysTable":
-                            columnIndex = 3; // Adjust based on actual column index
-                            break;
-                        case "teammatesTable":
-                            columnIndex = 1; // Adjust based on actual column index
-                            break;
-                        case "opponentsTable":
-                            columnIndex = 2; // Adjust based on actual column index
-                            break;
-                        default:
-                            return true; // Skip filtering for tables not in the filter list
-                    }
-
-                    let gamesPlayed = parseInt(data[columnIndex]) || 0;
-                    return gamesPlayed >= minGames;
-                });
-
-                // Redraw only filtered tables
-                ["statsTable", "playerDaysTable", "teammatesTable", "opponentsTable"].forEach(tableName => {
-                    allTables[tableName].draw();
-                });
-            };
-        });
-    </script>
-
-
-
-    <script>
-        $(document).ready(function() {
-            var table = $('#statsTable').DataTable();
-
-            // Enable Bootstrap tooltips for column headers
-            $('#statsTable thead th').tooltip({
-                delay: 0,
-                track: true,
-                fade: 250
-            });
-        });
-    </script>
-
-    <!-- Scripting -->
-    <script>
-    $(document).ready(function() {
-
-      // --- Utilities ---
-      function parseFloatSafe(x) {
-        const v = parseFloat(x);
-        return Number.isFinite(v) ? v : 0;
-      }
-
-      function updateSummary() {
-        let team1 = 0, team2 = 0, on = 0, spread = 0, numPlayers = 0;
-        $("#teamBuilderTable tbody tr").each(function() {
-          const rating = parseFloatSafe($(this).data("rating") ?? $(this).find(".rating").text());
-          const status = $(this).find(".status-select").val();
-          if (status === "Team 1") {
-            team1 += rating;
-            spread += rating;
-            numPlayers++;
-          } else if (status === "Team 2") {
-            team2 += rating;
-            spread -= rating;
-            numPlayers++;
-          } else if (status === "ON") {
-            on += rating;
-            numPlayers++;
-          }
-          // OFF ignored
-        });
-        $("#team1Total").text(team1.toFixed(2));
-        $("#team2Total").text(team2.toFixed(2));
-        $("#onTotal").text(on.toFixed(2));
-        $("#numPlayersOnCourt").text(numPlayers);
-        $("#spreadTotal").text(spread.toFixed(2));
-      }
-
-      // status -> row color
-      function applyRowColor(row, status) {
-        row.removeClass("team1 team2 on off");
-        if (status === "Team 1") row.addClass("team1");
-        else if (status === "Team 2") row.addClass("team2");
-        else if (status === "ON") row.addClass("on");
-        else row.addClass("off");
-      }
-
-      // Attach change listener to existing selects (and future ones via delegation)
-      $(document).on("change", ".status-select", function() {
-        const val = $(this).val();
-        const row = $(this).closest("tr");
-        applyRowColor(row, val);
-        updateSummary();
-      });
-
-      // Initialize colors for any pre-rendered selects (if you ever preset)
-      $("#teamBuilderTable tbody tr").each(function() {
-        const status = $(this).find(".status-select").val();
-        applyRowColor($(this), status);
-      });
-      updateSummary();
-
-      // --- Search bar ---
-      $("#playerSearch").on("keyup", function() {
-        const filter = $(this).val().toLowerCase().trim();
-        $("#teamBuilderTable tbody tr").each(function() {
-          const name = $(this).find("td.player-name").text().toLowerCase();
-          $(this).toggle(name.includes(filter));
-        });
-      });
-
-      // --- Reset button ---
-      $("#resetBtn").on("click", function() {
-        $("#teamBuilderTable tbody tr").each(function() {
-          $(this).find(".status-select").val("OFF").trigger("change");
-        });
-        updateSummary();
-      });
-
-      // --- Combinatorics helper (generate k-combinations of array indices) ---
-      function combinations(arr, k) {
-        const out = [];
-        const n = arr.length;
-        if (k < 0 || k > n) return out;
-        const combo = Array.from({length: k}, (_, i) => i);
-        while (true) {
-          out.push(combo.map(i => arr[i]));
-          let i = k - 1;
-          while (i >= 0 && combo[i] === i + n - k) i--;
-          if (i < 0) break;
-          combo[i]++;
-          for (let j = i + 1; j < k; j++) combo[j] = combo[j - 1] + 1;
-        }
-        return out;
-      }
-
-      // --- Generate Teams logic ---
-      function generateTeams() {
-        // Read current players and statuses
-        const rows = [];
-        $("#teamBuilderTable tbody tr:visible").each(function() { // visible allows filtering compatibility
-          const $r = $(this);
-          const name = $r.find("td.player-name").text();
-          const rating = parseFloatSafe($r.data("rating") ?? $r.find(".rating").text());
-          const status = $r.find(".status-select").val();
-          rows.push({ name, rating, status });
-        });
-
-        // Filter to selected players (OFF are excluded)
-        const locked1 = rows.filter(r => r.status === "Team 1");
-        const locked2 = rows.filter(r => r.status === "Team 2");
-        const onPlayers = rows.filter(r => r.status === "ON");
-
-        const locked1Count = locked1.length;
-        const locked2Count = locked2.length;
-        const onCount = onPlayers.length;
-        const totalSelected = locked1Count + locked2Count + onCount;
-
-        // Validate total selected is 2,4,6,8,10
-        if (![2,4,6,8,10].includes(totalSelected)) {
-          alert("Invalid selection: Total selected players in the gym (Team1 + Team2 + ON) must be 2, 4, 6, 8, or 10. Currently selected: " + totalSelected);
-          return;
-        }
-
-        const teamSize = totalSelected / 2;
-
-        // Validate locked players don't exceed team size
-        if (locked1Count > teamSize || locked2Count > teamSize) {
-          alert("Invalid selection: Too many players are on one team for a gym with " + totalSelected + " players.");
-          return;
-        }
-
-        // required number of additional players to add to Team1 from ON group
-        const requireFromOnForTeam1 = teamSize - locked1Count;
-        const requireFromOnForTeam2 = teamSize - locked2Count;
-        if (requireFromOnForTeam1 + requireFromOnForTeam2 !== onCount) {
-          // This condition should hold; if not, it's an internal check failure
-          alert("Internal mismatch in ON player allocation. Please check selections.");
-          return;
-        }
-
-        // If requireFromOnForTeam1 is out of bounds, invalid
-        if (requireFromOnForTeam1 < 0 || requireFromOnForTeam1 > onCount) {
-          alert("Invalid ON allocation. Please check locked players and ON players.");
-          return;
-        }
-
-        // Create list of ON indices
-        const onIndices = onPlayers.map((p, idx) => idx);
-
-        // When no locked players on either side, we need to avoid mirrored duplicates (S vs complement).
-        // We'll enforce that the smallest-index ON player is always included in Team1 to cut duplicates in half (126 instead of 252 teams).
-        const avoidMirrors = (locked1Count === 0 && locked2Count === 0 && onCount > 0);
-
-        // Generate combinations of which ON players go to Team1 (choose requireFromOnForTeam1 out of onCount)
-        let chosenCombos = combinations(onIndices, requireFromOnForTeam1);
-
-        // If avoiding mirrors, filter combos that do not include the minimal ON index
-        if (avoidMirrors && requireFromOnForTeam1 > 0) {
-          const minIdx = Math.min(...onIndices);
-          chosenCombos = chosenCombos.filter(c => c.includes(minIdx));
-        }
-
-        // Build final combos array
-        const combos = [];
-        chosenCombos.forEach((comboIndices) => {
-          // Team1 players = locked1 + ON players whose index in comboIndices
-          const team1Players = locked1.map(p => ({...p}));
-          const team2Players = locked2.map(p => ({...p}));
-
-          // Add ON players appropriately
-          onPlayers.forEach((p, idx) => {
-            if (comboIndices.includes(idx)) team1Players.push({...p});
-            else team2Players.push({...p});
-          });
-
-          // Compute ratings
-          const team1Rating = team1Players.reduce((s,p) => s + p.rating, 0);
-          const team2Rating = team2Players.reduce((s,p) => s + p.rating, 0);
-          const spread = team1Rating - team2Rating;
-          combos.push({
-            team1Players,
-            team2Players,
-            team1Rating,
-            team2Rating,
-            spread,
-            absSpread: Math.abs(spread)
-          });
-        });
-
-        // Sort by abs(spread) ascending then by spread ascending
-        combos.sort((a,b) => a.absSpread - b.absSpread || a.spread - b.spread);
-
-        // Render combos table
-        const $tbody = $("#combosTable tbody").empty();
-        combos.forEach((c, i) => {
-          const t1Names = c.team1Players.map(x => x.name).join(", ");
-          const t2Names = c.team2Players.map(x => x.name).join(", ");
-          const row = $("<tr></tr>");
-          row.append($("<td></td>").text(i+1));
-          row.append($("<td></td>").text(t1Names));
-          row.append($("<td></td>").text(c.team1Rating.toFixed(2)));
-          row.append($("<td></td>").text(t2Names));
-          row.append($("<td></td>").text(c.team2Rating.toFixed(2)));
-          row.append($("<td></td>").text(c.spread.toFixed(2)));
-          row.append($("<td></td>").text(c.absSpread.toFixed(2)));
-          $tbody.append(row);
-        });
-
-        $("#comboCount").text("Combinations: " + combos.length);
-        // Toggle views: hide selection, show combos
-        $("#selectionView").hide();
-        $("#combosView").show();
-        $("#generateBtn").hide();
-        $("#returnBtn").show();
-        $("#playerSearch").hide();
-      }
-
-      // --- Buttons ---
-      $("#generateBtn").on("click", function() {
-        generateTeams();
-      });
-
-      $("#returnBtn").on("click", function() {
-        // Show selection view, hide combos view (preserve selections)
-        $("#combosView").hide();
-        $("#selectionView").show();
-        $("#generateBtn").show();
-        $("#returnBtn").hide();
-        $("#comboCount").text("");
-        $("#playerSearch").show();
-      });
-
-      // initial summary
-      updateSummary();
-
-    });
-    </script>
-
-    <!-- Minimal CSS to keep combos table readable -->
-    <style>
-      /* ensure our generated combos table looks decent */
-      #combosTable th, #combosTable td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: left;
-      }
-      #combosTable thead th {
-        position: sticky;
-        top: 0;
-        background: #f4f4f4;
-      }
-      /* reuse your row classes for the selection table */
-      tr.team1 { background-color: #e0f7fa !important; }
-      tr.team2 { background-color: #fce4ec !important; }
-      tr.on { background-color: #f1f8e9 !important; }
-      tr.off { background-color: #fff !important; }
-    </style>
-
-    <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      fetch("/api/birthdays")
-        .then(res => res.json())
-        .then(data => {
-          const container = document.getElementById("birthdayScroll");
-          container.innerHTML = "";
-
-          data.forEach(item => {
-            const card = document.createElement("div");
-            card.className = "bday-card";
-
-            card.innerHTML = `
-              <div class="name">${item.label}</div>
-              <div class="date">${item.display_date}</div>
-              <div class="days_from_today">${item.days_from_today}</div>
-            `;
-
-            container.appendChild(card);
-          });
-        });
-    });
-    </script>
-
-
-
-</body>
-</html>
+<!-- Methodology tab -->
+<div class="tab-content methodology">
+    {{- methodology_content() -}}
+</div>
+{% endblock %}

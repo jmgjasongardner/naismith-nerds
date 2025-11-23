@@ -29,7 +29,7 @@ import os
 
 # logging.debug(f"app.py post data load: {data is not None}")
 
-app = Flask(__name__, static_folder="../static")
+app = Flask(__name__, static_folder="static")
 app.config["DATA_CACHED"] = data
 # logging.debug(f"player data head outside funs: {data.player_data.head(5)}")
 
@@ -257,7 +257,7 @@ def player_page(player_name):
     # Check if the player's image exists in "static/player_pics/"
     # logging.debug('starting player page')
     data_cached = app.config["DATA_CACHED"]
-    image_path = f"static/player_pics/{player_name}.png"
+    image_path = f"flask_app/static/player_pics/{player_name}.png"
     image_exists = os.path.exists(image_path)
     # logging.debug('image exists')
 
