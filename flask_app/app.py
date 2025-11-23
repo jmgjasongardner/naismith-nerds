@@ -1,114 +1,90 @@
 from flask import Flask, render_template, jsonify
 from flask_app.utility_imports import tooltips
-import logging
 
-logging.basicConfig(level=logging.DEBUG)
 import duckdb
 import psutil
-from datetime import date, datetime
-import zoneinfo
-
-# from collective_bball.eda_main import generate_stats
-# from collective_bball.win_prob_log_reg import calculate_team_A_win_prob
-# logging.debug("app.py pre data load")
-from collective_bball.main import data  # Get precomputed `data`
-from collective_bball.plots import Plots  # to generate player-specific plots
-from flask_app.web_data_loader import (
-    format_stats_for_site,
-    # get_model_outputs,
-    # combine_tier_ratings,
-    # calculate_game_spreads,
-)
-from flask_app.player_page_data_loader import (
-    # create_player_games,
-    load_player_bio_data,
-    create_player_games_advanced,
-)
 import polars as pl
 import os
 
-# logging.debug(f"app.py post data load: {data is not None}")
+from datetime import datetime
+import zoneinfo
 
+from collective_bball.main import data
+from collective_bball.plots import Plots
+
+from flask_app.web_data_loader import format_stats_for_site
+from flask_app.player_page_data_loader import (
+    load_player_bio_data,
+    create_player_games_advanced,
+)
+
+
+# ---------------------------------------------------------
+# Flask App Configuration
+# ---------------------------------------------------------
 app = Flask(__name__, static_folder="static")
 app.config["DATA_CACHED"] = data
-# logging.debug(f"player data head outside funs: {data.player_data.head(5)}")
 
 
+# ---------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------
 def filter_dictionary(dictionary, player_name):
     return [entry for entry in dictionary if entry["Player"] == player_name]
 
 
 def log_memory_usage():
     process = psutil.Process(os.getpid())
-    memory_info = process.memory_info()
-    # logging.debug(f"Memory usage: {memory_info.rss / 1024 ** 2} MB")
+    process.memory_info()  # rss available if needed
 
 
-@app.route("/api/birthdays")
+# ---------------------------------------------------------
+# API: Birthdays
+# ---------------------------------------------------------
 @app.route("/api/birthdays")
 def birthday_api():
     data_cached = app.config["DATA_CACHED"]
 
-    # Already list of dicts from format_stats_for_site
     bday_rows = format_stats_for_site(
         data_cached.player_data.select(["player", "birthday"]).drop_nulls()
     )
-
     today = datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
+
     processed = []
 
     for row in bday_rows:
         player = row["Player"]
         raw = row["birthday"]
 
-        # Skip players without birthdays
         if not raw:
             continue
 
         # Parse birthday
         try:
-            # Full date: YYYY-MM-DD
             bday = datetime.strptime(raw, "%Y-%m-%d").date()
             has_year = True
         except ValueError:
-            # Month-Day only: MM-DD (no year)
             bday = datetime.strptime(raw, "%m-%d").date().replace(year=today.year)
             has_year = False
 
-        # ---- DATE LOGIC ----
-
-        # Birthday this year
         this_year = bday.replace(year=today.year)
-
-        # How many days since this year's birthday (negative if past)
         days_since = (this_year - today).days
 
-        # Next birthday (always future)
-        if days_since < 0:  # already happened this year
-            next_birthday = bday.replace(year=today.year + 1)
-        else:
-            next_birthday = this_year
-
-        # Always positive or zero
+        next_birthday = (
+            bday.replace(year=today.year + 1) if days_since < 0 else this_year
+        )
         days_until = (next_birthday - today).days
 
-        # Final "days_away" number used for sorting:
-        #   past 7 days → negative
-        #   upcoming → positive
         if -7 <= days_since <= 0:
             days_diff = days_since
         else:
             days_diff = days_until
 
-        # ---- LABEL LOGIC ----
-
         if has_year:
-            age = today.year - bday.year + 1  # Age of next birthday
-            # If next birthday hasn't happened yet this year (or happened within last week), subtract 1
+            age = today.year - bday.year + 1
             if days_since >= -7:
                 age -= 1
 
-            # Suffix
             if age % 10 == 1 and age % 100 != 11:
                 suffix = "st"
             elif age % 10 == 2 and age % 100 != 12:
@@ -122,8 +98,8 @@ def birthday_api():
         else:
             label = f"{player}'s birthday!"
 
-        # Display date always shows the *next occurrence*
         display_date = next_birthday.strftime("%b %d")
+
         if -7 <= days_since <= -2:
             display_day_text = f"{-days_diff} days ago"
         elif days_since == -1:
@@ -146,17 +122,17 @@ def birthday_api():
         )
 
     processed.sort(key=lambda x: x["days_away"])
-
     return jsonify(processed)
 
 
+# ---------------------------------------------------------
+# HOME PAGE
+# ---------------------------------------------------------
 @app.route("/")
 def home():
     data_cached = app.config["DATA_CACHED"]
-
-    # Precompute all data before returning
-    # logging.debug('computing pre-processed')
     log_memory_usage()
+
     stats = format_stats_for_site(
         data_cached.player_data.drop(
             [
@@ -171,8 +147,6 @@ def home():
         ),
         does_player_image_exist_row=True,
     )
-    # logging.debug('computed stats')
-    log_memory_usage()
     num_days = len(data_cached.days)
     games = format_stats_for_site(
         data_cached.games.with_columns(
@@ -198,37 +172,29 @@ def home():
             ]
         )
     )
-    # logging.debug('computed games')
-    log_memory_usage()
+
     ratings = format_stats_for_site(
         data_cached.ratings.filter(~pl.col("player").str.contains("Tier")).with_columns(
             pl.col("rating").round(5)
         ),
         does_player_image_exist_row=True,
     )
-    # logging.debug('computed ratings')
-    log_memory_usage()
+
     player_days = format_stats_for_site(
         data_cached.player_days.drop("rating", "resident")
     )
-    # logging.debug('computed player days')
-    log_memory_usage()
+
     teammates = format_stats_for_site(
         data_cached.teammates.drop(["player", "teammate"]).unique("pairing")
     )
-    # logging.debug('computed teammates')
-    log_memory_usage()
+
     opponents = format_stats_for_site(data_cached.opponents)
     days_of_week = format_stats_for_site(data_cached.days_of_week)
     days = format_stats_for_site(data_cached.days)
-    # logging.debug('computed opponents, days')
-    log_memory_usage()
+
     best_lambda = data_cached.best_lambda
     main_tooltip = tooltips.main_tooltip
-    # logging.debug('computed all pre-processed')
-    log_memory_usage()
 
-    # Return only after all data is prepared
     return render_template(
         "index.html",
         stats=stats,
@@ -247,35 +213,31 @@ def home():
     )
 
 
+# ---------------------------------------------------------
+# PLAYER PAGE
+# ---------------------------------------------------------
 @app.route("/player/<player_name>")
 def player_page(player_name):
-
-    # win_pct, player_games_advanced, games_of_note = create_player_games_advanced(
-    #     player_games=player_games, games_data=games_data
-    # )
-
-    # Check if the player's image exists in "static/player_pics/"
-    # logging.debug('starting player page')
     data_cached = app.config["DATA_CACHED"]
+
     image_path = f"flask_app/static/player_pics/{player_name}.png"
     image_exists = os.path.exists(image_path)
-    # logging.debug('image exists')
 
-    # logging.debug('loading player bio data')
     full_name, height_str, position, birthday = load_player_bio_data(
         player_name=player_name, player_data=data_cached.player_data
     )
+
     conn = duckdb.connect("bball_database.duckdb")
     plots = Plots(conn)
+
     player_rating_over_time = plots.plot_player_ratings_time(
         player_name=player_name
     ).to_html(full_html=False, include_plotlyjs="cdn")
+
     player_games_rolling = plots.plot_player_rolling_avg(
         player_name=player_name,
         player_games=data_cached.player_games.filter(pl.col("player") == player_name),
     ).to_html(full_html=False, include_plotlyjs="cdn")
-
-    # logging.debug('computed player bio data')
 
     return render_template(
         "player.html",
@@ -324,16 +286,13 @@ def player_page(player_name):
                 ["player"]
             )
         ),
-        # player_games_advanced=player_games_advanced.to_pandas().to_dict(
-        #     orient="records"
-        # ),
-        # games_of_note=games_of_note.to_pandas()
-        # .drop(["Date", "Team", "Favorite"], axis=1)
-        # .to_dict(orient="records"),
         main_tooltip=tooltips.main_tooltip,
     )
 
 
+# ---------------------------------------------------------
+# DATE PAGE
+# ---------------------------------------------------------
 @app.route("/date/<date>")
 def date_page(date):
     data_cached = app.config["DATA_CACHED"]
@@ -385,5 +344,8 @@ def date_page(date):
     )
 
 
+# ---------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)
