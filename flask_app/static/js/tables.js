@@ -97,7 +97,7 @@ $(document).ready(function () {
     if (body.contains("page-date")) {
 
         initTable("playersTable",  { order: [[11, "desc"]] });
-        initTable("gamesTable",    { order: [[13, "desc"]] });
+        initTable("gamesTable",    { order: [[15, "desc"]] });
 
     }
 
