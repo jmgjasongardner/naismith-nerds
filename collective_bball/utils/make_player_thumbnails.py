@@ -9,8 +9,8 @@ from PIL import Image
 #         player_pics/         <-- full-size PNGs live here
 #         player_pics_thumbs/  <-- we'll create this for WebP thumbs
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-SOURCE_DIR = PROJECT_ROOT / "static" / "player_pics"
-THUMB_DIR = PROJECT_ROOT / "static" / "player_pics_thumbs"
+SOURCE_DIR = PROJECT_ROOT / "flask_app" / "static" / "player_pics"
+THUMB_DIR = PROJECT_ROOT / "flask_app" / "static" / "player_pics_thumbs"
 
 # Thumbnail settings
 THUMB_SIZE = (40, 40)  # this matches your 30x30 display with a bit of buffer
