@@ -6,15 +6,14 @@
 $(document).ready(function () {
 
     /* ---------------------------------------------------------
-       GLOBAL MIN-GAMES FILTER — ONLY for player pairings
-       (teammatesTable and opponentsTable)
+       GLOBAL MIN-GAMES FILTER
     --------------------------------------------------------- */
     $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
 
         const tableId = settings.nTable.id;
 
         // Apply filter only on pairings tables
-        if (!["teammatesTable", "opponentsTable"].includes(tableId)) {
+        if (!["teammatesTable", "opponentsTable", "statsTable", "playerDaysTable"].includes(tableId)) {
             return true;
         }
 
@@ -109,9 +108,13 @@ $(document).ready(function () {
 
         const teammates = $("#teammatesTable").DataTable();
         const opponents = $("#opponentsTable").DataTable();
+        const stats = $("#statsTable").DataTable();
+        const player_days = $("#playerDaysTable").DataTable();
 
         if (teammates) teammates.draw();
         if (opponents) opponents.draw();
+        if (stats) stats.draw();
+        if (player_days) player_days.draw();
     });
 
 });
