@@ -20,8 +20,6 @@ table {
     width: 100%;
     margin: 0 auto;
     border-collapse: collapse;
-    display: block;
-    overflow-x: auto;
 }
 
 th, td {
@@ -42,33 +40,85 @@ table th {
     z-index: 10;
 }
 
-/* Sticky first column (header + body) */
-table th:first-child,
-table td:first-child {
-    position: sticky;
-    left: 0;
-    background-color: #ffffff !important;
-    white-space: nowrap;
-    z-index: 15;
+/* DataTables wrapper - no horizontal scroll on wrapper itself */
+.dataTables_wrapper {
+    overflow-x: visible;
 }
 
-/* DataTables wrapper overrides for desktop */
-@media (min-width: 769px) {
-    .dataTables_wrapper .dt-buttons,
-    .dataTables_wrapper .dataTables_length,
-    .dataTables_wrapper .dataTables_filter {
-        display: flex !important;
-        justify-content: center !important;
-        text-align: center !important;
-        width: 100% !important;
-        margin-bottom: 10px;
-    }
+/* Scrollable table container - only the table scrolls horizontally */
+.dataTables_wrapper .dataTables_scrollBody,
+.dataTables_wrapper > table.dataTable {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
 
-    .dataTables_wrapper .dataTables_length,
-    .dataTables_wrapper .dataTables_filter {
-        margin-left: auto !important;
-        margin-right: auto !important;
-    }
+/* Sticky first column (including header) for horizontal scroll */
+.dataTables_wrapper table th:first-child,
+.dataTables_wrapper table td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: #ffffff;
+    z-index: 2;
+}
+
+/* Header first cell background - higher z-index for corner cell */
+.dataTables_wrapper table th:first-child {
+    background-color: #f4f4f4;
+    z-index: 3;
+}
+
+/* Sticky header clone styling */
+.sticky-header-table {
+    margin: 0 !important;
+    border-collapse: collapse;
+}
+
+.sticky-header-table th {
+    background-color: #f4f4f4 !important;
+    border: 1px solid #ccc;
+    white-space: nowrap;
+}
+
+/* Sticky first column in cloned header - hide scrollbar */
+.sticky-header-scroll {
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+.sticky-header-scroll::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+.sticky-header-table th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background-color: #f4f4f4 !important;
+}
+
+/* Non-DataTables tables need their own scroll wrapper */
+table:not(.dataTable) {
+    display: block;
+    overflow-x: auto;
+}
+
+/* DataTables controls centering - all screen sizes */
+.dataTables_wrapper .dt-buttons,
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_filter {
+    display: flex !important;
+    justify-content: center !important;
+    text-align: center !important;
+    width: 100% !important;
+    margin-bottom: 10px;
+}
+
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_filter {
+    margin-left: auto !important;
+    margin-right: auto !important;
 }
 
 /* ---------------------------------------------------------
@@ -106,8 +156,12 @@ table td:first-child {
 .wide-table {
     width: 100%;
     border-collapse: collapse;
-    display: block;       /* restore scroll behavior */
-    overflow-x: auto;     /* ensure scroll exists */
+}
+
+/* Non-DataTables wide tables handle their own scroll */
+.wide-table:not(.dataTable) {
+    display: block;
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
 
