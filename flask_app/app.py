@@ -260,7 +260,7 @@ def player_page(player_name):
                     "height",
                     "position",
                     "resident",
-                    "birthday"
+                    "birthday",
                 ]
             )
         ),

@@ -34,19 +34,13 @@ $(document).ready(function () {
         return $(`#${id}`).DataTable(Object.assign({
             pageLength: 25,
             responsive: true,
-            fixedHeader: true,
             autoWidth: false,
-            scrollCollapse: true,
 
             dom: 'lBfrtip',
             buttons: [
                 { extend: 'csvHtml5', text: 'Export csv', className: "btn btn-success" },
                 { extend: 'colvis', text: 'View/Remove Columns', className: "btn btn-primary" }
-            ],
-
-            fixedColumns: {
-                leftColumns: 1
-            }
+            ]
 
         }, options));
     }
@@ -116,5 +110,6 @@ $(document).ready(function () {
         if (stats) stats.draw();
         if (player_days) player_days.draw();
     });
+
 
 });
