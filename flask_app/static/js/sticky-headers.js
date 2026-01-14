@@ -195,12 +195,9 @@ document.addEventListener("DOMContentLoaded", function () {
     window.addEventListener('scroll', updateStickyState, { passive: true });
     window.addEventListener('resize', handleResize, { passive: true });
 
-    // Also check periodically for DataTables that initialize later
-    let initAttempts = 0;
-    const initInterval = setInterval(() => {
-        initStickyHeaders();
-        initAttempts++;
-        if (initAttempts > 10) clearInterval(initInterval);
-    }, 500);
+    // Re-init when DataTables finishes drawing (replaces polling loop)
+    $(document).on('draw.dt', function() {
+        setTimeout(initStickyHeaders, 50);
+    });
 
 });
