@@ -39,6 +39,83 @@ def log_memory_usage():
 
 
 # ---------------------------------------------------------
+# Pre-compute home page data (called once at startup)
+# ---------------------------------------------------------
+def _prepare_home_page_data(data_cached):
+    """Pre-compute all formatted data for home page to avoid per-request processing."""
+
+    # Pre-compute which players have images (avoid repeated os.path.exists calls)
+    player_names = data_cached.player_data["player"].to_list()
+    players_with_images = set()
+    for name in player_names:
+        img_path = os.path.join("flask_app", "static", "player_pics_thumbs", f"{name}.webp")
+        if os.path.exists(img_path):
+            players_with_images.add(name)
+
+    # Helper to add has_img without os.path.exists per row
+    def add_has_img(rows):
+        for row in rows:
+            row["has_img"] = row.get("Player", "") in players_with_images
+        return rows
+
+    stats = format_stats_for_site(
+        data_cached.player_data.drop([
+            "rating", "tiered_rating", "full_name", "height", "position", "resident", "birthday"
+        ])
+    )
+    add_has_img(stats)
+
+    games = format_stats_for_site(
+        data_cached.games.with_columns(
+            pl.when(pl.col("first_poss") == 1)
+            .then(pl.lit("A"))
+            .when(pl.col("first_poss") == -1)
+            .then(pl.lit("B"))
+            .otherwise(pl.lit("Idk"))
+            .alias("first_poss")
+        ).drop([
+            "winning_score", "games_waited_B", "games_waited_A",
+            "consecutive_games_B", "consecutive_games_A",
+            "total_games_played_diff", "consecutive_games_waited_diff",
+            "consecutive_games_played_diff", "total_games_played_diff_sq",
+            "consecutive_games_waited_diff_sq", "consecutive_games_played_diff_sq",
+        ])
+    )
+
+    ratings = format_stats_for_site(
+        data_cached.ratings.filter(~pl.col("player").str.contains("Tier")).with_columns(
+            pl.col("rating").round(5)
+        )
+    )
+    add_has_img(ratings)
+
+    player_days = format_stats_for_site(data_cached.player_days.drop("rating", "resident"))
+    teammates = format_stats_for_site(data_cached.teammates.drop(["player", "teammate"]).unique("pairing"))
+    opponents = format_stats_for_site(data_cached.opponents)
+    days_of_week = format_stats_for_site(data_cached.days_of_week)
+    days = format_stats_for_site(data_cached.days)
+
+    return {
+        "stats": stats,
+        "num_days": len(data_cached.days),
+        "games": games,
+        "ratings": ratings,
+        "player_days": player_days,
+        "teammates": teammates,
+        "opponents": opponents,
+        "days_of_week": days_of_week,
+        "days": days,
+        "best_lambda": data_cached.best_lambda,
+        "plot_ratings": data_cached.plot_ratings,
+        "plot_rapm_apm": data_cached.plot_rapm_apm,
+    }
+
+
+# Pre-compute home page data at startup
+app.config["HOME_PAGE_DATA"] = _prepare_home_page_data(data)
+
+
+# ---------------------------------------------------------
 # API: Birthdays
 # ---------------------------------------------------------
 @app.route("/api/birthdays")
@@ -130,86 +207,25 @@ def birthday_api():
 # ---------------------------------------------------------
 @app.route("/")
 def home():
-    data_cached = app.config["DATA_CACHED"]
-    log_memory_usage()
-
-    stats = format_stats_for_site(
-        data_cached.player_data.drop(
-            [
-                "rating",
-                "tiered_rating",
-                "full_name",
-                "height",
-                "position",
-                "resident",
-                "birthday",
-            ]
-        ),
-        does_player_image_exist_row=True,
-    )
-    num_days = len(data_cached.days)
-    games = format_stats_for_site(
-        data_cached.games.with_columns(
-            pl.when(pl.col("first_poss") == 1)
-            .then(pl.lit("A"))
-            .when(pl.col("first_poss") == -1)
-            .then(pl.lit("B"))
-            .otherwise(pl.lit("Idk"))
-            .alias("first_poss")
-        ).drop(
-            [
-                "winning_score",
-                "games_waited_B",
-                "games_waited_A",
-                "consecutive_games_B",
-                "consecutive_games_A",
-                "total_games_played_diff",
-                "consecutive_games_waited_diff",
-                "consecutive_games_played_diff",
-                "total_games_played_diff_sq",
-                "consecutive_games_waited_diff_sq",
-                "consecutive_games_played_diff_sq",
-            ]
-        )
-    )
-
-    ratings = format_stats_for_site(
-        data_cached.ratings.filter(~pl.col("player").str.contains("Tier")).with_columns(
-            pl.col("rating").round(5)
-        ),
-        does_player_image_exist_row=True,
-    )
-
-    player_days = format_stats_for_site(
-        data_cached.player_days.drop("rating", "resident")
-    )
-
-    teammates = format_stats_for_site(
-        data_cached.teammates.drop(["player", "teammate"]).unique("pairing")
-    )
-
-    opponents = format_stats_for_site(data_cached.opponents)
-    days_of_week = format_stats_for_site(data_cached.days_of_week)
-    days = format_stats_for_site(data_cached.days)
-
-    best_lambda = data_cached.best_lambda
+    # Use pre-computed data (no per-request processing)
+    cached = app.config["HOME_PAGE_DATA"]
     main_tooltip = tooltips.main_tooltip
 
     return render_template(
         "index.html",
-        stats=stats,
-        num_days=num_days,
-        games=games,
-        ratings=ratings,
-        player_days=player_days,
-        teammates=teammates,
-        opponents=opponents,
-        days_of_week=days_of_week,
-        days=days,
-        best_lambda=best_lambda,
+        stats=cached["stats"],
+        num_days=cached["num_days"],
+        games=cached["games"],
+        ratings=cached["ratings"],
+        player_days=cached["player_days"],
+        teammates=cached["teammates"],
+        opponents=cached["opponents"],
+        days_of_week=cached["days_of_week"],
+        days=cached["days"],
+        best_lambda=cached["best_lambda"],
         main_tooltip=main_tooltip,
-        plot_ratings=data_cached.plot_ratings,
-        plot_rapm_apm=data_cached.plot_rapm_apm,
+        plot_ratings=cached["plot_ratings"],
+        plot_rapm_apm=cached["plot_rapm_apm"],
     )
 
 
