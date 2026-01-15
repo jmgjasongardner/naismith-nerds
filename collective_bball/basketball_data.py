@@ -11,11 +11,11 @@ from collective_bball.player_data import PlayerData
 from collective_bball.rapm_model import RAPMModel
 from collective_bball.moneyline_model import BettingGames
 from collective_bball.plots import Plots
-from typing import Tuple, List
+from typing import Tuple, List, Union, IO
 
 
 class BasketballData:
-    def __init__(self, data_source: str, args: list):
+    def __init__(self, data_source: Union[str, IO], args: list):
         self.raw_games_data, self.tiers = load_data(
             data_source
         )  # Read in from Excel (for now)

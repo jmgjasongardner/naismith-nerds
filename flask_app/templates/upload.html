@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Data - Naismith Nerds{% endblock %}
+
+{% block body_class %}upload-page{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <h1>Upload Game Data</h1>
+    <p class="upload-description">
+        Upload your Excel file (.xlsx or .xlsm) to update the basketball data.
+        This will rebuild all player ratings, stats, and analytics.
+    </p>
+
+    {% if error %}
+    <div class="upload-message error">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    {% if success %}
+    <div class="upload-message success">
+        {{ message }}
+    </div>
+    <p><a href="{{ url_for('home') }}" class="back-link">Back to Home</a></p>
+    {% else %}
+    <form method="POST" enctype="multipart/form-data" class="upload-form">
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required
+                   placeholder="Enter upload password">
+        </div>
+
+        <div class="form-group">
+            <label for="excel_file">Excel File:</label>
+            <input type="file" id="excel_file" name="excel_file"
+                   accept=".xlsx,.xlsm" required>
+        </div>
+
+        <button type="submit" class="upload-button">Upload & Rebuild Data</button>
+    </form>
+
+    <p class="upload-warning">
+        Note: Processing may take a minute. Please wait for the page to reload.
+    </p>
+    {% endif %}
+
+    <p><a href="{{ url_for('home') }}" class="back-link">Back to Home</a></p>
+</div>
+
+<style>
+    .upload-container {
+        max-width: 500px;
+        margin: 50px auto;
+        padding: 30px;
+        background: #f9f9f9;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .upload-container h1 {
+        margin-bottom: 10px;
+        color: #333;
+    }
+
+    .upload-description {
+        color: #666;
+        margin-bottom: 25px;
+        font-size: 14px;
+    }
+
+    .upload-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group label {
+        font-weight: bold;
+        color: #333;
+    }
+
+    .form-group input[type="password"],
+    .form-group input[type="file"] {
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .form-group input[type="password"]:focus {
+        outline: none;
+        border-color: #007bff;
+    }
+
+    .upload-button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 15px 25px;
+        font-size: 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .upload-button:hover {
+        background: #0056b3;
+    }
+
+    .upload-message {
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+
+    .upload-message.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .upload-message.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .upload-warning {
+        margin-top: 20px;
+        color: #856404;
+        font-size: 13px;
+        font-style: italic;
+    }
+
+    .back-link {
+        color: #007bff;
+        text-decoration: none;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}

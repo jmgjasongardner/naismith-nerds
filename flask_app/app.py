@@ -1,15 +1,16 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request, redirect, url_for
 from flask_app.utility_imports import tooltips
 
 import duckdb
 import psutil
 import polars as pl
 import os
+from io import BytesIO
 
 from datetime import datetime
 import zoneinfo
 
-from collective_bball.main import data
+from collective_bball.main import data, create_data
 from collective_bball.plots import Plots
 
 from flask_app.web_data_loader import format_stats_for_site
@@ -359,6 +360,123 @@ def date_page(date):
         ),
         main_tooltip=tooltips.main_tooltip,
     )
+
+
+# ---------------------------------------------------------
+# UPLOAD DATA
+# ---------------------------------------------------------
+def rebuild_data_from_file(file_bytes: BytesIO):
+    """Rebuild all data from uploaded Excel file."""
+    import argparse
+    from collective_bball.basketball_data import BasketballData
+    from collective_bball.rapm_model import RAPMModel
+    from collective_bball.moneyline_model import BettingGames
+    from collective_bball import create_db_tables
+
+    args = argparse.Namespace(
+        use_tier_data=True,
+        min_games_to_not_tier=20,
+        default_lambda=True,
+        lambda_params=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
+        decay_half_life=270,
+        save_csv=False,
+        loop_through_ratings_dates=False,
+    )
+
+    conn = duckdb.connect("bball_database.duckdb")
+    create_db_tables.create_tables(conn)
+
+    new_data = BasketballData(data_source=file_bytes, args=args)
+    new_data.clean_data()
+    new_data.compute_clock_and_starting_poss()
+    new_data.compute_player_stats()
+    new_data.compute_fatigue()
+
+    rapm_model = RAPMModel()
+    new_data.compute_rapm(rapm_model)
+    new_data.write_to_db(conn=conn)
+
+    new_data.merge_player_data()
+
+    betting_games = BettingGames()
+    new_data.compute_spreads(betting_games)
+    new_data.compute_moneylines(betting_games)
+
+    new_data.assemble_player_data()
+    new_data.assemble_days_data()
+
+    plots = Plots(conn)
+    new_data.plot_things(plots)
+
+    conn.close()
+
+    return new_data
+
+
+@app.route("/upload", methods=["GET", "POST"])
+def upload_data():
+    upload_password = os.environ.get("UPLOAD_PASSWORD")
+
+    if request.method == "POST":
+        # Check password
+        submitted_password = request.form.get("password", "")
+        if not upload_password or submitted_password != upload_password:
+            return render_template(
+                "upload.html",
+                error="Invalid password. Please try again.",
+                success=False,
+            )
+
+        # Check if file was uploaded
+        if "excel_file" not in request.files:
+            return render_template(
+                "upload.html",
+                error="No file uploaded. Please select a file.",
+                success=False,
+            )
+
+        file = request.files["excel_file"]
+        if file.filename == "":
+            return render_template(
+                "upload.html",
+                error="No file selected. Please choose a file.",
+                success=False,
+            )
+
+        # Check file extension
+        if not file.filename.endswith((".xlsx", ".xlsm")):
+            return render_template(
+                "upload.html",
+                error="Invalid file type. Please upload an Excel file (.xlsx or .xlsm).",
+                success=False,
+            )
+
+        try:
+            # Read file into BytesIO
+            file_bytes = BytesIO(file.read())
+
+            # Rebuild all data
+            new_data = rebuild_data_from_file(file_bytes)
+
+            # Update the cached data
+            app.config["DATA_CACHED"] = new_data
+            app.config["HOME_PAGE_DATA"] = _prepare_home_page_data(new_data)
+
+            return render_template(
+                "upload.html",
+                success=True,
+                message=f"Data updated successfully! Processed {len(new_data.games)} games.",
+            )
+
+        except Exception as e:
+            return render_template(
+                "upload.html",
+                error=f"Error processing file: {str(e)}",
+                success=False,
+            )
+
+    # GET request - show upload form
+    return render_template("upload.html", success=False, error=None)
 
 
 # ---------------------------------------------------------

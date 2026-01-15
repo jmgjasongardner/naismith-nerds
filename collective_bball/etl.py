@@ -1,10 +1,10 @@
 import polars as pl
-from typing import Tuple
+from typing import Tuple, Union, IO
 import pandas as pd
 
 
-def load_data(filepath: str) -> Tuple[pl.DataFrame, pl.DataFrame]:
-    """Loads game data from Excel and returns Polars DataFrames."""
+def load_data(filepath: Union[str, IO]) -> Tuple[pl.DataFrame, pl.DataFrame]:
+    """Loads game data from Excel file path or file-like object and returns Polars DataFrames."""
     raw_games_df = (
         pl.DataFrame(
             pd.read_excel(filepath, sheet_name="GameResults", engine="openpyxl")
