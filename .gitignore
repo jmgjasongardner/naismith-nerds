@@ -29,5 +29,4 @@ __pycache__/
 *.docx
 static/**/*.xlsm
 *.xlsx
-*.xlsm
 *.txt
