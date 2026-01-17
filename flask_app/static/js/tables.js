@@ -23,6 +23,33 @@ $(document).ready(function () {
         return gamesPlayed >= minGames;
     });
 
+    /* ---------------------------------------------------------
+       GLOBAL ACTIVE PLAYERS FILTER
+    --------------------------------------------------------- */
+    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+
+        const tableId = settings.nTable.id;
+
+        // Apply filter only on stats and ratings tables
+        if (!["statsTable", "ratingsTable"].includes(tableId)) {
+            return true;
+        }
+
+        const isFilterActive = $("#activePlayersOnly").is(":checked");
+        if (!isFilterActive) {
+            return true;
+        }
+
+        // Get the row element and check its data-active-player attribute
+        const row = settings.aoData[dataIndex].nTr;
+        if (!row) {
+            return true;
+        }
+
+        const activePlayerValue = $(row).attr("data-active-player");
+        return activePlayerValue === "true";
+    });
+
 
     /* ---------------------------------------------------------
        Utility: Initialize a table ONLY if it exists
@@ -154,6 +181,20 @@ $(document).ready(function () {
                 }
             });
         }, 250);
+    });
+
+    /* ---------------------------------------------------------
+       TRIGGER FILTER REDRAW WHEN ACTIVE PLAYERS CHECKBOX CHANGES
+    --------------------------------------------------------- */
+    $("#activePlayersOnly").on("change", function () {
+        // Redraw stats and ratings tables when checkbox changes
+        const tableIds = ["statsTable", "ratingsTable"];
+        tableIds.forEach(id => {
+            const $table = $(`#${id}`);
+            if ($table.length && $.fn.DataTable.isDataTable($table)) {
+                $table.DataTable().draw();
+            }
+        });
     });
 
 

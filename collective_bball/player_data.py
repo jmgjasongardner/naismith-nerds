@@ -1,4 +1,5 @@
 import polars as pl
+from datetime import datetime, timedelta
 from collective_bball.utils import util_code
 
 
@@ -697,6 +698,12 @@ class PlayerData:
             left_on="player",
             right_on="player",
             how="inner",
+        )
+
+        # Add active_player column: True if most_recent_game is within 90 days
+        cutoff_date = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+        self.player_data = self.player_data.with_columns(
+            (pl.col("most_recent_game") >= cutoff_date).alias("active_player")
         )
 
         return self.player_data

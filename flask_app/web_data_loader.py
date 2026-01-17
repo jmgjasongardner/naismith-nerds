@@ -84,6 +84,7 @@ def format_stats_for_site(df: pl.DataFrame, does_player_image_exist_row=False):
         "exp_wins": "Exp Wins",
         "wins_over_exp": "Wins Over Exp",
         "most_recent_game": "Most Recent Game",
+        "active_player": "Active Player",
         "team_quality": "Team Quality",
         "teammate_quality": "Teammate Quality",
         "opp_quality": "Opp Quality",
