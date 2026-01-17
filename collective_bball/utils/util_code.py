@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Local fallback path
-LOCAL_DATA_PATH = "collective_bball/GameResults.xlsm"
+LOCAL_DATA_PATH = "collective_bball/GameResultss.xlsm"
 
 player_columns = [f"A{i}" for i in range(1, 6)] + [f"B{i}" for i in range(1, 6)]
 
