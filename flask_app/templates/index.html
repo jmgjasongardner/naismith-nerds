@@ -68,8 +68,14 @@
     <div class="tab" data-target="methodology">Methodology</div>
 </div>
 
-<!-- Min games filter (shared logic in tables.js) -->
-<input id="minGamesPlayed" type="number" placeholder="Filter Min Games" oninput="filterByMinGamesPlayed()">
+<!-- Filters (shared logic in tables.js) -->
+<div class="filters-container" style="display: flex; gap: 20px; align-items: center; justify-content: center; margin-bottom: 10px;">
+    <input id="minGamesPlayed" type="number" placeholder="Filter Min Games">
+    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+        <input type="checkbox" id="activePlayersOnly">
+        Active Players Only (played in last 90 days)
+    </label>
+</div>
 
 <!-- Stats tab -->
 <div class="tab-content stats active">
@@ -80,7 +86,7 @@
         <thead>
         <tr>
             {% for col in stats[0].keys() %}
-                {% if col != 'has_img' %}
+                {% if col not in ['has_img', 'Active Player'] %}
                     <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
                 {% endif %}
             {% endfor %}
@@ -88,9 +94,9 @@
         </thead>
         <tbody>
         {% for row in stats %}
-            <tr>
+            <tr data-active-player="{{ row.get('Active Player', true)|lower }}">
                 {% for key, value in row.items() %}
-                    {% if key != 'has_img' %}
+                    {% if key not in ['has_img', 'Active Player'] %}
                         <td class="{% if key in ['Player', 'Most Recent Game'] %}no-wrap{% endif %}">
                             {% if key == "Player" %}
                                 <a href="{{ url_for('player_page', player_name=row['Player']) }}">
@@ -131,7 +137,7 @@
         <thead>
         <tr>
             {% for col in ratings[0].keys() %}
-                {% if col != 'has_img' %}
+                {% if col not in ['has_img', 'Active Player'] %}
                     <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
                 {% endif %}
             {% endfor %}
@@ -139,9 +145,9 @@
         </thead>
         <tbody>
         {% for row in ratings %}
-            <tr>
+            <tr data-active-player="{{ row.get('Active Player', true)|lower }}">
                 {% for key, value in row.items() %}
-                    {% if key != 'has_img' %}
+                    {% if key not in ['has_img', 'Active Player'] %}
                         {% if key == "Player" %}
                             <td>
                                 <a href="{{ url_for('player_page', player_name=row['Player']) }}">

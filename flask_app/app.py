@@ -86,6 +86,10 @@ def _prepare_home_page_data(data_cached):
     ratings = format_stats_for_site(
         data_cached.ratings.filter(~pl.col("player").str.contains("Tier")).with_columns(
             pl.col("rating").round(5)
+        ).join(
+            data_cached.player_data.select(["player", "active_player"]),
+            on="player",
+            how="left"
         )
     )
     add_has_img(ratings)
