@@ -122,6 +122,7 @@ class RAPMModel:
                 pl.col("value").alias("player"),
             )
             .drop(["value", "variable"])
+            .filter(pl.col("player").is_not_null())
             .with_columns(
                 pl.when(pl.col("team") == "A")
                 .then(pl.col("a_score"))

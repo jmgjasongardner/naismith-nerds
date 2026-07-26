@@ -8,6 +8,18 @@ $(document).ready(function () {
     /* ---------------------------------------------------------
        GLOBAL MIN-GAMES FILTER
     --------------------------------------------------------- */
+
+    // "Games Played" isn't always in the same column index (e.g. Opponents
+    // has an extra "Opp" column that Teammates doesn't), so look it up by
+    // header title instead of assuming a fixed position.
+    function findColumnIndexByTitle(settings, title) {
+        const columns = settings.aoColumns;
+        for (let i = 0; i < columns.length; i++) {
+            if (columns[i].sTitle === title) return i;
+        }
+        return -1;
+    }
+
     $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
 
         const tableId = settings.nTable.id;
@@ -17,7 +29,12 @@ $(document).ready(function () {
             return true;
         }
 
-        const gamesPlayed = parseInt(data[1]) || 0;
+        const gamesPlayedCol = findColumnIndexByTitle(settings, "Games Played");
+        if (gamesPlayedCol === -1) {
+            return true;
+        }
+
+        const gamesPlayed = parseInt(data[gamesPlayedCol]) || 0;
         const minGames = parseInt($("#minGamesPlayed").val()) || 0;
 
         return gamesPlayed >= minGames;
@@ -62,6 +79,7 @@ $(document).ready(function () {
             pageLength: 25,
             responsive: true,
             autoWidth: false,
+            deferRender: true,
 
             dom: 'lBfrtip',
             buttons: [
