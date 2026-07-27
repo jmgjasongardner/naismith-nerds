@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Birthdays — Naismith Nerds{% endblock %}
+{% block description %}Every Naismith Nerd's birthday, by month.{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  <a class="back-link" href="{{ url_for('home') }}">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M19 12H5M11 18l-6-6 6-6"/>
+    </svg>
+    Home
+  </a>
+
+  <section class="hero" style="padding-top:8px">
+    <div class="hero__eyebrow">🎂 The calendar</div>
+    <h1>Birthdays</h1>
+    <p class="hero__sub">{{ total }} players with a birthday on file.</p>
+  </section>
+
+  {% if upcoming %}
+  <section class="panel">
+    <div class="panel__head">
+      <span class="panel__title">Around now</span>
+      <span class="panel__meta">past week and next two</span>
+    </div>
+    <div class="panel__body bday-strip">
+      {% for b in upcoming %}
+      <div class="bday-chip {% if b.days_away == 0 %}bday-chip--today{% endif %}">
+        <div class="bday-chip__name">{{ b.label }}</div>
+        <div class="muted">{{ b.display_date }}</div>
+        <div class="bday-chip__when">{{ b.days_from_today }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="bday-calendar">
+    {% for month in months %}
+    <section class="panel bday-month {% if month.is_current %}bday-month--now{% endif %}">
+      <div class="panel__head">
+        <span class="panel__title">{{ month.name }}</span>
+        <span class="panel__meta">{{ month.entries | length }}</span>
+      </div>
+      <div class="panel__body">
+        {% if month.entries %}
+        <ul class="bday-list">
+          {% for b in month.entries %}
+          <li>
+            <span class="bday-list__day">{{ '%02d'|format(b.day) }}</span>
+            <a href="{{ url_for('player_page', player_name=b.player) }}">{{ b.player }}</a>
+            {% if b.has_year %}<span class="muted">turns {{ b.age }}</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="muted" style="font-size:.82rem;margin:0">Nobody yet.</p>
+        {% endif %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

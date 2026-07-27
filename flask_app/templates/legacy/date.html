@@ -1,0 +1,122 @@
+{% extends "legacy/base.html" %}
+
+{% block title %}Run on {{ date }}{% endblock %}
+{% block body_class %}page-date{% endblock %}
+
+{% block content %}
+<div class="date-header">
+    <h1>{{ day_of_week }} {{ date }}</h1>
+</div>
+
+<!-- Navigation Tabs -->
+<div class="tabs">
+    <div class="tab" data-target="other-info">Summary Info</div>
+    <div class="tab active" data-target="players">Stats</div>
+    <div class="tab" data-target="games">Games</div>
+</div>
+
+<div class="tab-content players active">
+    <h2>Players</h2>
+    {% if player_day %}
+    <table id="playersTable" class="wide-table">
+        <thead>
+        <tr>
+            {% for col in player_day[0].keys() %}
+                {% if col != 'has_img' %}
+                    <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+                {% endif %}
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in player_day %}
+            <tr>
+                {% for key, value in row.items() %}
+                    {% if key != 'has_img' %}
+                        <td class="{% if key == 'Player' %}no-wrap{% endif %}">
+                            {% if key == "Player" %}
+                                <a href="{{ url_for('.player_page', player_name=row['Player']) }}">
+                                    {% if row.has_img %}
+                                        <img
+                                            src="{{ url_for('static', filename='player_pics/' ~ row['Player'] ~ '.png') }}"
+                                            alt="{{ row['Player'] }}"
+                                            style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
+                                    {% endif %}
+                                    {{ row['Player'] }}
+                                </a>
+                            {% else %}
+                                {{ value }}
+                            {% endif %}
+                        </td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No stats available for {{ date }}.</p>
+    {% endif %}
+</div>
+
+<div class="tab-content games">
+    <h2>Games</h2>
+    {% if day_games %}
+    <table id="gamesTable" class="wide-table" data-page-table="date-games">
+        <thead>
+        <tr>
+            {% for col in day_games[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in day_games %}
+            <tr>
+                {% for key, value in row.items() %}
+                    <td>
+                        {% if key in ['A1', 'A2', 'A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4', 'B5'] %}
+                            <a href="{{ url_for('.player_page', player_name=value) }}">{{ value }}</a>
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No games found for {{ date }}.</p>
+    {% endif %}
+</div>
+
+<div class="tab-content other-info">
+    <h2>Summary Info</h2>
+    {% if day_data %}
+    <table id="otherInfoTable" class="wide-table">
+        <thead>
+        <tr>
+            {% for col in day_data[0].keys() %}
+                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
+            {% endfor %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in day_data %}
+            <tr>
+                {% for key, value in row.items() %}
+                    <td>{{ value }}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>No data found for {{ date }}.</p>
+    {% endif %}
+</div>
+
+<br>
+<a href="{{ url_for('.home') }}">Back to Home</a>
+{% endblock %}

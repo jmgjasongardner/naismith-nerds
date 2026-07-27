@@ -1,207 +1,233 @@
 """
-OneDrive client for fetching Excel file via Microsoft Graph API.
+Fetches the GameResults workbook from OneDrive via Microsoft Graph.
 
-Setup (one-time):
-1. Run `python -m collective_bball.utils.onedrive_client` locally
-2. Follow the device code instructions to authenticate
-3. Copy the REFRESH_TOKEN to your .env and Fly.io secrets
+The important detail, and the reason the previous version stopped working:
+Microsoft rotates the refresh token on every redemption. The old token is
+invalidated and a new one comes back in the same response. If you keep
+re-sending the original token from a fixed environment variable, it works until
+the grant ages out and then fails permanently with AADSTS70000.
 
-Usage:
-    from collective_bball.utils.onedrive_client import fetch_excel_from_onedrive
-    file_bytes = fetch_excel_from_onedrive()
+So the token lives in a JSON file on the Fly volume, not in an env var, and is
+rewritten on every refresh. REFRESH_TOKEN is read only to seed that file the
+first time. As long as a refresh happens within the inactivity window (90 days
+for personal accounts, and the scheduler runs daily) the chain never breaks.
+
+One-time setup:
+    python -m collective_bball.utils.onedrive_client
 """
 
-import os
 import json
-import msal
-import requests
+import logging
+import os
+import time
 from io import BytesIO
 from typing import Optional
+
+import msal
+import requests
 from dotenv import load_dotenv
 
+from collective_bball.paths import excel_cache_path, token_path
+
 load_dotenv()
+logger = logging.getLogger(__name__)
 
-# Microsoft Graph API configuration
 CLIENT_ID = os.environ.get("CLIENT_ID")
-CLIENT_SECRET = os.environ.get("CLIENT_SECRET")  # Optional for public client
-TENANT_ID = os.environ.get("TENANT_ID", "consumers")  # "consumers" for personal accounts
-REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN")
+TENANT_ID = os.environ.get("TENANT_ID", "consumers")
 
-# The file path in OneDrive - update this to match your file location
 ONEDRIVE_FILE_PATH = os.environ.get(
     "ONEDRIVE_FILE_PATH",
-    "/Documents/17th Grade/CodingProjects/naismith-nerds/collective_bball/GameResults.xlsm"
+    "/Documents/17th Grade/CodingProjects/naismith-nerds/collective_bball/GameResults.xlsm",
 )
 
 AUTHORITY = f"https://login.microsoftonline.com/{TENANT_ID}"
+# offline_access is what makes Entra return a refresh token at all.
 SCOPES = ["Files.Read", "User.Read"]
 GRAPH_API_ENDPOINT = "https://graph.microsoft.com/v1.0"
 
-
-def get_msal_app() -> msal.PublicClientApplication:
-    """Create MSAL public client application."""
-    return msal.PublicClientApplication(
-        client_id=CLIENT_ID,
-        authority=AUTHORITY,
-    )
+REQUEST_TIMEOUT = 60
 
 
-def get_token_from_refresh_token() -> Optional[str]:
-    """Get access token using stored refresh token."""
-    if not REFRESH_TOKEN:
-        return None
-
-    app = get_msal_app()
-
-    # Use the refresh token to get a new access token
-    result = app.acquire_token_by_refresh_token(
-        refresh_token=REFRESH_TOKEN,
-        scopes=SCOPES,
-    )
-
-    if "access_token" in result:
-        # If we got a new refresh token, log it (you'd want to update your secrets)
-        if "refresh_token" in result and result["refresh_token"] != REFRESH_TOKEN:
-            print("NOTE: New refresh token issued. Update your REFRESH_TOKEN env var:")
-            print(f"REFRESH_TOKEN={result['refresh_token']}")
-        return result["access_token"]
-    else:
-        print(f"Error getting token: {result.get('error_description', result)}")
-        return None
+class OneDriveError(RuntimeError):
+    """Raised when OneDrive cannot serve the workbook."""
 
 
-def authenticate_interactive() -> dict:
-    """
-    Interactive authentication using device code flow.
-    Run this once locally to get initial tokens.
-    """
-    app = get_msal_app()
-
-    # Initiate device code flow
-    flow = app.initiate_device_flow(scopes=SCOPES)
-
-    if "user_code" not in flow:
-        raise Exception(f"Failed to create device flow: {flow}")
-
-    print("\n" + "=" * 60)
-    print("AUTHENTICATION REQUIRED")
-    print("=" * 60)
-    print(f"\n{flow['message']}\n")
-    print("=" * 60 + "\n")
-
-    # Wait for user to authenticate
-    result = app.acquire_token_by_device_flow(flow)
-
-    if "access_token" in result:
-        print("Authentication successful!")
-        print("\n" + "=" * 60)
-        print("SAVE THIS REFRESH TOKEN TO YOUR SECRETS")
-        print("=" * 60)
-        print(f"\nREFRESH_TOKEN={result.get('refresh_token', 'N/A')}\n")
-        print("Add this to:")
-        print("  1. Your local .env file")
-        print("  2. Fly.io secrets: fly secrets set REFRESH_TOKEN=...")
-        print("=" * 60 + "\n")
-        return result
-    else:
-        raise Exception(f"Authentication failed: {result.get('error_description', result)}")
+def _get_msal_app() -> msal.PublicClientApplication:
+    if not CLIENT_ID:
+        raise OneDriveError("CLIENT_ID is not set")
+    return msal.PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
 
 
-def fetch_excel_from_onedrive(file_path: Optional[str] = None) -> BytesIO:
-    """
-    Fetch Excel file from OneDrive using Graph API.
+def read_stored_token() -> Optional[str]:
+    """Current refresh token, preferring the rotating file over the env seed."""
+    path = token_path()
+    if path.exists():
+        try:
+            stored = json.loads(path.read_text(encoding="utf-8"))
+            token = stored.get("refresh_token")
+            if token:
+                return token
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Could not read stored token at %s: %s", path, exc)
 
-    Args:
-        file_path: Path to file in OneDrive (e.g., "/Documents/folder/file.xlsx")
-                   If not provided, uses ONEDRIVE_FILE_PATH env var.
+    # First run on a fresh volume: seed from the environment.
+    return os.environ.get("REFRESH_TOKEN") or None
 
-    Returns:
-        BytesIO object containing the file contents.
 
-    Raises:
-        Exception if authentication fails or file not found.
-    """
-    file_path = file_path or ONEDRIVE_FILE_PATH
+def store_token(refresh_token: str) -> None:
+    """Persist a rotated refresh token, replacing the file atomically."""
+    path = token_path()
+    payload = {
+        "refresh_token": refresh_token,
+        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    os.replace(tmp, path)
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+    logger.info("Stored rotated OneDrive refresh token at %s", path)
 
-    # Get access token
-    access_token = get_token_from_refresh_token()
-    if not access_token:
-        raise Exception(
-            "No valid access token. Run authentication first:\n"
+
+def get_access_token() -> str:
+    """Exchange the stored refresh token for an access token, persisting the
+    new refresh token that comes back."""
+    refresh_token = read_stored_token()
+    if not refresh_token:
+        raise OneDriveError(
+            "No OneDrive refresh token available. Run:\n"
             "  python -m collective_bball.utils.onedrive_client"
         )
 
-    # Build the Graph API URL for the file content
-    # URL-encode the path (but keep forward slashes)
+    result = _get_msal_app().acquire_token_by_refresh_token(
+        refresh_token=refresh_token, scopes=SCOPES
+    )
+
+    if "access_token" not in result:
+        raise OneDriveError(
+            f"Token refresh failed: {result.get('error_description', result)}"
+        )
+
+    # This is the line whose absence broke the previous implementation.
+    rotated = result.get("refresh_token")
+    if rotated and rotated != refresh_token:
+        store_token(rotated)
+
+    return result["access_token"]
+
+
+def fetch_excel_from_onedrive(file_path: Optional[str] = None) -> BytesIO:
+    """Download the workbook and cache it locally.
+
+    The cached copy is what makes a transient Graph outage a non-event: the
+    caller can fall back to the last known-good workbook rather than to a stale
+    file committed months ago.
+    """
+    file_path = file_path or ONEDRIVE_FILE_PATH
+    access_token = get_access_token()
+
     encoded_path = requests.utils.quote(file_path, safe="/")
     url = f"{GRAPH_API_ENDPOINT}/me/drive/root:{encoded_path}:/content"
 
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-    }
-
-    print(f"Fetching file from OneDrive: {file_path}")
-    response = requests.get(url, headers=headers)
+    response = requests.get(
+        url,
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=REQUEST_TIMEOUT,
+    )
 
     if response.status_code == 200:
-        print(f"Successfully fetched {len(response.content)} bytes")
-        return BytesIO(response.content)
-    elif response.status_code == 401:
-        raise Exception("Authentication expired. Re-run authentication.")
-    elif response.status_code == 404:
-        raise Exception(f"File not found: {file_path}")
-    else:
-        raise Exception(f"Error fetching file: {response.status_code} - {response.text}")
+        content = response.content
+        logger.info("Fetched %s (%d bytes) from OneDrive", file_path, len(content))
+        try:
+            excel_cache_path().write_bytes(content)
+        except OSError as exc:
+            logger.warning("Could not cache workbook: %s", exc)
+        return BytesIO(content)
+
+    if response.status_code == 401:
+        raise OneDriveError("OneDrive rejected the access token; re-authenticate.")
+    if response.status_code == 404:
+        raise OneDriveError(f"File not found in OneDrive: {file_path}")
+    raise OneDriveError(
+        f"OneDrive returned {response.status_code}: {response.text[:200]}"
+    )
+
+
+def authenticate_interactive() -> dict:
+    """Device-code sign-in. Run once; the token then rotates on its own."""
+    app = _get_msal_app()
+    flow = app.initiate_device_flow(scopes=SCOPES)
+
+    if "user_code" not in flow:
+        raise OneDriveError(f"Failed to start device flow: {flow}")
+
+    print("\n" + "=" * 64)
+    print("ONEDRIVE AUTHENTICATION")
+    print("=" * 64)
+    print(f"\n{flow['message']}\n")
+    print("=" * 64 + "\n")
+
+    result = app.acquire_token_by_device_flow(flow)
+
+    if "access_token" not in result:
+        raise OneDriveError(
+            f"Authentication failed: {result.get('error_description', result)}"
+        )
+
+    refresh_token = result.get("refresh_token")
+    if not refresh_token:
+        raise OneDriveError(
+            "Sign-in succeeded but no refresh token was returned. Confirm the "
+            "app registration is a public client with offline_access granted."
+        )
+
+    store_token(refresh_token)
+    print(f"Success. Refresh token stored at {token_path()}")
+    print("\nIt now rotates automatically on every refresh; no env var needed.")
+    print("To seed the Fly volume once, run:")
+    print(f"  fly secrets set REFRESH_TOKEN='{refresh_token}' --app naismith-nerds")
+    return result
 
 
 def test_connection() -> bool:
-    """Test the OneDrive connection by fetching user info."""
-    access_token = get_token_from_refresh_token()
-    if not access_token:
-        print("No access token available")
+    """Verify the stored token can reach Graph."""
+    try:
+        access_token = get_access_token()
+    except OneDriveError as exc:
+        print(f"No usable token: {exc}")
         return False
 
-    headers = {"Authorization": f"Bearer {access_token}"}
-    response = requests.get(f"{GRAPH_API_ENDPOINT}/me", headers=headers)
-
+    response = requests.get(
+        f"{GRAPH_API_ENDPOINT}/me",
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=REQUEST_TIMEOUT,
+    )
     if response.status_code == 200:
         user = response.json()
-        print(f"Connected as: {user.get('displayName', 'Unknown')} ({user.get('userPrincipalName', '')})")
+        print(
+            f"Connected as {user.get('displayName', 'Unknown')} "
+            f"({user.get('userPrincipalName', '')})"
+        )
         return True
-    else:
-        print(f"Connection test failed: {response.status_code}")
-        return False
+
+    print(f"Connection test failed: {response.status_code}")
+    return False
 
 
-# CLI for initial authentication
 if __name__ == "__main__":
-    import sys
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    print("\nOneDrive Authentication Setup")
+    print("\nOneDrive setup")
     print("-" * 40)
+    print(f"Token file: {token_path()}")
 
-    if not CLIENT_ID:
-        print("ERROR: CLIENT_ID not set in .env file")
-        sys.exit(1)
-
-    # Check if we already have a refresh token
-    if REFRESH_TOKEN:
-        print("Existing REFRESH_TOKEN found. Testing connection...")
-        if test_connection():
-            print("\nConnection working! You're all set.")
-            print("\nTesting file fetch...")
-            try:
-                file_bytes = fetch_excel_from_onedrive()
-                print(f"Successfully fetched file: {len(file_bytes.getvalue())} bytes")
-            except Exception as e:
-                print(f"File fetch failed: {e}")
-            sys.exit(0)
-        else:
-            print("Token expired. Re-authenticating...")
-
-    # Run interactive authentication
-    try:
+    if read_stored_token() and test_connection():
+        print("\nConnection working. Testing file fetch...")
+        workbook = fetch_excel_from_onedrive()
+        print(f"Fetched {len(workbook.getvalue())} bytes")
+    else:
+        print("\nNo working token. Starting sign-in...\n")
         authenticate_interactive()
-    except Exception as e:
-        print(f"Authentication failed: {e}")
-        sys.exit(1)
+        test_connection()

@@ -1,490 +1,468 @@
-from flask import Flask, render_template, jsonify, request, redirect, url_for
-from flask_app.utility_imports import tooltips
+"""
+Naismith Nerds web application.
 
-import duckdb
-import psutil
-import polars as pl
+Boots by loading prebuilt parquet artifacts, so nothing here imports pandas,
+openpyxl, scikit-learn or plotly at module scope. Those belong to the build
+path, which runs on a background thread or from the CLI.
+
+Routes:
+    /            new site
+    /classic     the original site, built solo by Jason (see legacy_views.py)
+    /api/*       JSON for the tables
+    /admin/*     password-protected refresh and upload
+"""
+
+import logging
 import os
+from datetime import datetime, timedelta
 from io import BytesIO
 
-from datetime import datetime
 import zoneinfo
+from flask import Flask, current_app, jsonify, render_template, request
 
-from collective_bball.main import data, create_data
-from collective_bball.plots import Plots
+import polars as pl
 
-from flask_app.web_data_loader import format_stats_for_site
-from flask_app.player_page_data_loader import (
-    load_player_bio_data,
-    create_player_games_advanced,
+from collective_bball import artifacts
+from collective_bball.paths import player_photo_path, player_thumb_path
+from flask_app.api import api
+from flask_app.data_store import DataStore
+from flask_app.legacy_views import legacy
+from flask_app.player_page_data_loader import load_player_bio_data
+from flask_app.refresh import DEFAULT_INTERVAL_SECONDS, RefreshService
+
+logging.basicConfig(
+    level=os.environ.get("LOG_LEVEL", "INFO"),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
+logger = logging.getLogger(__name__)
+
+EASTERN = zoneinfo.ZoneInfo("America/New_York")
+
+MONTH_NAMES = {
+    1: "January", 2: "February", 3: "March", 4: "April",
+    5: "May", 6: "June", 7: "July", 8: "August",
+    9: "September", 10: "October", 11: "November", 12: "December",
+}
 
 
-# ---------------------------------------------------------
-# Flask App Configuration
-# ---------------------------------------------------------
-app = Flask(__name__, static_folder="static")
-app.config["DATA_CACHED"] = data
+def _initial_data():
+    """Load prebuilt artifacts, building them first if none exist.
+
+    A build here is the cold-start path only: a fresh volume, or a deploy that
+    changed the artifact schema. The steady state is a sub-second load.
+    """
+    if artifacts.is_current():
+        return artifacts.load()
+
+    logger.warning("No usable artifacts found; building from source (this is slow)")
+    from collective_bball.utils.util_code import get_data_source
+
+    return artifacts.build_and_save(get_data_source())
 
 
-# ---------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------
-def filter_dictionary(dictionary, player_name):
-    return [entry for entry in dictionary if entry["Player"] == player_name]
+def create_app() -> Flask:
+    app = Flask(__name__, static_folder="static")
 
+    store = DataStore(_initial_data())
+    app.config["DATA_STORE"] = store
 
-def log_memory_usage():
-    process = psutil.Process(os.getpid())
-    process.memory_info()  # rss available if needed
-
-
-# ---------------------------------------------------------
-# Pre-compute home page data (called once at startup)
-# ---------------------------------------------------------
-def _prepare_home_page_data(data_cached):
-    """Pre-compute all formatted data for home page to avoid per-request processing."""
-
-    # Pre-compute which players have images (avoid repeated os.path.exists calls)
-    player_names = data_cached.player_data["player"].to_list()
-    players_with_images = set()
-    for name in player_names:
-        img_path = os.path.join("flask_app", "static", "player_pics_thumbs", f"{name}.webp")
-        if os.path.exists(img_path):
-            players_with_images.add(name)
-
-    # Helper to add has_img without os.path.exists per row
-    def add_has_img(rows):
-        for row in rows:
-            row["has_img"] = row.get("Player", "") in players_with_images
-        return rows
-
-    stats = format_stats_for_site(
-        data_cached.player_data.drop([
-            "rating", "tiered_rating", "full_name", "height", "position", "resident", "birthday"
-        ])
+    interval = int(
+        os.environ.get("REFRESH_INTERVAL_SECONDS", DEFAULT_INTERVAL_SECONDS)
     )
-    add_has_img(stats)
+    refresh_service = RefreshService(store, interval_seconds=interval)
+    app.config["REFRESH_SERVICE"] = refresh_service
+    if os.environ.get("DISABLE_AUTO_REFRESH", "").lower() not in ("1", "true", "yes"):
+        refresh_service.start()
 
-    games = format_stats_for_site(
-        data_cached.games.with_columns(
-            pl.when(pl.col("first_poss") == 1)
-            .then(pl.lit("A"))
-            .when(pl.col("first_poss") == -1)
-            .then(pl.lit("B"))
-            .otherwise(pl.lit("Idk"))
-            .alias("first_poss")
-        ).drop([
-            "winning_score", "games_waited_B", "games_waited_A",
-            "consecutive_games_B", "consecutive_games_A",
-            "total_games_played_diff", "consecutive_games_waited_diff",
-            "consecutive_games_played_diff", "total_games_played_diff_sq",
-            "consecutive_games_waited_diff_sq", "consecutive_games_played_diff_sq",
-        ])
+    app.register_blueprint(legacy)
+    app.register_blueprint(api)
+    _register_routes(app)
+
+    @app.context_processor
+    def inject_globals():
+        """Every page embeds the set of players who have a thumbnail, so tables
+        can render avatars without probing for images that would 404."""
+        return {"thumb_players": _players_with_thumbs(app.config["DATA_STORE"])}
+
+    return app
+
+
+def _players_with_thumbs(store) -> list:
+    """Cached per data version; a directory scan per request would be wasteful."""
+    cached = _players_with_thumbs.cache
+    if cached.get("version") == store.version:
+        return cached["names"]
+
+    names = sorted(
+        name
+        for name in store.data.player_data["player"].to_list()
+        if player_thumb_path(name).exists()
     )
+    _players_with_thumbs.cache = {"version": store.version, "names": names}
+    return names
 
-    ratings = format_stats_for_site(
-        data_cached.ratings.filter(~pl.col("player").str.contains("Tier")).with_columns(
-            pl.col("rating").round(5)
-        ).join(
-            data_cached.player_data.select(["player", "active_player"]),
-            on="player",
-            how="left"
+
+_players_with_thumbs.cache = {}
+
+
+def _require_password() -> bool:
+    """Admin endpoints share the existing upload password."""
+    expected = os.environ.get("UPLOAD_PASSWORD")
+    if not expected:
+        return False
+    supplied = request.form.get("password") or request.headers.get("X-Admin-Password")
+    return supplied == expected
+
+
+def _register_routes(app: Flask) -> None:
+
+    @app.route("/")
+    def home():
+        data = current_app.config["DATA_STORE"].data
+        latest = data.meta.get("latest_game_date")
+        top = data.player_data.sort("rating", descending=True, nulls_last=True).row(
+            0, named=True
         )
+
+        # Wins leader over the trailing three months, from the daily splits.
+        cutoff = (
+            datetime.strptime(latest, "%Y-%m-%d").date() - timedelta(days=90)
+        ).isoformat()
+        recent = (
+            data.player_days.filter(pl.col("game_date") >= cutoff)
+            .group_by("player")
+            .agg(pl.col("wins").sum().alias("wins"))
+            .sort(["wins", "player"], descending=[True, False])
+        )
+        recent_leader = recent.row(0, named=True) if recent.height else None
+
+        summary = {
+            "num_days": data.days.height,
+            "num_games": data.games.height,
+            "num_players": data.player_data.height,
+            "active_players": int(data.player_data["active_player"].sum() or 0),
+            "latest_date": latest,
+            "latest_games": data.games.filter(pl.col("game_date") == latest).height,
+            "top_player": top["player"],
+            "top_rating": top["rating"],
+            "recent_leader": recent_leader["player"] if recent_leader else None,
+            "recent_wins": recent_leader["wins"] if recent_leader else 0,
+        }
+        # Only the near window on the home page; the full year lives at
+        # /birthdays.
+        near = [b for b in _birthday_rows(data) if -7 <= b["days_away"] <= 14]
+
+        return render_template("index.html", summary=summary, birthdays=near)
+
+    @app.route("/player/<player_name>")
+    def player_page(player_name):
+        data = current_app.config["DATA_STORE"].data
+        rows = data.player_data.filter(pl.col("player") == player_name)
+        if rows.is_empty():
+            return render_template("not_found.html", thing=player_name), 404
+
+        row = rows.row(0, named=True)
+        full_name, height_str, position, birthday = load_player_bio_data(
+            player_name=player_name, player_data=data.player_data
+        )
+
+        # Where this rating sits among players who earned their own rating.
+        # Tiered players share a group estimate, so ranking them against
+        # individually-fitted ratings would be misleading.
+        rating_rank = None
+        if row.get("rating") is not None and not row.get("tiered_rating"):
+            rated = data.player_data.filter(pl.col("tiered_rating") == 0)[
+                "rating"
+            ].to_list()
+            rating_rank = {
+                "rank": ordinal(_rank_of(rated, row["rating"])),
+                "total": len(rated),
+            }
+
+        return render_template(
+            "player.html",
+            player_name=player_name,
+            full_name=full_name,
+            height_str=height_str,
+            position=position,
+            birthday=birthday,
+            is_active=bool(row.get("active_player")),
+            rating_rank=rating_rank,
+            image_exists=player_photo_path(player_name).exists(),
+            stats={
+                "rating": row.get("rating"),
+                "tiered": bool(row.get("tiered_rating")),
+                "wins": row.get("wins"),
+                "losses": row.get("losses"),
+                "win_pct": row.get("win_pct"),
+                "games_played": row.get("games_played"),
+                "days_played": row.get("days_played"),
+                "avg_score_diff": row.get("avg_score_diff"),
+                "gospel": row.get("result_vs_expectation"),
+                "most_recent_game": row.get("most_recent_game"),
+                "pct_total_days_played": row.get("pct_total_days_played"),
+            },
+        )
+
+    @app.route("/date/<date>")
+    def date_page(date):
+        data = current_app.config["DATA_STORE"].data
+        day_rows = data.days.filter(pl.col("game_date") == date)
+        if day_rows.is_empty():
+            return render_template("not_found.html", thing=date), 404
+
+        # Neighboring runs, for the prev/next links.
+        all_dates = data.days["game_date"].sort().to_list()
+        index = all_dates.index(date)
+
+        day = day_rows.row(0, named=True)
+
+        # How strong this run was relative to every other, both per player and
+        # weighted by games played.
+        def rank_badge(column):
+            values = data.days[column].to_list()
+            total = len([v for v in values if v is not None])
+            if day[column] is None or total < 2:
+                return None
+            rank = _rank_of(values, day[column])
+            return {
+                "rank": ordinal(rank),
+                "total": total,
+                # 0 = worst run, 1 = best. Drives the red-to-green scale.
+                "pct": (total - rank) / (total - 1),
+            }
+
+        return render_template(
+            "date.html",
+            date=date,
+            day=day,
+            day_of_week=day["day"],
+            weighted_rank=rank_badge("mean_rating_player_games"),
+            avg_rank=rank_badge("mean_rating_players"),
+            prev_date=all_dates[index - 1] if index > 0 else None,
+            next_date=all_dates[index + 1] if index < len(all_dates) - 1 else None,
+        )
+
+    @app.route("/team-builder")
+    def team_builder():
+        data = current_app.config["DATA_STORE"].data
+        roster = (
+            data.player_data.select(["player", "rating", "games_played"])
+            .drop_nulls("rating")
+            .sort("rating", descending=True)
+            .rename({"games_played": "games"})
+            .to_dicts()
+        )
+        return render_template("team_builder.html", roster=roster)
+
+    @app.route("/glossary")
+    def glossary():
+        return render_template("glossary.html")
+
+    @app.route("/birthdays")
+    def birthdays_page():
+        data = current_app.config["DATA_STORE"].data
+        rows = _birthday_rows(data)
+        today = datetime.now(EASTERN).date()
+
+        # Twelve month buckets, each sorted by day of month.
+        months = [{"name": MONTH_NAMES[m], "num": m, "entries": []} for m in range(1, 13)]
+        for row in rows:
+            month, day = row["month"], row["day"]
+            months[month - 1]["entries"].append(row)
+        for bucket in months:
+            bucket["entries"].sort(key=lambda r: r["day"])
+            bucket["is_current"] = bucket["num"] == today.month
+
+        return render_template(
+            "birthdays.html",
+            months=months,
+            upcoming=[r for r in rows if -7 <= r["days_away"] <= 14],
+            total=len(rows),
+        )
+
+    @app.errorhandler(404)
+    def not_found(_error):
+        return render_template("not_found.html", thing=None), 404
+
+    @app.route("/health")
+    def health():
+        store = current_app.config["DATA_STORE"]
+        return jsonify(
+            {
+                "status": "ok",
+                "data_version": store.version,
+                "built_at": getattr(store.data, "built_at", None),
+                "games": store.data.games.height,
+                "latest_game_date": store.data.meta.get("latest_game_date"),
+            }
+        )
+
+    @app.route("/admin/status")
+    def admin_status():
+        store = current_app.config["DATA_STORE"]
+        service = current_app.config["REFRESH_SERVICE"]
+        return jsonify(
+            {
+                "data_version": store.version,
+                "meta": store.data.meta,
+                "refresh": service.status,
+            }
+        )
+
+    @app.route("/admin/refresh", methods=["POST"])
+    def admin_refresh():
+        if not _require_password():
+            return jsonify({"error": "unauthorized"}), 401
+        service = current_app.config["REFRESH_SERVICE"]
+        force = request.form.get("force", "").lower() in ("1", "true", "yes")
+        return jsonify(service.run_once(force=force, allow_stale=False))
+
+    @app.route("/api/birthdays")
+    def birthday_api():
+        return jsonify(_birthday_rows(current_app.config["DATA_STORE"].data))
+
+    @app.route("/upload", methods=["GET", "POST"])
+    def upload_data():
+        """Manual workbook upload. Kept as a fallback for when OneDrive is
+        unavailable and Jason needs the site updated right now."""
+        if request.method != "POST":
+            return render_template("upload.html", success=False, error=None)
+
+        if not _require_password():
+            return render_template(
+                "upload.html", error="Invalid password. Please try again.", success=False
+            )
+
+        uploaded = request.files.get("excel_file")
+        if uploaded is None or uploaded.filename == "":
+            return render_template(
+                "upload.html", error="No file selected.", success=False
+            )
+        if not uploaded.filename.endswith((".xlsx", ".xlsm")):
+            return render_template(
+                "upload.html",
+                error="Invalid file type. Upload an .xlsx or .xlsm file.",
+                success=False,
+            )
+
+        try:
+            file_bytes = BytesIO(uploaded.read())
+            fingerprint = artifacts.source_fingerprint(file_bytes)
+            data = artifacts.build(file_bytes)
+            artifacts.save(data, fingerprint=fingerprint)
+            store = current_app.config["DATA_STORE"]
+            store.swap(artifacts.load())
+
+            report = data.ingest_report
+            message = f"Data updated. Processed {report.get('rows_kept', 0)} games."
+            if report.get("rows_skipped"):
+                message += f" Skipped {report['rows_skipped']} incomplete row(s)."
+            return render_template("upload.html", success=True, message=message)
+        except Exception as exc:
+            logger.exception("Upload rebuild failed")
+            return render_template(
+                "upload.html", error=f"Error processing file: {exc}", success=False
+            )
+
+
+def _birthday_rows(data) -> list:
+    """Upcoming and just-passed birthdays, nearest first."""
+    import polars as pl
+
+    rows = (
+        data.player_data.select(["player", "birthday"])
+        .drop_nulls()
+        .filter(pl.col("birthday").str.len_chars() > 0)
+        .to_dicts()
     )
-    add_has_img(ratings)
-
-    player_days = format_stats_for_site(data_cached.player_days.drop("rating", "resident"))
-    teammates = format_stats_for_site(data_cached.teammates.drop(["player", "teammate"]).unique("pairing"))
-    opponents = format_stats_for_site(data_cached.opponents)
-    days_of_week = format_stats_for_site(data_cached.days_of_week)
-    days = format_stats_for_site(data_cached.days)
-
-    return {
-        "stats": stats,
-        "num_days": len(data_cached.days),
-        "games": games,
-        "ratings": ratings,
-        "player_days": player_days,
-        "teammates": teammates,
-        "opponents": opponents,
-        "days_of_week": days_of_week,
-        "days": days,
-        "best_lambda": data_cached.best_lambda,
-        "plot_ratings": data_cached.plot_ratings,
-        "plot_rapm_apm": data_cached.plot_rapm_apm,
-    }
-
-
-# Pre-compute home page data at startup
-app.config["HOME_PAGE_DATA"] = _prepare_home_page_data(data)
-
-
-# ---------------------------------------------------------
-# API: Birthdays
-# ---------------------------------------------------------
-@app.route("/api/birthdays")
-def birthday_api():
-    data_cached = app.config["DATA_CACHED"]
-
-    bday_rows = format_stats_for_site(
-        data_cached.player_data.select(["player", "birthday"]).drop_nulls()
-    )
-    today = datetime.now(zoneinfo.ZoneInfo("America/New_York")).date()
-
+    today = datetime.now(EASTERN).date()
     processed = []
 
-    for row in bday_rows:
-        player = row["Player"]
-        raw = row["birthday"]
-
+    for row in rows:
+        player, raw = row["player"], row["birthday"]
         if not raw:
             continue
 
-        # Parse birthday
         try:
             bday = datetime.strptime(raw, "%Y-%m-%d").date()
             has_year = True
         except ValueError:
-            bday = datetime.strptime(raw, "%m-%d").date().replace(year=today.year)
+            try:
+                bday = datetime.strptime(raw, "%m-%d").date().replace(year=today.year)
+            except ValueError:
+                continue
             has_year = False
 
         this_year = bday.replace(year=today.year)
         days_since = (this_year - today).days
-
         next_birthday = (
             bday.replace(year=today.year + 1) if days_since < 0 else this_year
         )
         days_until = (next_birthday - today).days
-
-        if -7 <= days_since <= 0:
-            days_diff = days_since
-        else:
-            days_diff = days_until
+        days_diff = days_since if -7 <= days_since <= 0 else days_until
 
         if has_year:
             age = today.year - bday.year + 1
             if days_since >= -7:
                 age -= 1
-
-            if age % 10 == 1 and age % 100 != 11:
-                suffix = "st"
-            elif age % 10 == 2 and age % 100 != 12:
-                suffix = "nd"
-            elif age % 10 == 3 and age % 100 != 13:
-                suffix = "rd"
-            else:
-                suffix = "th"
-
-            label = f"{player}'s {age}{suffix} birthday!"
+            label = f"{player}'s {age}{_ordinal_suffix(age)} birthday!"
         else:
             label = f"{player}'s birthday!"
 
-        display_date = next_birthday.strftime("%b %d")
-
         if -7 <= days_since <= -2:
-            display_day_text = f"{-days_diff} days ago"
+            day_text = f"{-days_diff} days ago"
         elif days_since == -1:
-            display_day_text = "Yesterday!"
+            day_text = "Yesterday!"
         elif days_since == 0:
-            display_day_text = "🎉Today!!🥳"
+            day_text = "🎉Today!!🥳"
         elif days_since == 1:
-            display_day_text = "Tomorrow!"
+            day_text = "Tomorrow!"
         else:
-            display_day_text = f"{days_diff} days from now"
+            day_text = f"{days_diff} days from now"
 
         processed.append(
             {
+                "player": player,
                 "raw": raw,
-                "display_date": display_date,
+                "display_date": next_birthday.strftime("%b %d"),
+                "month": bday.month,
+                "day": bday.day,
+                "has_year": has_year,
+                "age": age if has_year else None,
                 "days_away": days_diff,
-                "days_from_today": display_day_text,
+                "days_from_today": day_text,
                 "label": label,
             }
         )
 
-    processed.sort(key=lambda x: x["days_away"])
-    return jsonify(processed)
+    processed.sort(key=lambda item: item["days_away"])
+    return processed
 
 
-# ---------------------------------------------------------
-# HOME PAGE
-# ---------------------------------------------------------
-@app.route("/")
-def home():
-    # Use pre-computed data (no per-request processing)
-    cached = app.config["HOME_PAGE_DATA"]
-    main_tooltip = tooltips.main_tooltip
-
-    return render_template(
-        "index.html",
-        stats=cached["stats"],
-        num_days=cached["num_days"],
-        games=cached["games"],
-        ratings=cached["ratings"],
-        player_days=cached["player_days"],
-        teammates=cached["teammates"],
-        opponents=cached["opponents"],
-        days_of_week=cached["days_of_week"],
-        days=cached["days"],
-        best_lambda=cached["best_lambda"],
-        main_tooltip=main_tooltip,
-        plot_ratings=cached["plot_ratings"],
-        plot_rapm_apm=cached["plot_rapm_apm"],
-    )
+def ordinal(n: int) -> str:
+    """1 -> 1st, 2 -> 2nd, 11 -> 11th."""
+    return f"{n}{_ordinal_suffix(n)}"
 
 
-# ---------------------------------------------------------
-# PLAYER PAGE
-# ---------------------------------------------------------
-@app.route("/player/<player_name>")
-def player_page(player_name):
-    data_cached = app.config["DATA_CACHED"]
-
-    image_path = f"flask_app/static/player_pics/{player_name}.png"
-    image_exists = os.path.exists(image_path)
-
-    full_name, height_str, position, birthday = load_player_bio_data(
-        player_name=player_name, player_data=data_cached.player_data
-    )
-
-    conn = duckdb.connect("bball_database.duckdb")
-    plots = Plots(conn)
-
-    player_rating_over_time = plots.plot_player_ratings_time(
-        player_name=player_name
-    ).to_html(full_html=False, include_plotlyjs="cdn")
-
-    player_games_rolling = plots.plot_player_rolling_avg(
-        player_name=player_name,
-        player_games=data_cached.player_games.filter(pl.col("player") == player_name),
-    ).to_html(full_html=False, include_plotlyjs="cdn")
-
-    return render_template(
-        "player.html",
-        player_name=player_name,
-        full_name=full_name,
-        height_str=height_str,
-        position=position,
-        birthday=birthday,
-        image_exists=image_exists,
-        image_path=image_path if image_exists else None,
-        player_rating_over_time_html=player_rating_over_time,
-        player_games_rolling_html=player_games_rolling,
-        player_stats=format_stats_for_site(
-            data_cached.player_data.filter(pl.col("player") == player_name).drop(
-                [
-                    "player",
-                    "rating",
-                    "tiered_rating",
-                    "full_name",
-                    "height",
-                    "position",
-                    "resident",
-                    "birthday",
-                ]
-            )
-        ),
-        player_rating=data_cached.ratings.filter(pl.col("player") == player_name)
-        .with_columns(pl.col("rating").round(5))
-        .to_dicts(),
-        player_days=format_stats_for_site(
-            data_cached.player_days.filter(pl.col("player") == player_name).drop(
-                ["player", "rating", "resident"]
-            )
-        ),
-        player_games=format_stats_for_site(
-            data_cached.player_games.filter(pl.col("player") == player_name)
-            .drop(["rating", "player", "resident"])
-            .with_columns(pl.col("win_prob").round(3))
-        ),
-        player_teammates=format_stats_for_site(
-            data_cached.teammates.filter(pl.col("player") == player_name).drop(
-                ["player", "pairing"]
-            )
-        ),
-        player_oppponents=format_stats_for_site(
-            data_cached.opponents.filter(pl.col("player") == player_name).drop(
-                ["player"]
-            )
-        ),
-        main_tooltip=tooltips.main_tooltip,
-    )
+def _rank_of(values: list, target, descending: bool = True) -> int:
+    """1-based rank of `target` within `values`, highest first by default."""
+    ordered = sorted((v for v in values if v is not None), reverse=descending)
+    return ordered.index(target) + 1
 
 
-# ---------------------------------------------------------
-# DATE PAGE
-# ---------------------------------------------------------
-@app.route("/date/<date>")
-def date_page(date):
-    data_cached = app.config["DATA_CACHED"]
-
-    return render_template(
-        "date.html",
-        date=date,
-        day_of_week=data_cached.games.filter(pl.col("game_date") == date)
-        .select("day")
-        .item(0, 0),
-        day_data=format_stats_for_site(
-            data_cached.days.filter(pl.col("game_date") == date).drop(
-                ["game_date", "day"]
-            )
-        ),
-        player_day=format_stats_for_site(
-            data_cached.player_days.filter(pl.col("game_date") == date).drop(
-                ["game_date", "day", "rating", "resident"]
-            ),
-            does_player_image_exist_row=True,
-        ),
-        day_games=format_stats_for_site(
-            data_cached.games.filter(pl.col("game_date") == date)
-            .with_columns(
-                pl.when(pl.col("first_poss") == 1)
-                .then(pl.lit("A"))
-                .when(pl.col("first_poss") == -1)
-                .then(pl.lit("B"))
-                .otherwise(pl.lit("Idk"))
-                .alias("first_poss")
-            )
-            .drop(
-                [
-                    "winning_score",
-                    "games_waited_B",
-                    "games_waited_A",
-                    "consecutive_games_B",
-                    "consecutive_games_A",
-                    "total_games_played_diff",
-                    "consecutive_games_waited_diff",
-                    "consecutive_games_played_diff",
-                    "total_games_played_diff_sq",
-                    "consecutive_games_waited_diff_sq",
-                    "consecutive_games_played_diff_sq",
-                ]
-            )
-        ),
-        main_tooltip=tooltips.main_tooltip,
-    )
+def _ordinal_suffix(n: int) -> str:
+    if n % 10 == 1 and n % 100 != 11:
+        return "st"
+    if n % 10 == 2 and n % 100 != 12:
+        return "nd"
+    if n % 10 == 3 and n % 100 != 13:
+        return "rd"
+    return "th"
 
 
-# ---------------------------------------------------------
-# UPLOAD DATA
-# ---------------------------------------------------------
-def rebuild_data_from_file(file_bytes: BytesIO):
-    """Rebuild all data from uploaded Excel file."""
-    import argparse
-    from collective_bball.basketball_data import BasketballData
-    from collective_bball.rapm_model import RAPMModel
-    from collective_bball.moneyline_model import BettingGames
-    from collective_bball import create_db_tables
-
-    args = argparse.Namespace(
-        use_tier_data=True,
-        min_games_to_not_tier=20,
-        default_lambda=True,
-        lambda_params=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
-        decay_half_life=270,
-        save_csv=False,
-        loop_through_ratings_dates=False,
-    )
-
-    conn = duckdb.connect("bball_database.duckdb")
-    create_db_tables.create_tables(conn)
-
-    new_data = BasketballData(data_source=file_bytes, args=args)
-    new_data.clean_data()
-    new_data.compute_clock_and_starting_poss()
-    new_data.compute_player_stats()
-    new_data.compute_fatigue()
-
-    rapm_model = RAPMModel()
-    new_data.compute_rapm(rapm_model)
-    new_data.write_to_db(conn=conn)
-
-    new_data.merge_player_data()
-
-    betting_games = BettingGames()
-    new_data.compute_spreads(betting_games)
-    new_data.compute_moneylines(betting_games)
-
-    new_data.assemble_player_data()
-    new_data.assemble_days_data()
-
-    plots = Plots(conn)
-    new_data.plot_things(plots)
-
-    conn.close()
-
-    return new_data
+app = create_app()
 
 
-@app.route("/upload", methods=["GET", "POST"])
-def upload_data():
-    upload_password = os.environ.get("UPLOAD_PASSWORD")
-
-    if request.method == "POST":
-        # Check password
-        submitted_password = request.form.get("password", "")
-        if not upload_password or submitted_password != upload_password:
-            return render_template(
-                "upload.html",
-                error="Invalid password. Please try again.",
-                success=False,
-            )
-
-        # Check if file was uploaded
-        if "excel_file" not in request.files:
-            return render_template(
-                "upload.html",
-                error="No file uploaded. Please select a file.",
-                success=False,
-            )
-
-        file = request.files["excel_file"]
-        if file.filename == "":
-            return render_template(
-                "upload.html",
-                error="No file selected. Please choose a file.",
-                success=False,
-            )
-
-        # Check file extension
-        if not file.filename.endswith((".xlsx", ".xlsm")):
-            return render_template(
-                "upload.html",
-                error="Invalid file type. Please upload an Excel file (.xlsx or .xlsm).",
-                success=False,
-            )
-
-        try:
-            # Read file into BytesIO
-            file_bytes = BytesIO(file.read())
-
-            # Rebuild all data
-            new_data = rebuild_data_from_file(file_bytes)
-
-            # Update the cached data
-            app.config["DATA_CACHED"] = new_data
-            app.config["HOME_PAGE_DATA"] = _prepare_home_page_data(new_data)
-
-            return render_template(
-                "upload.html",
-                success=True,
-                message=f"Data updated successfully! Processed {len(new_data.games)} games.",
-            )
-
-        except Exception as e:
-            return render_template(
-                "upload.html",
-                error=f"Error processing file: {str(e)}",
-                success=False,
-            )
-
-    # GET request - show upload form
-    return render_template("upload.html", success=False, error=None)
-
-
-# ---------------------------------------------------------
-# MAIN
-# ---------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)

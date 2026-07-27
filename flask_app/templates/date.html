@@ -1,122 +1,109 @@
 {% extends "base.html" %}
-
-{% block title %}Run on {{ date }}{% endblock %}
-{% block body_class %}page-date{% endblock %}
+{% block title %}{{ date }} — Naismith Nerds{% endblock %}
+{% block description %}Every game and player result from the {{ date }} run.{% endblock %}
 
 {% block content %}
-<div class="date-header">
-    <h1>{{ day_of_week }} {{ date }}</h1>
-</div>
+<div class="container">
 
-<!-- Navigation Tabs -->
-<div class="tabs">
-    <div class="tab" data-target="other-info">Summary Info</div>
-    <div class="tab active" data-target="players">Stats</div>
-    <div class="tab" data-target="games">Games</div>
-</div>
+  <a class="back-link" href="{{ url_for('home') }}#days">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M19 12H5M11 18l-6-6 6-6"/>
+    </svg>
+    All runs
+  </a>
 
-<div class="tab-content players active">
-    <h2>Players</h2>
-    {% if player_day %}
-    <table id="playersTable" class="wide-table">
-        <thead>
-        <tr>
-            {% for col in player_day[0].keys() %}
-                {% if col != 'has_img' %}
-                    <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-                {% endif %}
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in player_day %}
-            <tr>
-                {% for key, value in row.items() %}
-                    {% if key != 'has_img' %}
-                        <td class="{% if key == 'Player' %}no-wrap{% endif %}">
-                            {% if key == "Player" %}
-                                <a href="{{ url_for('player_page', player_name=row['Player']) }}">
-                                    {% if row.has_img %}
-                                        <img
-                                            src="{{ url_for('static', filename='player_pics/' ~ row['Player'] ~ '.png') }}"
-                                            alt="{{ row['Player'] }}"
-                                            style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
-                                    {% endif %}
-                                    {{ row['Player'] }}
-                                </a>
-                            {% else %}
-                                {{ value }}
-                            {% endif %}
-                        </td>
-                    {% endif %}
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No stats available for {{ date }}.</p>
+  <section class="hero" style="padding-top:8px">
+    <div class="hero__eyebrow">{{ day_of_week }}</div>
+    <h1>{{ date }}</h1>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      {% if prev_date %}
+        <a class="btn" href="{{ url_for('date_page', date=prev_date) }}">← {{ prev_date }}</a>
+      {% endif %}
+      {% if next_date %}
+        <a class="btn" href="{{ url_for('date_page', date=next_date) }}">{{ next_date }} →</a>
+      {% endif %}
+    </div>
+
+    {% if day %}
+    <div class="stat-row">
+      <div class="stat-tile">
+        <div class="stat-tile__label">Games – Players</div>
+        <div class="stat-tile__value">{{ day.num_games }}–{{ day.num_players }}</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__label">Avg rating</div>
+        <div class="stat-tile__value">{{ '%+.2f'|format(day.mean_rating_players or 0) }}</div>
+        {% if avg_rank %}
+        <div class="stat-tile__meta stat-tile__rank" style="--rank-pct: {{ '%.4f'|format(avg_rank.pct) }}">
+          {{ avg_rank.rank }} of {{ avg_rank.total }} runs
+        </div>
+        {% else %}
+        <div class="stat-tile__meta">per player</div>
+        {% endif %}
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__label">Weighted avg rating</div>
+        <div class="stat-tile__value">{{ '%+.2f'|format(day.mean_rating_player_games or 0) }}</div>
+        {% if weighted_rank %}
+        <div class="stat-tile__meta stat-tile__rank" style="--rank-pct: {{ '%.4f'|format(weighted_rank.pct) }}">
+          {{ weighted_rank.rank }} of {{ weighted_rank.total }} runs
+        </div>
+        {% endif %}
+      </div>
+      {% if day.mvp %}
+      <div class="stat-tile">
+        <div class="stat-tile__label">MVP</div>
+        <div class="stat-tile__value" style="font-size:1.15rem">
+          <a href="{{ url_for('player_page', player_name=day.mvp) }}">{{ day.mvp }}</a>
+        </div>
+        <div class="stat-tile__meta">
+          <span class="pos">{{ '%+.2f'|format(day.mvp_gospel or 0) }}</span> vs expectation
+        </div>
+      </div>
+      {% endif %}
+      {% if day.lvp %}
+      <div class="stat-tile">
+        <div class="stat-tile__label">LVP</div>
+        <div class="stat-tile__value" style="font-size:1.15rem">
+          <a href="{{ url_for('player_page', player_name=day.lvp) }}">{{ day.lvp }}</a>
+        </div>
+        <div class="stat-tile__meta">
+          <span class="neg">{{ '%+.2f'|format(day.lvp_gospel or 0) }}</span> vs expectation
+        </div>
+      </div>
+      {% endif %}
+      <div class="stat-tile">
+        <div class="stat-tile__label">Avg score diff</div>
+        <div class="stat-tile__value">{{ '%.1f'|format(day.avg_score_diff or 0) }}</div>
+        <div class="stat-tile__meta">lower is closer</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__label">Unique winners</div>
+        <div class="stat-tile__value">{{ '%.0f'|format((day.unique_winners_rate or 0) * 100) }}%</div>
+        <div class="stat-tile__meta">won ≥1 game</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__label">Longest run on</div>
+        <div class="stat-tile__value">{{ day.longest_run_on_court }}</div>
+        <div class="stat-tile__meta">consecutive games</div>
+      </div>
+    </div>
     {% endif %}
-</div>
+  </section>
 
-<div class="tab-content games">
-    <h2>Games</h2>
-    {% if day_games %}
-    <table id="gamesTable" class="wide-table" data-page-table="date-games">
-        <thead>
-        <tr>
-            {% for col in day_games[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in day_games %}
-            <tr>
-                {% for key, value in row.items() %}
-                    <td>
-                        {% if key in ['A1', 'A2', 'A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4', 'B5'] %}
-                            <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
-                        {% else %}
-                            {{ value }}
-                        {% endif %}
-                    </td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No games found for {{ date }}.</p>
-    {% endif %}
-</div>
+  <section class="panel">
+    <div role="tablist" class="tabs" aria-label="{{ date }} data">
+      <button class="tab" role="tab" id="tab-d-players" data-key="players" aria-controls="panel-d-players">Players</button>
+      <button class="tab" role="tab" id="tab-d-games"   data-key="games"   aria-controls="panel-d-games">Games</button>
+    </div>
+    <div role="tabpanel" id="panel-d-players" aria-labelledby="tab-d-players" hidden>
+      <div data-table="players" data-url="/api/date/{{ date | urlencode }}/players"
+           data-sort="result_vs_expectation_avg"></div>
+    </div>
+    <div role="tabpanel" id="panel-d-games" aria-labelledby="tab-d-games" hidden>
+      <div data-table="games" data-url="/api/date/{{ date | urlencode }}/games" data-sort="game_num"></div>
+    </div>
+  </section>
 
-<div class="tab-content other-info">
-    <h2>Summary Info</h2>
-    {% if day_data %}
-    <table id="otherInfoTable" class="wide-table">
-        <thead>
-        <tr>
-            {% for col in day_data[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in day_data %}
-            <tr>
-                {% for key, value in row.items() %}
-                    <td>{{ value }}</td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No data found for {{ date }}.</p>
-    {% endif %}
 </div>
-
-<br>
-<a href="{{ url_for('home') }}">Back to Home</a>
 {% endblock %}

@@ -1,10 +1,27 @@
 app = 'naismith-nerds'
 primary_region = 'iad'
 
-[processes]
-app = "gunicorn -w 1 -b 0.0.0.0:8080 flask_app.app:app"
-
 [build]
+
+[processes]
+  app = "gunicorn -w 1 -b 0.0.0.0:8080 --timeout 120 --graceful-timeout 30 flask_app.app:app"
+
+# NO VOLUME — deliberately, to avoid any extra Fly charge.
+#
+# State therefore lives on the machine's own filesystem (see paths.py, which
+# falls back to ./data when /data is absent). That persists across restarts and
+# suspends, but is replaced on every deploy. Consequences:
+#
+#   * uploaded workbooks and rebuilt artifacts survive until the next deploy
+#   * artifacts rebuild automatically on first boot after a deploy
+#   * a rotated OneDrive token would not survive a deploy
+#
+# If a volume is ever wanted (~$0.15/mo for 1 GB), add back:
+#   [mounts]
+#     source = 'naismith_data'
+#     destination = '/data'
+#     initial_size = '1gb'
+# and set NN_DATA_DIR = '/data' under [env].
 
 [http_service]
   internal_port = 8080
@@ -13,6 +30,13 @@ app = "gunicorn -w 1 -b 0.0.0.0:8080 flask_app.app:app"
   auto_start_machines = true
   min_machines_running = 1
   processes = ['app']
+
+[[http_service.checks]]
+  grace_period = '30s'
+  interval = '30s'
+  method = 'GET'
+  timeout = '10s'
+  path = '/health'
 
 [[vm]]
   memory = '1gb'

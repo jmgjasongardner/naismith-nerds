@@ -30,3 +30,5 @@ __pycache__/
 static/**/*.xlsm
 *.xlsx
 *.txt
+# Built artifacts and persistent state (mirrors the Fly volume)
+data/

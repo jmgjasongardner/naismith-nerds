@@ -1,87 +1,29 @@
-import duckdb
+"""
+Command line entry point for building the dataset.
 
-from collective_bball.basketball_data import BasketballData
-from collective_bball.rapm_model import RAPMModel
-from collective_bball.moneyline_model import BettingGames
-from collective_bball.utils import util_code
-from collective_bball.plots import Plots
+    python -m collective_bball.main            # build from the freshest source
+    python -m collective_bball.main --local    # build from the committed workbook
+
+This module used to run the entire pipeline at import time, which meant every
+web worker boot re-read Excel and refit the ridge model before serving a single
+request. It no longer does anything on import; the web app loads prebuilt
+artifacts instead. Keep it that way.
+"""
+
 import argparse
-import polars as pl
 import logging
-from collective_bball import create_db_tables
+
+import polars as pl
+
+from collective_bball import artifacts
+from collective_bball.utils import util_code
 
 pl.Config.set_tbl_rows(n=100)
 pl.Config.set_tbl_cols(n=8)
-logging.basicConfig(level=logging.DEBUG)
 
 
-def create_data(args=None):
-    """Creates and processes the BasketballData object."""
-    if args is None:
-        args = argparse.Namespace(
-            use_tier_data=True,
-            min_games_to_not_tier=20,
-            default_lambda=True,
-            lambda_params=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
-            decay_half_life=270,
-            save_csv=False,
-            loop_through_ratings_dates=False,
-        )
-    # logging.debug(f"main.py pre data load")
-
-    conn = duckdb.connect("bball_database.duckdb")
-    create_db_tables.create_tables(conn)
-
-    data_source = util_code.get_data_source()
-    data = BasketballData(data_source=data_source, args=args)
-    # logging.debug(f"main.py post data load: {data is not None}")
-    data.clean_data()
-    data.compute_clock_and_starting_poss()
-    # logging.debug(f"main.py post data clean: {data is not None}")
-    data.compute_player_stats()
-    data.compute_fatigue()
-    # logging.debug(f"main.py post data stats: {data is not None}")
-
-    rapm_model = RAPMModel()
-
-    if args.loop_through_ratings_dates:
-        for date in data.games["game_date"].unique().sort():
-            data.compute_rapm(rapm_model, date_to_filter=date)
-            data.write_to_db(conn=conn, date_to_filter=date)
-    else:
-        data.compute_rapm(rapm_model)
-        data.write_to_db(conn=conn)
-
-    # logging.debug(f"main.py post data rapm: {data is not None}")
-    data.merge_player_data()
-    # logging.debug(f"main.py post data player merge: {data is not None}")
-
-    betting_games = BettingGames()
-    data.compute_spreads(betting_games)
-
-    data.compute_moneylines(betting_games)
-    # logging.debug(f"main.py post data betting: {data is not None}")
-
-    data.assemble_player_data()
-    data.assemble_days_data()
-    # logging.debug(f"main.py post data everything: {data is not None}")
-
-    plots = Plots(conn)
-    data.plot_things(plots)
-
-    conn.close()
-
-    return data
-
-
-# Create `data` when imported (for Flask)
-# logging.debug(f"main.py pre data obj creation:")
-data = create_data()
-# logging.debug(f"main.py post data obj creation: {data is not None}")
-
-if __name__ == "__main__":
-    # Allow CLI arguments
-    parser = argparse.ArgumentParser()
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Build Naismith Nerds artifacts")
     parser.add_argument("--use_tier_data", action="store_false")
     parser.add_argument("--min_games_to_not_tier", default=20, type=int)
     parser.add_argument("--default_lambda", action="store_false")
@@ -94,7 +36,44 @@ if __name__ == "__main__":
     parser.add_argument("--decay_half_life", default=270, type=int)
     parser.add_argument("--save_csv", action="store_true")
     parser.add_argument("--loop_through_ratings_dates", action="store_true")
-    args, unknown = parser.parse_known_args()
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Build from the committed workbook instead of OneDrive",
+    )
+    args, _unknown = parser.parse_known_args(argv)
+    return args
 
-    # Run with CLI args
+
+def create_data(args=None):
+    """Build the dataset and persist it as artifacts. Returns the loaded set."""
+    args = args or parse_args([])
+    source = (
+        str(util_code.LOCAL_DATA_PATH)
+        if getattr(args, "local", False)
+        else util_code.get_data_source()
+    )
+    return artifacts.build_and_save(source, args=args)
+
+
+def main(argv=None):
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    args = parse_args(argv)
     data = create_data(args)
+
+    report = data.ingest_report
+    print(f"\nBuilt {report.get('rows_kept', 0)} games from {report.get('rows_read', 0)} rows")
+    if report.get("rows_skipped"):
+        print(
+            f"Skipped {report['rows_skipped']} incomplete row(s): "
+            f"{report.get('missing_date', 0)} missing a date, "
+            f"{report.get('incomplete_lineup', 0)} missing players, "
+            f"{report.get('missing_score', 0)} missing a score"
+        )
+    print(f"Players: {data.player_data.height}   Best lambda: {data.best_lambda}")
+    print(f"Latest game: {data.meta.get('latest_game_date')}")
+    return data
+
+
+if __name__ == "__main__":
+    main()

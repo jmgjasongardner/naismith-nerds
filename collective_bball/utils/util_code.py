@@ -1,47 +1,57 @@
+import logging
 import os
-from typing import Union
 from io import BytesIO
+from typing import Union
+from pathlib import Path
+
 from dotenv import load_dotenv
+
+from collective_bball.paths import REPO_ROOT, excel_cache_path
 
 load_dotenv()
 
-# Local fallback path
-LOCAL_DATA_PATH = "collective_bball/GameResults.xlsm"
+logger = logging.getLogger(__name__)
+
+# The workbook committed to the repo. Last-resort fallback only: it is whatever
+# was true at the most recent push, which is exactly the staleness the OneDrive
+# integration exists to eliminate.
+LOCAL_DATA_PATH = REPO_ROOT / "collective_bball" / "GameResults.xlsm"
 
 player_columns = [f"A{i}" for i in range(1, 6)] + [f"B{i}" for i in range(1, 6)]
 
 
-def get_data_source() -> Union[str, BytesIO]:
+def get_data_source(allow_stale: bool = True) -> Union[str, BytesIO]:
+    """Resolve the workbook to build from, freshest source first.
+
+    1. OneDrive, the live copy Jason edits courtside.
+    2. The last workbook successfully fetched from OneDrive, cached on the
+       volume, so a Graph outage doesn't roll the site back months.
+    3. The copy committed to the repo.
+
+    Set allow_stale=False in the scheduled refresh: a fallback there would
+    silently rebuild identical data and hide the fact that OneDrive is broken.
     """
-    Get the data source for Excel file.
+    try:
+        from collective_bball.utils.onedrive_client import fetch_excel_from_onedrive
 
-    Returns OneDrive BytesIO if REFRESH_TOKEN is set and valid,
-    otherwise falls back to local file path.
-    """
-    # Check if OneDrive is configured
-    refresh_token = os.environ.get("REFRESH_TOKEN")
+        logger.info("Fetching workbook from OneDrive...")
+        return fetch_excel_from_onedrive()
+    except Exception as exc:
+        if not allow_stale:
+            raise
+        logger.warning("OneDrive fetch failed (%s); falling back", exc)
 
-    if refresh_token:
-        try:
-            from collective_bball.utils.onedrive_client import fetch_excel_from_onedrive
-            print("Fetching data from OneDrive...")
-            return fetch_excel_from_onedrive()
-        except Exception as e:
-            print(f"OneDrive fetch failed: {e}")
-            print("Falling back to local file...")
+    cached = excel_cache_path()
+    if cached.exists():
+        logger.warning("Using cached workbook from %s", cached)
+        return str(cached)
 
-    # Fall back to local file
-    if os.path.exists(LOCAL_DATA_PATH):
-        print(f"Using local file: {LOCAL_DATA_PATH}")
-        return LOCAL_DATA_PATH
-    else:
-        raise FileNotFoundError(
-            f"No data source available. Either:\n"
-            f"  1. Set REFRESH_TOKEN for OneDrive access, or\n"
-            f"  2. Place Excel file at: {LOCAL_DATA_PATH}"
-        )
+    if Path(LOCAL_DATA_PATH).exists():
+        logger.warning("Using workbook committed to the repo: %s", LOCAL_DATA_PATH)
+        return str(LOCAL_DATA_PATH)
 
-
-# For backward compatibility - this will be evaluated when imported
-# Use get_data_source() for dynamic fetching
-public_data_url = LOCAL_DATA_PATH  # Deprecated: use get_data_source() instead
+    raise FileNotFoundError(
+        "No workbook available. Either authenticate OneDrive:\n"
+        "  python -m collective_bball.utils.onedrive_client\n"
+        f"or place the file at {LOCAL_DATA_PATH}"
+    )

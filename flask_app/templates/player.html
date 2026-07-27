@@ -1,213 +1,140 @@
 {% extends "base.html" %}
-
-{% block title %}{{ player_name }}'s Stats{% endblock %}
-{% block body_class %}page-player{% endblock %}
+{% block title %}{{ full_name or player_name }} — Naismith Nerds{% endblock %}
+{% block description %}Ratings, game log and pairing splits for {{ full_name or player_name }}.{% endblock %}
 
 {% block content %}
-<div class="player-header">
-    <h1>{{ full_name if full_name else player_name }}</h1>
+<div class="container">
 
+  <a class="back-link" href="{{ url_for('home') }}">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M19 12H5M11 18l-6-6 6-6"/>
+    </svg>
+    All players
+  </a>
+
+  <section class="player-hero">
     {% if image_exists %}
-        <img src="{{ url_for('static', filename='player_pics/' + player_name + '.png') }}"
-             alt="{{ player_name }}'s photo" width="180">
-    {% endif %}
-</div>
-
-{% if position %}
-    <p class="player-meta">{{ position }}</p>
-{% endif %}
-{% if height_str %}
-    <p class="player-meta">{{ height_str }}</p>
-{% endif %}
-{% if birthday %}
-    <p class="player-meta">{{ birthday }}</p>
-{% endif %}
-
-<h3>RAPM Rating</h3>
-{% if player_rating %}
-    {% set values_list = player_rating[0].values() | list %}
-    <h3>{{ values_list[1] }}</h3>
-{% else %}
-    <p>No rating data available for {{ player_name }} (not yet played 20 games).</p>
-{% endif %}
-
-<!-- Navigation Tabs -->
-<div class="tabs">
-    <div class="tab active" data-target="stats">Stats</div>
-    <div class="tab" data-target="days">Days</div>
-    <div class="tab" data-target="games">Games</div>
-    <div class="tab" data-target="player_pairings">Player Pairings</div>
-</div>
-
-<!-- Min games filter, shared with index (will apply to Stats + Pairings) -->
-<input id="minGamesPlayed" type="number" placeholder="Filter Min Games" oninput="filterByMinGamesPlayed()">
-
-<div class="tab-content stats active">
-    <h2>Stats</h2>
-    {% if player_stats %}
-    <table id="statsTable" class="wide-table" data-page-table="player-stats">
-        <thead>
-        <tr>
-            {% for col in player_stats[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in player_stats %}
-            <tr>
-                {% for key, value in row.items() %}
-                    <td>
-                        {% if key == "Most Recent Game" %}
-                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
-                        {% else %}
-                            {{ value }}
-                        {% endif %}
-                    </td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
+      <img class="player-hero__photo"
+           src="{{ url_for('static', filename='player_pics/' + player_name + '.png') }}"
+           alt="{{ player_name }}">
     {% else %}
-        <p>No stats available for {{ player_name }}.</p>
+      <div class="player-hero__photo player-hero__photo--placeholder">
+        {{ player_name[:2] | upper }}
+      </div>
     {% endif %}
 
-    <div class="graph-container">
-        {{ player_games_rolling_html | safe }}
+    <div class="player-hero__body">
+      <h1>{{ full_name or player_name }}</h1>
+      <div class="player-hero__meta">
+        {% if full_name and full_name != player_name %}<span>“{{ player_name }}”</span>{% endif %}
+        {% if position %}<span>{{ position }}</span>{% endif %}
+        {% if height_str %}<span>{{ height_str }}</span>{% endif %}
+        {% if birthday %}<span>{{ birthday }}</span>{% endif %}
+        {% if not is_active %}<span class="chip">Inactive</span>{% endif %}
+      </div>
     </div>
+  </section>
+
+  <div class="stat-row">
+    <div class="stat-tile">
+      <div class="stat-tile__label">Rating</div>
+      <div class="stat-tile__value {{ 'pos' if stats.rating and stats.rating > 0 else 'neg' if stats.rating else '' }}">
+        {% if stats.rating is not none %}{{ '%+.2f'|format(stats.rating) }}{% else %}—{% endif %}
+      </div>
+      <div class="stat-tile__meta">
+        {%- if stats.tiered -%}
+          tier estimate
+        {%- elif rating_rank -%}
+          {{ rating_rank.rank }} of {{ rating_rank.total }}
+        {%- else -%}
+          not yet rated
+        {%- endif -%}
+      </div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-tile__label">Record</div>
+      <div class="stat-tile__value">{{ stats.wins }}–{{ stats.losses }}</div>
+      <div class="stat-tile__meta">{{ '%.1f'|format((stats.win_pct or 0) * 100) }}% wins</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-tile__label">Games</div>
+      <div class="stat-tile__value">{{ stats.games_played }}</div>
+      <div class="stat-tile__meta">{{ stats.days_played }} runs</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-tile__label">Avg score diff</div>
+      <div class="stat-tile__value {{ 'pos' if (stats.avg_score_diff or 0) > 0 else 'neg' }}">
+        {{ '%+.2f'|format(stats.avg_score_diff or 0) }}
+      </div>
+      <div class="stat-tile__meta">per game</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-tile__label">The Gospel</div>
+      <div class="stat-tile__value {{ 'pos' if (stats.gospel or 0) > 0 else 'neg' }}">
+        {{ '%+.2f'|format(stats.gospel or 0) }}
+      </div>
+      <div class="stat-tile__meta">vs expectation</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-tile__label">Last game</div>
+      <div class="stat-tile__value" style="font-size:1.15rem">
+        <a href="{{ url_for('date_page', date=stats.most_recent_game) }}">{{ stats.most_recent_game }}</a>
+      </div>
+      <div class="stat-tile__meta">{{ '%.0f'|format((stats.pct_total_days_played or 0) * 100) }}% of runs</div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div role="tablist" class="tabs" aria-label="{{ player_name }} data">
+      <button class="tab" role="tab" id="tab-p-graphs"    data-key="graphs"    aria-controls="panel-p-graphs">Graphs</button>
+      <button class="tab" role="tab" id="tab-p-games"     data-key="games"     aria-controls="panel-p-games">Game log</button>
+      <button class="tab" role="tab" id="tab-p-days"      data-key="days"      aria-controls="panel-p-days">By run</button>
+      <button class="tab" role="tab" id="tab-p-teammates" data-key="teammates" aria-controls="panel-p-teammates">With</button>
+      <button class="tab" role="tab" id="tab-p-opponents" data-key="opponents" aria-controls="panel-p-opponents">Against</button>
+    </div>
+
+    <div class="controls">
+      <label class="field">
+        <span class="visually-hidden">Filter rows</span>
+        <input id="filterQuery" class="input" type="search" placeholder="Filter…">
+      </label>
+      <label class="field">
+        Min games
+        <input id="filterMinGames" class="input input--num" type="number" min="0" placeholder="0">
+      </label>
+    </div>
+
+    <div role="tabpanel" id="panel-p-graphs" aria-labelledby="tab-p-graphs" hidden>
+      <div class="panel__head" style="border-top:none">
+        <span class="panel__title">Rating over time</span>
+      </div>
+      <div class="panel__body">
+        <div data-chart="player-rating"
+             data-url="/api/player/{{ player_name | urlencode }}/rating-history"></div>
+      </div>
+      <div class="panel__head" style="border-top:1px solid var(--line)">
+        <span class="panel__title">20-game rolling averages</span>
+        <span class="panel__meta">by career game number</span>
+      </div>
+      <div class="panel__body">
+        <div data-chart="player-rolling"
+             data-url="/api/player/{{ player_name | urlencode }}/rolling"></div>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="panel-p-games" aria-labelledby="tab-p-games" hidden>
+      <div data-table="games" data-url="/api/player/{{ player_name | urlencode }}/games" data-sort="game_date"></div>
+    </div>
+    <div role="tabpanel" id="panel-p-days" aria-labelledby="tab-p-days" hidden>
+      <div data-table="days" data-url="/api/player/{{ player_name | urlencode }}/days" data-sort="game_date"></div>
+    </div>
+    <div role="tabpanel" id="panel-p-teammates" aria-labelledby="tab-p-teammates" hidden>
+      <div data-table="teammates" data-url="/api/player/{{ player_name | urlencode }}/teammates" data-sort="games_played"></div>
+    </div>
+    <div role="tabpanel" id="panel-p-opponents" aria-labelledby="tab-p-opponents" hidden>
+      <div data-table="opponents" data-url="/api/player/{{ player_name | urlencode }}/opponents" data-sort="games_played"></div>
+    </div>
+  </section>
+
 </div>
-
-<div class="tab-content days">
-    <h2>Days</h2>
-    {% if player_days %}
-    <table id="daysTable" class="wide-table">
-        <thead>
-        <tr>
-            {% for col in player_days[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in player_days %}
-            <tr>
-                {% for key, value in row.items() %}
-                    <td>
-                        {% if key == "Game Date" %}
-                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
-                        {% else %}
-                            {{ value }}
-                        {% endif %}
-                    </td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No days data available.</p>
-    {% endif %}
-</div>
-
-<div class="tab-content games">
-    <h2>All Games</h2>
-    {% if player_games %}
-    <table id="gamesTable" class="wide-table" data-page-table="player-games">
-        <thead>
-        <tr>
-            {% for col in player_games[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in player_games %}
-            <tr>
-                {% for key, value in row.items() %}
-                    <td>
-                        {% if key in ['T1', 'T2', 'T3', 'T4', 'O1', 'O2', 'O3', 'O4', 'O5'] %}
-                            <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
-                        {% elif key == "Game Date" %}
-                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
-                        {% else %}
-                            {{ value }}
-                        {% endif %}
-                    </td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No games found for {{ player_name }}.</p>
-    {% endif %}
-</div>
-
-<div class="tab-content player_pairings">
-    <h2>Player Pairings</h2>
-
-    <h3>Teammate Combos</h3>
-    {% if player_teammates %}
-    <table id="teammatesTable" class="wide-table">
-        <thead>
-        <tr>
-            {% for col in player_teammates[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in player_teammates %}
-            <tr>
-                {% for key, value in row.items() %}
-                    {% if key == "Teammate" %}
-                        <td>
-                            <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
-                        </td>
-                    {% else %}
-                        <td>{{ value }}</td>
-                    {% endif %}
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No teammate data available.</p>
-    {% endif %}
-
-    <h3>Opponent Combos</h3>
-    {% if player_oppponents %}
-    <table id="opponentsTable" class="wide-table">
-        <thead>
-        <tr>
-            {% for col in player_oppponents[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in player_oppponents %}
-            <tr>
-                {% for key, value in row.items() %}
-                    {% if key == "Opp" %}
-                        <td>
-                            <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
-                        </td>
-                    {% else %}
-                        <td>{{ value }}</td>
-                    {% endif %}
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No opponent data available.</p>
-    {% endif %}
-</div>
-
-<br>
-<a href="{{ url_for('home') }}">Back to Home</a>
 {% endblock %}

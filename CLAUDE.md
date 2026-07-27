@@ -241,61 +241,131 @@ All heavy computation happens **before** rendering.
 
 ### 9.1 Hosting Platform
 
-* **Render** ($6/month plan)
-* Chosen for:
+* **Fly.io** — app `naismith-nerds`, region `iad`, 1 shared CPU / 1 GB
+* Custom domain `naismith-nerds.com` (+ `www`), certs managed by Fly
+* Deployed by GitHub Actions on push to `main` (`.github/workflows/fly-deploy.yml`)
 
-  * Simplicity
-  * Predictable cost
-  * GitHub integration
+(An older `render.yaml` and `Procfile` remain in the repo but are not what runs.)
 
-### 9.2 Deployment Model
+### 9.2 Persistent volume
 
-* Push to GitHub
-* Render auto‑builds
-* App runs as a web service
+A Fly volume `naismith_data` is mounted at `/data` (`NN_DATA_DIR`). It holds the
+state that must survive deploys:
 
-No background workers.
+```
+/data
+  bball_database.duckdb   ratings history since Jan 2025, seeded from the repo copy
+  onedrive_token.json     rotating OneDrive refresh token
+  GameResults.xlsm        last workbook successfully fetched, used as a fallback
+  artifacts/              prebuilt parquet the app boots from
+```
+
+Paths are resolved in `collective_bball/paths.py`. Never hard-code them.
 
 ### 9.3 Environment Variables
 
-Stored in Render dashboard:
+Fly secrets:
 
-* `FLASK_ENV`
-* `DATABASE_PATH`
-* Any future secrets
+* `CLIENT_ID`, `TENANT_ID` — Microsoft app registration
+* `REFRESH_TOKEN` — seed only; once `/data/onedrive_token.json` exists it wins
+* `UPLOAD_PASSWORD` — guards `/upload` and `/admin/refresh`
 
-Locally mirrored via `.env`.
-
----
+Optional: `REFRESH_INTERVAL_SECONDS` (default 1800), `DISABLE_AUTO_REFRESH`,
+`LOG_LEVEL`.
 
 ## 10. Scheduling & Automation
 
-Currently:
+`flask_app/refresh.py` runs a background thread that polls OneDrive every 30
+minutes, hashes the workbook, and rebuilds only when the bytes changed. The
+rebuild happens off the request path; when it finishes, `DataStore.swap()`
+atomically replaces the served dataset. No redeploy, no downtime.
 
-* Most runs are manual
-* Scripts can be triggered ad‑hoc
+Polling rather than a wall-clock cron is deliberate: the Fly machine suspends
+when idle, and a suspended machine does not fire a "run at 06:00" timer.
 
-Planned / optional:
+Manual trigger:
 
-* GitHub Actions cron
-* Monthly data refresh
-* Rebuild models on schedule
-
----
+```bash
+curl -X POST https://naismith-nerds.com/admin/refresh -d "password=$UPLOAD_PASSWORD"
+curl https://naismith-nerds.com/admin/status
+```
 
 ## 11. Development Workflow
 
-1. Update Excel
-2. Run ingestion script
-3. Validate outputs
-4. Rebuild models if needed
-5. Run Flask locally
-6. Commit + push
-7. Render deploys
+Normal case: **edit the Excel in OneDrive and do nothing else.** The site picks
+it up within 30 minutes. Partial rows (missing a date, missing any of the ten
+players, missing a score) are skipped until complete.
 
-Local dev is done via **PyCharm**, not CLI.
+To rebuild locally:
 
----
+```bash
+python -m collective_bball.main            # freshest available source
+python -m collective_bball.main --local    # the workbook committed to the repo
+flask --app flask_app.app run --port 5055
+```
+
+One-time OneDrive setup (needed again only if the grant is fully revoked):
+
+```bash
+python -m collective_bball.utils.onedrive_client
+```
+
+## 11b. Architecture: build vs serve
+
+The single most important structural rule.
+
+**Build** (`collective_bball/artifacts.py::build`) reads the workbook, fits the
+ridge model and renders charts. It needs pandas, openpyxl, scikit-learn and
+plotly, and takes ~9 seconds. It runs from the CLI or on the refresh thread.
+
+**Serve** (`flask_app/app.py`) loads prebuilt parquet and starts in under a
+second. It must never import the modeling stack at module scope, directly or
+transitively. `collective_bball/main.py` used to run the whole pipeline at
+import time, which cost 37 seconds on every boot; do not reintroduce that.
+
+Data flow:
+
+```
+OneDrive workbook
+  -> validate_games_data()      skip incomplete rows
+  -> build()                    clean, RAPM, spreads, win prob, charts
+  -> save()                     parquet + meta.json, staged then swapped in
+  -> load()                     what the app holds in memory
+  -> DataStore.swap()           atomic handover, version += 1
+```
+
+`DataStore.version` keys every derived cache (API payloads, avatar list, the
+classic home page), so one swap invalidates all of them.
+
+## 11c. The classic site
+
+`/classic` serves the original site Jason built solo before any agentic coding.
+Templates live in `flask_app/templates/legacy/`, styled by the untouched
+`static/css/styles.css` and `static/js/*.js`. Routes are in
+`flask_app/legacy_views.py`.
+
+The exact pre-agentic source is pinned at the git tag `v1-solo-build`.
+
+Do not refactor the legacy templates, stylesheet or scripts to share code with
+the new site, and do not "fix" them. Preserving them unchanged is the point.
+They are fed live data, so they stay current.
+
+## 11d. Front end
+
+No build step, no jQuery, no DataTables. Server renders a small shell; tables
+fetch JSON per tab from `/api/table/<name>` and render themselves.
+
+* `static/css/nn.css` — design system. Dark default, light via
+  `prefers-color-scheme` and a `data-theme` override. Components read custom
+  properties; never hard-code a color.
+* `static/js/nn-table.js` — sorting, filtering, CSV export, and virtualized
+  rows so only what is near the viewport is in the DOM.
+* `static/js/nn-app.js` — theme, tabs, search.
+* `static/js/nn-teams.js` — Team Builder.
+* `flask_app/columns.py` — labels, types, tooltips and rounding, in one place.
+
+Why it matters: the old home page shipped 66 MB of HTML in one document and
+took 8.8 seconds to render. It is now 16 KB.
 
 ## 12. Conventions & Preferences
 
