@@ -1,495 +1,177 @@
 {% extends "base.html" %}
-{% from "macros.html" import glossary_content, methodology_content %}
-
-{% block title %}Naismith Nerds{% endblock %}
-{% block body_class %}page-index{% endblock %}
+{% block title %}Naismith Nerds — Pickup Basketball Analytics{% endblock %}
 
 {% block content %}
-<h1>🏀 Welcome, Naismith Nerds 🏀</h1>
+<div class="container">
 
-<!-- Credits -->
-<div class="credits">
-    <p>Created by Jason Gardner, January 2025</p>
-    <p>Stats from thrice-weekly semi-formal pickup basketball in SE Washington, DC beginning January 2025</p>
-    <p>Additional credit to Ben Chamblee and Jack Stubblefield for sous-stat-taking, data validation, and further ideas</p>
-</div>
-
-<!-- Social media icons (inline SVGs - no Font Awesome dependency) -->
-<div class="social-icons">
-    <a href="https://www.linkedin.com/in/jasonmgardner99" target="_blank" aria-label="LinkedIn">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
-    </a>
-    <a href="https://github.com/jmgjasongardner/naismith-nerds" target="_blank" aria-label="GitHub">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
-    </a>
-<!--    <a href="https://www.instagram.com/jmgjasongardner" target="_blank" aria-label="Instagram">-->
-<!--        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>-->
-<!--    </a>-->
-<!--    <a href="https://twitter.com/jmgjasongardner" target="_blank" aria-label="Twitter/X">-->
-<!--        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>-->
-<!--    </a>-->
-<!--    <a href="https://bsky.app/profile/jmgard.bsky.social" target="_blank" aria-label="Bluesky">-->
-<!--        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364.136-.02.275-.039.415-.056-.138.022-.276.04-.415.056-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a8.741 8.741 0 01-.415-.056c.14.017.279.036.415.056 2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8z"/></svg>-->
-<!--    </a>-->
-</div>
-
-<!-- Top layout: images + birthdays -->
-<div class="home-layout">
-    <div class="left-col">
-        <img class="naismith-img"
-             src="{{ url_for('static', filename='naismith.jpeg') }}"
-             alt="Naismith Nerds">
+  <section class="hero">
+    <div class="hero__masthead">
+      <div>
+        <div class="hero__eyebrow">Southeast Washington, DC</div>
+        <h1>Naismith Nerds</h1>
+        <p class="hero__sub">
+          RAPM ratings, win probabilities and lineup analytics from a thrice-weekly
+          pickup run. Every game since January 11, 2025, tracked by hand courtside.
+        </p>
+      </div>
+      <img class="hero__art"
+           src="{{ url_for('static', filename='nbamath.jpg') }}"
+           alt="" aria-hidden="true">
     </div>
 
-    <div class="middle-col">
-        <img class="color-img"
-             src="{{ url_for('static', filename='nbamath.jpg') }}"
-             alt="NBA Math">
-    </div>
-
-    <div class="right-col">
-        <div id="birthdayScroll" class="birthday-scroll"></div>
-    </div>
-</div>
-
-<!-- Navigation Tabs -->
-<div class="tabs">
-    <div class="tab active" data-target="stats">Stats</div>
-    <div class="tab" data-target="ratings">Ratings</div>
-    <div class="tab" data-target="team_builder">Team Builder</div>
-    <div class="tab" data-target="games">Games</div>
-    <div class="tab" data-target="player_days">Player Days</div>
-    <div class="tab" data-target="player_pairings">Player Pairings</div>
-    <div class="tab" data-target="days">Days</div>
-</div>
-<div class="tabs">
-    <div class="tab" data-target="glossary">Glossary and Explanation</div>
-    <div class="tab" data-target="methodology">Methodology</div>
-</div>
-
-<!-- Filters (shared logic in tables.js) -->
-<div class="filters-container" style="display: flex; gap: 20px; align-items: center; justify-content: center; margin-bottom: 10px;">
-    <input id="minGamesPlayed" type="number" placeholder="Filter Min Games">
-    <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-        <input type="checkbox" id="activePlayersOnly">
-        Active Players Only (played in last 90 days)
-    </label>
-</div>
-
-<!-- Stats tab -->
-<div class="tab-content stats active">
-    <h2>Stats</h2>
-    <h3>From {{ num_days }} Runs Since January 11, 2025</h3>
-    {% if stats %}
-    <table id="statsTable" data-page-table="index-stats">
-        <thead>
-        <tr>
-            {% for col in stats[0].keys() %}
-                {% if col not in ['has_img', 'Active Player'] %}
-                    <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-                {% endif %}
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in stats %}
-            <tr data-active-player="{{ row.get('Active Player', true)|lower }}">
-                {% for key, value in row.items() %}
-                    {% if key not in ['has_img', 'Active Player'] %}
-                        <td class="{% if key in ['Player', 'Most Recent Game'] %}no-wrap{% endif %}">
-                            {% if key == "Player" %}
-                                <a href="{{ url_for('player_page', player_name=row['Player']) }}">
-                                    {% if row.has_img %}
-                                        <img
-                                            loading="lazy"
-                                            src="{{ url_for('static', filename='player_pics_thumbs/' ~ row['Player'] ~ '.webp') }}"
-                                            alt="{{ row['Player'] }}"
-                                            style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
-                                    {% endif %}
-                                    {{ row['Player'] }}
-                                </a>
-                            {% elif key == "Most Recent Game" %}
-                                <a href="{{ url_for('date_page', date=value) }}">
-                                    {{ value }}
-                                </a>
-                            {% else %}
-                                {{ value }}
-                            {% endif %}
-                        </td>
-                    {% endif %}
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No stats available.</p>
-    {% endif %}
-</div>
-
-<!-- Ratings tab -->
-<div class="tab-content ratings">
-    <h2>Player Ratings</h2>
-    <h3>Best Lambda: {{ best_lambda }}</h3>
-    {% if ratings %}
-    <table id="ratingsTable" class="small-table">
-        <thead>
-        <tr>
-            {% for col in ratings[0].keys() %}
-                {% if col not in ['has_img', 'Active Player'] %}
-                    <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-                {% endif %}
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in ratings %}
-            <tr data-active-player="{{ row.get('Active Player', true)|lower }}">
-                {% for key, value in row.items() %}
-                    {% if key not in ['has_img', 'Active Player'] %}
-                        {% if key == "Player" %}
-                            <td>
-                                <a href="{{ url_for('player_page', player_name=row['Player']) }}">
-                                    {% if row.has_img %}
-                                        <img
-                                            loading="lazy"
-                                            src="{{ url_for('static', filename='player_pics_thumbs/' ~ row['Player'] ~ '.webp') }}"
-                                            alt="{{ row['Player'] }}"
-                                            style="width:30px; height:30px; vertical-align:middle; margin-right:5px; border-radius:50%;">
-                                    {% endif %}
-                                    {{ row['Player'] }}
-                                </a>
-                            </td>
-                        {% else %}
-                            <td>{{ value }}</td>
-                        {% endif %}
-                    {% endif %}
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No player ratings available.</p>
-    {% endif %}
-
-    <div class="plot-container">
-        {{ plot_ratings | safe }}
-    </div>
-
-    <p>
-        Outscoring expectation is how to improve rating<br>
-        The more games played, the more the model moves RAPM to match APM (y=x)<br>
-        Smaller sample players are regressed more toward zero (y=0) when regularized
-    </p>
-
-    <div class="plot-container">
-        {{ plot_rapm_apm | safe }}
-    </div>
-</div>
-
-<!-- Team Builder tab -->
-<div class="tab-content team_builder">
-    <h2>Team Builder</h2>
-    <h3>Select any combo of 2, 4, 6, 8, or 10 players and either assign them to specific teams, or generate teams based on rating.</h3>
-
-    <!-- Controls -->
-    <div class="team-builder-controls">
-        <input
-            type="text"
-            id="playerSearch"
-            placeholder="Search player name..."
-        >
-        <button id="generateBtn" class="btn">Generate Teams</button>
-        <button id="resetBtn" class="btn">Reset Teams</button>
-        <button id="returnBtn" class="btn" style="display:none;">Return to Team Selection</button>
-        <div id="comboCount" class="combo-count"></div>
-    </div>
-
-    <!-- Summary -->
-    <div id="numplayers">
-        <strong>Number of Players:</strong> <span id="numPlayersOnCourt">0</span>
-    </div>
-    <div id="teambuilderratings">
-        <strong>Team 1 Rating:</strong> <span id="team1Total">0</span> |
-        <strong>Team 2 Rating:</strong> <span id="team2Total">0</span> |
-        <strong>Unassigned ON Rating:</strong> <span id="onTotal">0</span>
-    </div>
-    <div id="spread">
-        <strong>Point Spread (T1 − T2):</strong> <span id="spreadTotal">0</span>
-    </div>
-
-    <!-- Selection view -->
-    <div id="selectionView">
-        {% if ratings %}
-        <table id="teamBuilderTable" class="small-table">
-            <thead>
-            <tr>
-                <th>Player</th>
-                <th>Rating</th>
-                <th>Status</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for row in ratings %}
-                <tr data-player="{{ row['Player']|e }}" data-rating="{{ row['Rating'] }}">
-                    <td class="player-name">{{ row["Player"] }}</td>
-                    <td class="rating">{{ row["Rating"] }}</td>
-                    <td>
-                        <select class="status-select">
-                            <option value="OFF">OFF</option>
-                            <option value="ON">ON</option>
-                            <option value="Team 1">Team 1</option>
-                            <option value="Team 2">Team 2</option>
-                        </select>
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+    <div class="stat-row">
+      <div class="stat-tile">
+        <div class="stat-tile__label">Runs</div>
+        <div class="stat-tile__value">{{ summary.num_days }}</div>
+        <div class="stat-tile__meta">since Jan 2025</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__label">Games</div>
+        <div class="stat-tile__value">{{ '{:,}'.format(summary.num_games) }}</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__label">Players</div>
+        <div class="stat-tile__value">{{ summary.num_players }}</div>
+        <div class="stat-tile__meta">{{ summary.active_players }} active</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__label">Latest run</div>
+        <div class="stat-tile__value" style="font-size:1.15rem">
+          <a href="{{ url_for('date_page', date=summary.latest_date) }}">{{ summary.latest_date }}</a>
+        </div>
+        <div class="stat-tile__meta">{{ summary.latest_games }} games</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__label">Top rating</div>
+        <div class="stat-tile__value" style="font-size:1.15rem">
+          <a href="{{ url_for('player_page', player_name=summary.top_player) }}">{{ summary.top_player }}</a>
+        </div>
+        <div class="stat-tile__meta">{{ '%+.2f'|format(summary.top_rating) }} per game</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-tile__label">Wins, last 3 months</div>
+        {% if summary.recent_leader %}
+        <div class="stat-tile__value" style="font-size:1.15rem">
+          <a href="{{ url_for('player_page', player_name=summary.recent_leader) }}">{{ summary.recent_leader }}</a>
+        </div>
+        <div class="stat-tile__meta">{{ summary.recent_wins }} wins</div>
         {% else %}
-            <p>No player ratings available.</p>
+        <div class="stat-tile__value">—</div>
         {% endif %}
+      </div>
+    </div>
+  </section>
+
+  {% if birthdays %}
+  <section class="panel">
+    <div class="panel__head">
+      <span class="panel__title">Birthdays</span>
+      <span class="panel__meta">past week and next two</span>
+      <div class="panel__actions">
+        <a class="btn" href="{{ url_for('birthdays_page') }}">Full calendar →</a>
+      </div>
+    </div>
+    <div class="panel__body bday-strip">
+      {% for b in birthdays %}
+      <div class="bday-chip {% if b.days_away == 0 %}bday-chip--today{% endif %}">
+        <div class="bday-chip__name">{{ b.label }}</div>
+        <div class="muted">{{ b.display_date }}</div>
+        <div class="bday-chip__when">{{ b.days_from_today }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="panel">
+    <div role="tablist" class="tabs" aria-label="Data views">
+      <button class="tab" role="tab" id="tab-stats"       data-key="stats"       aria-controls="panel-stats">Players</button>
+      <button class="tab" role="tab" id="tab-ratings"     data-key="ratings"     aria-controls="panel-ratings">Ratings</button>
+      <button class="tab" role="tab" id="tab-graphs"      data-key="graphs"      aria-controls="panel-graphs">Graphs</button>
+      <button class="tab" role="tab" id="tab-games"       data-key="games"       aria-controls="panel-games">Games</button>
+      <button class="tab" role="tab" id="tab-player_days" data-key="player_days" aria-controls="panel-player_days">Player Days</button>
+      <button class="tab" role="tab" id="tab-pairings"    data-key="pairings"    aria-controls="panel-pairings">Pairings</button>
+      <button class="tab" role="tab" id="tab-days"        data-key="days"        aria-controls="panel-days">Days</button>
     </div>
 
-    <!-- Combinations view -->
-    <div id="combosView" style="display:none;">
-        <div class="combos-header">
-            <strong>Generated team combinations</strong>
-        </div>
-        <div class="combos-container">
-            <table id="combosTable" class="wide-table">
-                <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Team 1 Players</th>
-                    <th>Team 1 Rating</th>
-                    <th>Team 2 Players</th>
-                    <th>Team 2 Rating</th>
-                    <th>Spread (T1 − T2)</th>
-                    <th>|Spread|</th>
-                </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
+    <div class="controls">
+      <label class="field">
+        <span class="visually-hidden">Filter rows</span>
+        <input id="filterQuery" class="input" type="search" placeholder="Filter by name…">
+      </label>
+      <label class="field">
+        Min games
+        <input id="filterMinGames" class="input input--num" type="number" min="0" placeholder="0">
+      </label>
+      <label class="field switch">
+        <input id="filterActive" type="checkbox">
+        Active players only
+      </label>
+      <span class="muted" style="margin-left:auto;font-size:.78rem">
+        Click any column to sort
+      </span>
     </div>
-</div>
 
-<!-- Games tab -->
-<div class="tab-content games">
-    <h2>Games</h2>
-    {% if games %}
-    <table id="gamesTable" data-page-table="index-games">
-        <thead>
-        <tr>
-            {% for col in games[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in games %}
-            <tr>
-                {% for key, value in row.items() %}
-                    <td>
-                        {% if key in ['A1', 'A2', 'A3', 'A4', 'A5', 'B1', 'B2', 'B3', 'B4', 'B5'] %}
-                            <a href="{{ url_for('player_page', player_name=value) }}">{{ value }}</a>
-                        {% elif key == "Game Date" %}
-                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
-                        {% else %}
-                            {{ value }}
-                        {% endif %}
-                    </td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No game data available.</p>
-    {% endif %}
-</div>
+    <div role="tabpanel" id="panel-stats" aria-labelledby="tab-stats" hidden>
+      <div data-table="stats" data-sort="rating"></div>
+    </div>
 
-<!-- Player Days tab -->
-<div class="tab-content player_days">
-    <h2>Player Days</h2>
-    {% if player_days %}
-    <table id="playerDaysTable">
-        <thead>
-        <tr>
-            {% for col in player_days[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in player_days %}
-            <tr>
-                {% for key, value in row.items() %}
-                    {% if key == "Player" %}
-                        <td>
-                            <a href="{{ url_for('player_page', player_name=value) }}">
-                                {{ value }}
-                            </a>
-                        </td>
-                    {% elif key == "Game Date" %}
-                        <td>
-                            <a href="{{ url_for('date_page', date=value) }}">
-                                {{ value }}
-                            </a>
-                        </td>
-                    {% else %}
-                        <td>{{ value }}</td>
-                    {% endif %}
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No player day data available.</p>
-    {% endif %}
-</div>
+    <div role="tabpanel" id="panel-ratings" aria-labelledby="tab-ratings" hidden>
+      <div data-table="ratings" data-sort="rating"></div>
+    </div>
 
-<!-- Player Pairings tab -->
-<div class="tab-content player_pairings">
-    <h2>Player Pairings</h2>
+    <div role="tabpanel" id="panel-graphs" aria-labelledby="tab-graphs" hidden>
+      <div class="panel__head" style="border-top:none">
+        <span class="panel__title">Ratings over time</span>
+        <span class="panel__meta">pick any players to color; the rest stay as context</span>
+      </div>
+      <div class="panel__body">
+        <div data-chart="ratings-history" data-url="/api/charts/ratings-history"></div>
+      </div>
+      <div class="panel__head" style="border-top:1px solid var(--line)">
+        <span class="panel__title">Regularized vs raw rating</span>
+        <span class="panel__meta">bubble size is games played; the dashed line is y = x</span>
+      </div>
+      <div class="panel__body">
+        <div data-chart="rapm-apm" data-url="/api/charts/rapm-apm"></div>
+        <p class="muted" style="font-size:.82rem;margin:12px 0 0;max-width:70ch">
+          Outscoring expectation is how a rating improves. The more games played,
+          the closer RAPM sits to raw APM (the y = x line). Small-sample players
+          are pulled toward zero by the ridge penalty.
+        </p>
+      </div>
+    </div>
 
-    <h3>Teammate Combos</h3>
-    {% if teammates %}
-    <table id="teammatesTable">
-        <thead>
-        <tr>
-            {% for col in teammates[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in teammates %}
-            <tr>
-                {% for key, value in row.items() %}
-                    <td class="{% if key in ['Pairing', 'Most Recent Game'] %}no-wrap{% endif %}">
-                        {% if key == "Pairing" %}
-                            {% set p1, p2 = value.split(" - ") %}
-                            <a href="{{ url_for('player_page', player_name=p1) }}">{{ p1 }}</a>
-                            &nbsp;–&nbsp;
-                            <a href="{{ url_for('player_page', player_name=p2) }}">{{ p2 }}</a>
-                        {% elif key == "Most Recent Game" %}
-                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
-                        {% else %}
-                            {{ value }}
-                        {% endif %}
-                    </td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No teammate data available.</p>
-    {% endif %}
+    <div role="tabpanel" id="panel-games" aria-labelledby="tab-games" hidden>
+      <div data-table="games" data-sort="game_date"></div>
+    </div>
 
-    <h3>Opponent Combos</h3>
-    {% if opponents %}
-    <table id="opponentsTable">
-        <thead>
-        <tr>
-            {% for col in opponents[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in opponents %}
-            <tr>
-                {% for key, value in row.items() %}
-                    <td class="{% if key == 'Most Recent Game' %}no-wrap{% endif %}">
-                        {% if key in ["Player", "Opp"] %}
-                            <a href="{{ url_for('player_page', player_name=value) }}">
-                                {{ value }}
-                            </a>
-                        {% elif key == "Most Recent Game" %}
-                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
-                        {% else %}
-                            {{ value }}
-                        {% endif %}
-                    </td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No opponent data available.</p>
-    {% endif %}
-</div>
+    <div role="tabpanel" id="panel-player_days" aria-labelledby="tab-player_days" hidden>
+      <div data-table="player_days" data-sort="game_date"></div>
+    </div>
 
-<!-- Days tab -->
-<div class="tab-content days">
-    <h2>Days</h2>
+    <div role="tabpanel" id="panel-pairings" aria-labelledby="tab-pairings" hidden>
+      <div class="panel__head" style="border-top:none">
+        <span class="panel__title">Teammate combos</span>
+      </div>
+      <div data-table="teammates" data-sort="games_played"></div>
+      <div class="panel__head" style="border-top:1px solid var(--line)">
+        <span class="panel__title">Opponent combos</span>
+      </div>
+      <div data-table="opponents" data-sort="games_played"></div>
+    </div>
 
-    {% if days_of_week %}
-    <table id="daysOfWeekTable">
-        <thead>
-        <tr>
-            {% for col in days_of_week[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in days_of_week %}
-            <tr>
-                {% for key, value in row.items() %}
-                    <td>{{ value }}</td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No days of week data available.</p>
-    {% endif %}
+    <div role="tabpanel" id="panel-days" aria-labelledby="tab-days" hidden>
+      <div class="panel__head" style="border-top:none">
+        <span class="panel__title">By day of week</span>
+      </div>
+      <div data-table="days_of_week"></div>
+      <div class="panel__head" style="border-top:1px solid var(--line)">
+        <span class="panel__title">Every run</span>
+      </div>
+      <div data-table="days" data-sort="game_date"></div>
+    </div>
+  </section>
 
-    {% if days %}
-    <table id="daysTable">
-        <thead>
-        <tr>
-            {% for col in days[0].keys() %}
-                <th title="{{ main_tooltip.get(col, '') }}">{{ col }}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in days %}
-            <tr>
-                {% for key, value in row.items() %}
-                    {% if key == "Game Date" %}
-                        <td>
-                            <a href="{{ url_for('date_page', date=value) }}">{{ value }}</a>
-                        </td>
-                    {% else %}
-                        <td>{{ value }}</td>
-                    {% endif %}
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>No days data available.</p>
-    {% endif %}
-</div>
-
-<!-- Glossary tab -->
-<div class="tab-content glossary">
-    {{- glossary_content() -}}
-</div>
-
-<!-- Methodology tab -->
-<div class="tab-content methodology">
-    {{- methodology_content() -}}
 </div>
 {% endblock %}

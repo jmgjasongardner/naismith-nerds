@@ -1,17 +1,9 @@
 import polars as pl
-import logging
-import os
-import psutil
 
-
-def log_memory_usage():
-    process = psutil.Process(os.getpid())
-    memory_info = process.memory_info()
-    # logging.debug(f"Memory usage: {memory_info.rss / 1024 ** 2} MB")
+from collective_bball.paths import player_thumb_path
 
 
 def format_stats_for_site(df: pl.DataFrame, does_player_image_exist_row=False):
-    # logging.debug(f"In format_stats_for_site")
     """Rename columns and round numeric values before passing to Jinja."""
     column_map = {
         "player": "Player",
@@ -55,6 +47,14 @@ def format_stats_for_site(df: pl.DataFrame, does_player_image_exist_row=False):
         "a_win_prob": "Team A Win Prob",
         "moneyline": "Moneyline",
         "num_players": "Num Players",
+        "mvp": "MVP",
+        "mvp_gospel": "MVP Gospel",
+        "lvp": "LVP",
+        "lvp_gospel": "LVP Gospel",
+        "mvps": "MVPs",
+        "lvps": "LVPs",
+        "mvp_pct": "MVP Pct",
+        "lvp_pct": "LVP Pct",
         "residents": "Residents",
         "resident_rate": "Resident Pct",
         "num_games": "Num Games",
@@ -113,16 +113,12 @@ def format_stats_for_site(df: pl.DataFrame, does_player_image_exist_row=False):
         "team_total_games_played_A": "Team A Games Day",
         "team_total_games_played_B": "Team B Games Day",
     }
-    # logging.debug(f"ratings sample df in web_data_loader as polars: {df.head(5)}")
     # df = df.head(5)
     columns_in_df = df.columns
     filtered_column_map = {k: v for k, v in column_map.items() if k in columns_in_df}
-    # logging.debug(f"original column map in web_data_loader: {column_map}")
     # logging.debug(f"filtered column map in web_data_loader: {filtered_column_map}")
 
     df = df.rename(filtered_column_map)
-    log_memory_usage()
-    # logging.debug(f"Original df in web_data_loader polars: {df}")
 
     # Round numeric columns (here, we assume 'Rating' column needs rounding to 5 decimals)
     # df = df.with_columns([
@@ -130,21 +126,13 @@ def format_stats_for_site(df: pl.DataFrame, does_player_image_exist_row=False):
     #     for col in df.columns if df[col].dtype in [pl.Float32, pl.Float64]  # Check for numeric columns
     # ])
 
-    # logging.debug(f"df with rounding in web_data_loader polars: {df.head(5)}")
-    log_memory_usage()
 
     # Convert to list of dictionaries
     output_dict = df.to_dicts()  # This gives you a list of dictionaries
-    # logging.debug(f"dict in web_data_loader: {output_dict}")
-    log_memory_usage()
 
     if does_player_image_exist_row:
         for row in output_dict:
-            player_name = row["Player"]
-            img_path = os.path.join(
-                "flask_app", "static", "player_pics_thumbs", f"{player_name}.webp"
-            )
-            row["has_img"] = os.path.exists(img_path)
+            row["has_img"] = player_thumb_path(row["Player"]).exists()
 
     return output_dict
 

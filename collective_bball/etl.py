@@ -1,6 +1,82 @@
+import logging
 import polars as pl
-from typing import Tuple, Union, IO
+from typing import Dict, List, Tuple, Union, IO
 import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+PLAYER_COLUMNS: List[str] = [f"A{i}" for i in range(1, 6)] + [
+    f"B{i}" for i in range(1, 6)
+]
+
+
+def validate_games_data(raw_games_df: pl.DataFrame) -> Tuple[pl.DataFrame, Dict]:
+    """Keep only rows that describe a complete, finished game.
+
+    Games are typed into the workbook one at a time, so at any moment the
+    bottom of the sheet may hold a date with no players yet, a lineup with no
+    final score, or a half-filled roster. Those rows are skipped rather than
+    partially ingested. A row is kept only when it has a date, all ten player
+    slots, and both scores.
+
+    Returns the surviving rows plus a report describing what was dropped, so
+    the reason shows up in logs instead of silently vanishing.
+    """
+    total = raw_games_df.height
+
+    # Treat whitespace-only player cells as empty, and NaN scores as missing.
+    df = raw_games_df.with_columns(
+        [
+            pl.col(col).cast(pl.Utf8).str.strip_chars().replace("", None).alias(col)
+            for col in PLAYER_COLUMNS
+        ]
+        + [
+            pl.col("a_score").cast(pl.Float64).fill_nan(None).alias("a_score"),
+            pl.col("b_score").cast(pl.Float64).fill_nan(None).alias("b_score"),
+        ]
+    )
+
+    has_date = pl.col("date").is_not_null()
+    has_all_players = pl.all_horizontal(
+        [pl.col(col).is_not_null() for col in PLAYER_COLUMNS]
+    )
+    has_scores = pl.col("a_score").is_not_null() & pl.col("b_score").is_not_null()
+
+    valid = df.filter(has_date & has_all_players & has_scores)
+
+    # Count each reason independently so one bad row can report several causes.
+    report = {
+        "rows_read": total,
+        "rows_kept": valid.height,
+        "rows_skipped": total - valid.height,
+        "missing_date": df.filter(~has_date).height,
+        "incomplete_lineup": df.filter(has_date & ~has_all_players).height,
+        "missing_score": df.filter(has_date & has_all_players & ~has_scores).height,
+    }
+
+    if report["rows_skipped"]:
+        skipped_dates = (
+            df.filter(~(has_date & has_all_players & has_scores))
+            .filter(has_date)
+            .select(pl.col("date").dt.strftime("%Y-%m-%d"))
+            .to_series()
+            .unique()
+            .sort()
+            .to_list()
+        )
+        logger.info(
+            "Skipped %d of %d rows (%d missing date, %d incomplete lineup, "
+            "%d missing score); affected dates: %s",
+            report["rows_skipped"],
+            total,
+            report["missing_date"],
+            report["incomplete_lineup"],
+            report["missing_score"],
+            ", ".join(skipped_dates) or "n/a",
+        )
+        report["skipped_dates"] = skipped_dates
+
+    return valid, report
 
 
 def load_data(filepath: Union[str, IO]) -> Tuple[pl.DataFrame, pl.DataFrame]:
@@ -20,9 +96,16 @@ def load_data(filepath: Union[str, IO]) -> Tuple[pl.DataFrame, pl.DataFrame]:
     return raw_games_df, tiers
 
 
-def clean_games_data(raw_games_df: pl.DataFrame) -> pl.DataFrame:
+def clean_games_data(raw_games_df: pl.DataFrame) -> Tuple[pl.DataFrame, Dict]:
+    """Clean validated rows into the canonical games frame.
+
+    Validation runs first so that game_num, which counts games within a date,
+    never counts a row that was skipped.
+    """
+    valid_games, report = validate_games_data(raw_games_df)
+
     games = (
-        raw_games_df.with_columns(
+        valid_games.with_columns(
             pl.col("a_score").cast(pl.Int64), pl.col("b_score").cast(pl.Int64)
         )
         .with_columns(
@@ -53,10 +136,9 @@ def clean_games_data(raw_games_df: pl.DataFrame) -> pl.DataFrame:
             .str.slice(0, 3)
             .alias("day")
         )
-        .filter(pl.col("a_score").is_not_nan())
     ).drop("date")
 
-    return games
+    return games, report
 
 
 def compute_clock(games: pl.DataFrame) -> pl.DataFrame:

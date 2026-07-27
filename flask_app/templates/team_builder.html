@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Team Builder — Naismith Nerds{% endblock %}
+{% block description %}Pick players and generate the most balanced possible teams from their RAPM ratings.{% endblock %}
+
+{% block content %}
+<div class="container" id="teamBuilder">
+
+  <section class="hero">
+    <div class="hero__eyebrow">Tools</div>
+    <h1>Team Builder</h1>
+    <p class="hero__sub">
+      Choose an even number of players between 2 and 10. Lock anyone onto a
+      specific side, or leave them unassigned and every legal split will be
+      ranked by how even it is.
+    </p>
+  </section>
+
+  <div id="tbSummary"></div>
+
+  <section class="panel" style="margin-top:20px">
+    <div class="controls">
+      <label class="field">
+        <span class="visually-hidden">Search players</span>
+        <input id="tbSearch" class="input" type="search" placeholder="Search players…">
+      </label>
+      <button id="tbGenerate" class="btn btn--primary" type="button">Generate teams</button>
+      <button id="tbReset" class="btn" type="button">Reset</button>
+      <span id="tbNote" class="muted" style="margin-left:auto;font-size:.8rem"></span>
+    </div>
+
+    <div class="table-scroll" style="max-height:min(52vh,520px)">
+      <table class="data">
+        <thead>
+          <tr><th>Player</th><th>Rating</th><th>G</th><th>Status</th></tr>
+        </thead>
+        <tbody id="tbList"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tbCombos" class="panel"></section>
+
+</div>
+
+<script id="nn-roster" type="application/json">{{ roster | tojson }}</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/nn-teams.js') }}"></script>
+{% endblock %}

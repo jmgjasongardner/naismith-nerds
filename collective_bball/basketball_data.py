@@ -13,6 +13,10 @@ from collective_bball.moneyline_model import BettingGames
 from collective_bball.plots import Plots
 from typing import Tuple, List, Union, IO
 
+# Minimum games in a day to be eligible for that day's MVP or LVP, so one
+# lucky or unlucky game cannot take the award.
+MVP_MIN_GAMES = 3
+
 
 class BasketballData:
     def __init__(self, data_source: Union[str, IO], args: list):
@@ -20,6 +24,7 @@ class BasketballData:
             data_source
         )  # Read in from Excel (for now)
         self.games = None
+        self.ingest_report = {}
         self.player_data = None
         self.player_games = None
         self.player_days = None
@@ -37,7 +42,7 @@ class BasketballData:
 
     def clean_data(self):
         """Cleans raw game data into structured format."""
-        self.games = clean_games_data(self.raw_games_data)
+        self.games, self.ingest_report = clean_games_data(self.raw_games_data)
 
     def compute_clock_and_starting_poss(self):
         """Uses logic to tease out whether clock was used and starting possession of a game."""
@@ -171,6 +176,49 @@ class BasketballData:
         self.days, self.days_of_week = self.compute_days(
             self.player_games, self.player_days
         )
+        # Depends on `days`, so it has to follow that computation rather than
+        # sit with the rest of the per-player aggregation.
+        self.player_data = self.add_mvp_lvp_counts(self.player_data, self.days)
+
+    @staticmethod
+    def add_mvp_lvp_counts(
+        player_data: pl.DataFrame, days: pl.DataFrame
+    ) -> pl.DataFrame:
+        """How often each player took the day's MVP or LVP, as a count and a
+        rate over the days they played."""
+        mvps = (
+            days.filter(pl.col("mvp").is_not_null())
+            .group_by("mvp")
+            .agg(pl.len().alias("mvps"))
+            .rename({"mvp": "player"})
+        )
+        lvps = (
+            days.filter(pl.col("lvp").is_not_null())
+            .group_by("lvp")
+            .agg(pl.len().alias("lvps"))
+            .rename({"lvp": "player"})
+        )
+
+        combined = (
+            player_data.join(mvps, on="player", how="left")
+            .join(lvps, on="player", how="left")
+            .with_columns(
+                pl.col("mvps").fill_null(0).cast(pl.Int32),
+                pl.col("lvps").fill_null(0).cast(pl.Int32),
+            )
+            .with_columns(
+                (pl.col("mvps") / pl.col("days_played")).round(4).alias("mvp_pct"),
+                (pl.col("lvps") / pl.col("days_played")).round(4).alias("lvp_pct"),
+            )
+        )
+
+        # Slot the four new columns in after "% better teammates", where Jason
+        # wants them, instead of appending to the end.
+        added = ["mvps", "lvps", "mvp_pct", "lvp_pct"]
+        rest = [c for c in combined.columns if c not in added]
+        anchor = "pct_games_better_teammates"
+        at = rest.index(anchor) + 1 if anchor in rest else len(rest)
+        return combined.select(rest[:at] + added + rest[at:])
 
     def write_to_db(self, conn, date_to_filter=None):
         ratings_df = self.ratings.with_columns(
@@ -180,6 +228,33 @@ class BasketballData:
         ).to_pandas()
         conn.execute(
             "INSERT INTO ratings BY NAME SELECT * FROM ratings_df ON CONFLICT(player, date) DO NOTHING"
+        )
+
+    @staticmethod
+    def compute_day_mvp_lvp(player_days: pl.DataFrame) -> pl.DataFrame:
+        """Best and worst performer on each day, by result versus expectation.
+
+        Requires at least three games so a single lucky or unlucky game cannot
+        take the award. Ties break alphabetically, which is arbitrary but
+        stable across rebuilds.
+        """
+        eligible = player_days.filter(pl.col("games_played") >= MVP_MIN_GAMES).sort(
+            ["game_date", "result_vs_expectation_avg", "player"],
+            descending=[False, True, False],
+        )
+
+        return (
+            eligible.group_by("game_date")
+            .agg(
+                pl.col("player").first().alias("mvp"),
+                pl.col("result_vs_expectation_avg").first().alias("mvp_gospel"),
+                pl.col("player").last().alias("lvp"),
+                pl.col("result_vs_expectation_avg").last().alias("lvp_gospel"),
+            )
+            .with_columns(
+                pl.col("mvp_gospel").round(3),
+                pl.col("lvp_gospel").round(3),
+            )
         )
 
     @staticmethod
@@ -235,6 +310,11 @@ class BasketballData:
                 on=["game_date", "day"],
                 how="inner",
             )
+            .join(
+                BasketballData.compute_day_mvp_lvp(player_days),
+                on="game_date",
+                how="left",
+            )
             .select(
                 [
                     "game_date",
@@ -243,6 +323,10 @@ class BasketballData:
                     "residents",
                     "resident_rate",
                     "num_games",
+                    "mvp",
+                    "mvp_gospel",
+                    "lvp",
+                    "lvp_gospel",
                     "mean_rating_players",
                     "mean_rating_player_games",
                     "avg_score_diff",
@@ -261,8 +345,12 @@ class BasketballData:
             .sort("game_date", descending=True)
         )
 
+        # MVP/LVP are player names, so they are dropped before averaging rather
+        # than fed to mean().
         days_of_week = (
-            days.drop("game_date").group_by("day").agg(pl.all().mean().round(3))
+            days.drop("game_date", "mvp", "lvp", "mvp_gospel", "lvp_gospel")
+            .group_by("day")
+            .agg(pl.all().mean().round(3))
         ).sort("mean_rating_player_games", descending=True)
 
         return days, days_of_week

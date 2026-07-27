@@ -1,7 +1,6 @@
 import logging
 
 import polars as pl
-import pandas as pd
 
 
 def filter_player_games(games_data: pl.DataFrame, player_name: str) -> pl.DataFrame:

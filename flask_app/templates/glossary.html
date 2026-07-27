@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Glossary & Methodology — Naismith Nerds{% endblock %}
+{% block description %}How the RAPM ratings are built and what every column on the site means.{% endblock %}
+
+{% block content %}
+<div class="container">
+  <section class="hero">
+    <div class="hero__eyebrow">Reference</div>
+    <h1>Glossary &amp; Methodology</h1>
+    <p class="hero__sub">
+      What the numbers mean and how they are produced.
+    </p>
+  </section>
+
+  <section class="panel">
+    <div role="tablist" class="tabs" aria-label="Reference sections">
+      <button class="tab" role="tab" id="tab-glossary" data-key="glossary" aria-controls="panel-glossary">Glossary</button>
+      <button class="tab" role="tab" id="tab-method"   data-key="method"   aria-controls="panel-method">Methodology</button>
+    </div>
+
+    <div role="tabpanel" id="panel-glossary" aria-labelledby="tab-glossary" hidden>
+      <div class="panel__body prose">
+        <h3>So what exactly is shown?</h3>
+        <p>Everything is derived from the score difference of each game. The only
+        information going into the model is the final score difference, the ten
+        players on the court, and a few variables for fatigue, rest and first
+        possession. A time decay half-life of 270 days means games gradually
+        lose weight as they age.</p>
+        <p>Interpretation: <strong>a player with a rating of 1.5 makes their team
+        1.5 points better than an average replacement.</strong></p>
+
+        <h3>How the ratings are formed</h3>
+        <p>Consider a game with four below-average teammates and five slightly
+        above-average opponents. The expected point differential is determined by
+        those nine players, and performance relative to that expectation is what
+        moves a rating.</p>
+        <p>For this reason it is neither inherently good nor bad to have better or
+        worse teammates. The only barometer is performance versus expectation
+        given the other nine players.</p>
+
+        <h3>Player stats</h3>
+        <p><strong>Proj Diff</strong> — Sum of team ratings minus opponent ratings.</p>
+        <p><strong>Tm Quality</strong> — Sum of teammate ratings, excluding the player.</p>
+        <p><strong>Team Quality</strong> — Sum of team ratings, including the player.</p>
+        <p><strong>Opp Quality</strong> — Sum of opponent ratings.</p>
+        <p><strong>Gospel</strong> — Result versus expectation. Actual score
+        differential minus what the model projected, averaged over games.</p>
+        <p><strong>% Pos Teammates / % Pos Opps</strong> — Share of games where
+        teammates, or opponents, are net positive.</p>
+        <p><strong>% as Favorite</strong> — Share of games where the team is favored.</p>
+        <p><strong>% Better Tm</strong> — Share of games with better teammates than opponents.</p>
+        <p><strong>Other 9 Diff</strong> — Average difference between teammate and opponent ratings.</p>
+        <p><strong>1st / Last Game Rate</strong> — Share of runs where the player appears in the first or last game.</p>
+
+        <h3>Games</h3>
+        <p><strong>A Quality / B Quality</strong> — Sum of that team's player ratings.</p>
+        <p><strong>Spread</strong> — Team A Quality minus Team B Quality.</p>
+        <p><strong>vs Spread</strong> — Actual score difference minus the spread.</p>
+        <p><strong>A Win Prob</strong> — Win probability from a logistic regression on team qualities.</p>
+        <p><strong>Moneyline</strong> — That win probability expressed as American odds.</p>
+        <p><strong>Clock</strong> — Whether the game ran on a clock rather than to a fixed score.</p>
+        <p><strong>1st Poss</strong> — Which team started with the ball, inferred from who held the court.</p>
+
+        <h3>Player days</h3>
+        <p><strong>1st Game / Last Game</strong> — Game number where the player first and last appeared that day.</p>
+        <p><strong>Longest Run On / Off</strong> — Longest consecutive stretch playing or sitting.</p>
+
+        <h3>Pairings</h3>
+        <p><strong>Gospel w/ Tm</strong> and <strong>Gospel vs Opp</strong> — Result versus
+        expectation when two players share a team, or face each other. Quality
+        columns exclude both listed players.</p>
+
+        <h3>Days</h3>
+        <p><strong>Avg Rtg (Players)</strong> — Mean rating of everyone present, each counted once.</p>
+        <p><strong>Avg Rtg (Games)</strong> — Mean rating across all player-games, so
+        players who played more weigh more.</p>
+        <p><strong>Unique Winners</strong> — Share of attendees who won at least one game.</p>
+        <p><strong>Parity</strong> — Standard deviation of the named metric. Lower means a more even day.</p>
+      </div>
+    </div>
+
+    <div role="tabpanel" id="panel-method" aria-labelledby="tab-method" hidden>
+      <div class="panel__body prose">
+        <h3>Overview</h3>
+        <p>This is a RAPM-style model, inspired by work such as
+        <a href="https://jecutter.github.io/blog/rapm-model/" target="_blank" rel="noopener">Jacob Cutter's RAPM writeup</a>.</p>
+        <p>Basic plus-minus measures point differential while a player is on the
+        floor. Adjusted plus-minus uses regression to control for the other nine
+        players, attributing impact more fairly. Regularized adjusted plus-minus
+        shrinks those coefficients with ridge regression, stabilizing estimates
+        for players with small samples.</p>
+
+        <h3>Conceptual chain</h3>
+        <p>Game results → score differential → on/off stints → regression with one
+        regressor per player → ridge regularization → per-player ratings
+        representing impact in points per game.</p>
+
+        <h3>Regularization</h3>
+        <p>The ridge penalty λ is chosen by cross-validation across
+        <code>[0.1, 0.5, 1, 5, 10, 25, 50, 100]</code>. Players with fewer than 20
+        games are grouped into tiers rather than given their own coefficient, so
+        a two-game sample cannot produce an extreme rating.</p>
+
+        <h3>Further reading</h3>
+        <p><a href="https://www.youtube.com/watch?v=Mkgcln0rrxA" target="_blank" rel="noopener">Video: How does RAPM work?</a></p>
+        <p><a href="https://squared2020.com/2017/09/18/deep-dive-on-regularized-adjusted-plus-minus-i-introductory-example/" target="_blank" rel="noopener">Deep Dive on Regularized Adjusted Plus-Minus</a></p>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

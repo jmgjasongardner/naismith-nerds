@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Not found — Naismith Nerds{% endblock %}
+
+{% block content %}
+<div class="container">
+  <section class="hero" style="text-align:center;padding:70px 0">
+    <div class="hero__eyebrow">404</div>
+    <h1>{% if thing %}No results for “{{ thing }}”{% else %}Page not found{% endif %}</h1>
+    <p class="hero__sub" style="margin-left:auto;margin-right:auto">
+      {% if thing %}
+        That player or date isn't in the data. Try the search up top.
+      {% else %}
+        That page doesn't exist here.
+      {% endif %}
+    </p>
+    <p style="margin-top:20px">
+      <a class="btn btn--primary" href="{{ url_for('home') }}">Back to the leaderboard</a>
+    </p>
+  </section>
+</div>
+{% endblock %}
