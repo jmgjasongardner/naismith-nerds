@@ -1,9 +1,11 @@
 """
 Where persistent state lives.
 
-In production this is a Fly volume mounted at /data, so the DuckDB history, the
-rotating OneDrive refresh token, and the prebuilt artifacts all survive
-deploys. Locally it falls back to ./data inside the repo.
+In production this is durable storage mounted at /data, so the DuckDB history,
+the rotating OneDrive refresh token, and the prebuilt artifacts survive
+deploys. Locally it falls back to ./data inside the repo — except for the
+DuckDB file, which stays at the repo root so its accumulated ratings history
+keeps being version controlled. See db_path().
 
 Nothing here imports polars, duckdb, or sklearn, so it stays cheap to import.
 """
@@ -46,11 +48,21 @@ def data_dir() -> Path:
 
 
 def db_path() -> Path:
-    """Path to the DuckDB database, seeded from the repo copy on first use.
+    """Path to the DuckDB database holding the ratings history.
 
-    Seeding preserves the historical `ratings` rows that the ratings-over-time
-    charts read; without it a fresh volume would start with no history.
+    Locally this is the file committed to the repo. That matters: the ratings
+    snapshots accumulate one date at a time and can never be recomputed from
+    the workbook alone, so the history only survives by being version
+    controlled and pushed. Writing it to a gitignored directory instead meant
+    a local rebuild silently left the committed copy — the one that actually
+    deploys — frozen, and the ratings-over-time charts stopped advancing.
+
+    In production NN_DATA_DIR points at durable storage, and the committed
+    file seeds it once.
     """
+    if not os.environ.get("NN_DATA_DIR") and not Path("/data").is_dir():
+        return SEED_DB_PATH
+
     path = data_dir() / "bball_database.duckdb"
     if not path.exists() and SEED_DB_PATH.exists():
         shutil.copy2(SEED_DB_PATH, path)

@@ -209,6 +209,16 @@ class LoadedData:
         return self._read_plot("plot_rapm_apm")
 
 
+def read_meta(directory: Optional[Path] = None) -> dict:
+    """Just the metadata, without reading any parquet.
+
+    Cheap enough to poll, which is how a running server notices that another
+    process rebuilt the dataset underneath it.
+    """
+    directory = Path(directory or artifacts_dir())
+    return json.loads((directory / META_FILENAME).read_text(encoding="utf-8"))
+
+
 def is_current(directory: Optional[Path] = None) -> bool:
     """True when a complete artifact set matching this code version exists."""
     directory = Path(directory or artifacts_dir())

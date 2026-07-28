@@ -191,6 +191,79 @@
     }
   }
 
+  /* -- tooltips ----------------------------------------------------------- */
+
+  /* Any element with data-tip gets a hover/focus tooltip.
+     A native title attribute was the first attempt: it takes about a second to
+     appear, can't be styled, and never shows on touch. This one is also
+     position:fixed and attached to <body>, so it escapes the panel's
+     overflow:hidden instead of being clipped by it. */
+  function initTooltips() {
+    var tip = document.createElement("div");
+    tip.className = "nn-tip";
+    tip.setAttribute("role", "tooltip");
+    document.body.appendChild(tip);
+
+    var current = null;
+
+    function show(host) {
+      var text = host.getAttribute("data-tip");
+      if (!text) return;
+      current = host;
+      tip.textContent = text;
+      tip.setAttribute("data-visible", "true");
+
+      var anchor = host.getBoundingClientRect();
+      var box = tip.getBoundingClientRect();
+      var margin = 8;
+
+      var left = anchor.left + anchor.width / 2 - box.width / 2;
+      left = Math.min(Math.max(left, margin), window.innerWidth - box.width - margin);
+
+      // Prefer above; flip below when there isn't room.
+      var top = anchor.top - box.height - 8;
+      if (top < margin) top = anchor.bottom + 8;
+
+      tip.style.left = left + "px";
+      tip.style.top = top + "px";
+    }
+
+    function hide() {
+      current = null;
+      tip.setAttribute("data-visible", "false");
+    }
+
+    document.addEventListener("mouseover", function (event) {
+      var host = event.target.closest("[data-tip]");
+      if (host && host !== current) show(host);
+    });
+
+    document.addEventListener("mouseout", function (event) {
+      if (event.target.closest("[data-tip]")) hide();
+    });
+
+    // Keyboard and touch: focus opens it, a second tap or Escape closes it.
+    document.addEventListener("focusin", function (event) {
+      var host = event.target.closest("[data-tip]");
+      if (host) show(host);
+    });
+    document.addEventListener("focusout", hide);
+
+    document.addEventListener("click", function (event) {
+      var host = event.target.closest("[data-tip]");
+      if (!host) { hide(); return; }
+      event.preventDefault();
+      if (current === host) hide();
+      else show(host);
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") hide();
+    });
+
+    window.addEventListener("scroll", hide, { passive: true });
+  }
+
   /* -- search ------------------------------------------------------------ */
 
   function initSearch() {
@@ -354,5 +427,6 @@
 
     wireFilters();
     initSearch();
+    initTooltips();
   });
 })(window, document);
