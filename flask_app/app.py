@@ -188,6 +188,7 @@ def _register_routes(app: Flask) -> None:
             birthday=birthday,
             is_active=bool(row.get("active_player")),
             rating_rank=rating_rank,
+            profile=_player_profile(data.player_data, row),
             image_exists=player_photo_path(player_name).exists(),
             stats={
                 "rating": row.get("rating"),
@@ -309,6 +310,17 @@ def _register_routes(app: Flask) -> None:
                 "refresh": service.status,
             }
         )
+
+    @app.route("/admin/reload", methods=["GET", "POST"])
+    def admin_reload():
+        """Swap in artifacts rebuilt by another process.
+
+        Unauthenticated on purpose: it only re-reads files this app already
+        owns and exposes nothing new. Handy after a CLI rebuild during local
+        development, where restarting the server is the only alternative.
+        """
+        service = current_app.config["REFRESH_SERVICE"]
+        return jsonify(service.reload_if_artifacts_changed())
 
     @app.route("/admin/refresh", methods=["POST"])
     def admin_refresh():
@@ -438,6 +450,77 @@ def _birthday_rows(data) -> list:
 
     processed.sort(key=lambda item: item["days_away"])
     return processed
+
+
+# The full stat sheet on a player page, grouped so it reads as sections rather
+# than one undifferentiated wall of numbers. Every column the Players table
+# shows appears here; the hero tiles above stay deliberately short.
+PROFILE_GROUPS = [
+    ("Impact", [
+        "rating", "result_vs_expectation", "avg_score_diff", "proj_score_diff",
+    ]),
+    ("Record", [
+        "wins", "losses", "win_pct", "expected_wins", "expected_win_pct",
+    ]),
+    ("Volume", [
+        "games_played", "days_played", "games_played_per_day",
+        "pct_total_games_played", "pct_total_days_played",
+    ]),
+    ("Company kept", [
+        "team_quality", "teammate_quality", "opp_quality",
+        "other_9_players_quality_diff",
+        "pct_positive_teammates", "pct_positive_opponents",
+        "pct_games_favorite", "pct_games_better_teammates",
+    ]),
+    ("Honors", ["mvps", "lvps", "mvp_pct", "lvp_pct"]),
+    ("Attendance", [
+        "mon_rate", "wed_rate", "sat_rate",
+        "first_game_of_day_rate", "last_game_of_day_rate", "most_recent_game",
+    ]),
+]
+
+
+def _format_stat(key: str, value, dtype) -> dict:
+    """One stat, formatted for display, with the sign class it should wear."""
+    from flask_app.columns import TIPS, label_for, type_for
+
+    kind = type_for(key, dtype)
+    entry = {"key": key, "label": label_for(key), "tip": TIPS.get(key), "tone": ""}
+
+    if value is None:
+        entry["value"] = "—"
+        return entry
+
+    if kind == "pct":
+        entry["value"] = f"{value * 100:.1f}%"
+    elif kind == "signed":
+        entry["value"] = f"{value:+.2f}"
+        entry["tone"] = "pos" if value > 0 else "neg" if value < 0 else ""
+    elif kind == "int":
+        entry["value"] = f"{value:,}"
+    elif kind == "num":
+        entry["value"] = f"{value:.2f}"
+    else:
+        entry["value"] = str(value)
+
+    return entry
+
+
+def _player_profile(player_data, row: dict) -> list:
+    """Group the player's columns into labelled sections for the stat sheet."""
+    dtypes = dict(zip(player_data.columns, player_data.dtypes))
+    groups = []
+
+    for title, keys in PROFILE_GROUPS:
+        items = [
+            _format_stat(key, row.get(key), dtypes.get(key))
+            for key in keys
+            if key in row
+        ]
+        if items:
+            groups.append({"title": title, "items": items})
+
+    return groups
 
 
 def ordinal(n: int) -> str:

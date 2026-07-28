@@ -44,9 +44,43 @@ class RefreshService:
             "last_error": None,
             "consecutive_failures": 0,
             "rebuild_count": 0,
+            "last_reloaded_at": None,
         }
 
     # -- core ------------------------------------------------------------
+
+    def reload_if_artifacts_changed(self) -> dict:
+        """Pick up artifacts rebuilt by another process.
+
+        The dataset is read into memory once at boot, so a rebuild run from the
+        CLI — `python -m collective_bball.main` — leaves an already-running
+        server serving the previous snapshot until it restarts. Comparing the
+        build timestamp on disk against the one in memory closes that gap
+        without a restart, and costs one small JSON read.
+        """
+        with self._lock:
+            try:
+                on_disk = artifacts.read_meta()
+            except (OSError, ValueError) as exc:
+                return {"reloaded": False, "error": str(exc)}
+
+            in_memory = getattr(self._store.data, "built_at", None)
+            if not on_disk.get("built_at") or on_disk["built_at"] == in_memory:
+                return {"reloaded": False, "reason": "already current"}
+
+            version = self._store.swap(artifacts.load())
+            self.status["last_reloaded_at"] = _now()
+            logger.info(
+                "Reloaded artifacts built at %s (version %d)",
+                on_disk["built_at"],
+                version,
+            )
+            return {
+                "reloaded": True,
+                "version": version,
+                "built_at": on_disk["built_at"],
+                "latest_game_date": on_disk.get("latest_game_date"),
+            }
 
     def run_once(self, force: bool = False, allow_stale: bool = False) -> dict:
         """Check OneDrive and rebuild if the workbook changed.
@@ -101,6 +135,10 @@ class RefreshService:
     def _loop(self) -> None:
         # Don't poll the instant we boot; the dataset was just loaded.
         while not self._stop.wait(self._interval):
+            # Cheap local check first: another process may already have
+            # rebuilt, in which case there is nothing to fetch.
+            self.reload_if_artifacts_changed()
+
             result = self.run_once()
             if result.get("error"):
                 logger.warning(

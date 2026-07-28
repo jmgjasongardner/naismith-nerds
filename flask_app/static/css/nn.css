@@ -731,6 +731,26 @@ table.data td a:hover { color: var(--accent); }
 }
 .table-foot .spacer { margin-left: auto; }
 
+/* Column picker lives in the table footer and opens upward, since the footer
+   sits at the bottom of a tall scroll region.
+
+   Two classes deep on purpose: a single-class rule ties with
+   .chart-picker__menu and loses on source order, which left both top and
+   bottom applied. The box then stretched to the gap between them — about
+   18px — and its contents spilled out past the painted background, so table
+   rows showed through the list. */
+.col-picker { position: relative; }
+
+.col-picker .chart-picker__menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+  left: auto;
+  right: 0;
+  height: auto;
+  background: var(--bg-elevated);
+  z-index: 50;
+}
+
 .empty-state {
   padding: 44px 20px;
   text-align: center;
@@ -873,6 +893,100 @@ table.data td a:hover { color: var(--accent); }
   margin: 18px 0;
 }
 .back-link:hover { color: var(--accent); }
+
+/* --------------------------------------------------------------------------
+   Player stat sheet
+
+   Grouped label/value rows rather than a wide table: these are one player's
+   numbers, so there is no second row to align against and a table would just
+   add chrome.
+   -------------------------------------------------------------------------- */
+
+.statsheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 22px 32px;
+}
+
+.statsheet__title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding-bottom: 7px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.statsheet__list { margin: 0; }
+
+.statsheet__row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.statsheet__row:last-child { border-bottom: none; }
+
+.statsheet__row dt {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  min-width: 0;
+}
+
+.statsheet__row dd {
+  margin: 0 0 0 auto;
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.statsheet__info {
+  display: inline-grid;
+  place-items: center;
+  width: 15px; height: 15px;
+  padding: 0;
+  margin-left: 5px;
+  border: none;
+  border-radius: 50%;
+  background: var(--panel-hover);
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: help;
+  vertical-align: 1px;
+  transition: background 0.15s, color 0.15s;
+}
+.statsheet__info:hover,
+.statsheet__info:focus-visible {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* Shared tooltip. Fixed and appended to <body> so panels with overflow:hidden
+   cannot clip it. */
+.nn-tip {
+  position: fixed;
+  z-index: 200;
+  max-width: 300px;
+  padding: 8px 11px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s;
+}
+.nn-tip[data-visible="true"] { opacity: 1; visibility: visible; }
 
 /* --------------------------------------------------------------------------
    Charts

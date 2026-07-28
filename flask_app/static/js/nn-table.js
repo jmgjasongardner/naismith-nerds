@@ -139,25 +139,118 @@
       });
   };
 
-  DataTable.prototype.buildShell = function () {
-    var head = this.cols.map(function (col, i) {
+  /* -- column visibility ------------------------------------------------- */
+
+  /* Which columns a table hides is remembered per table, so a view built once
+     survives reloads. Stored as hidden keys rather than visible ones: that way
+     a column added later shows up by default instead of silently staying off. */
+  DataTable.prototype.storageKey = function () {
+    return "nn-cols:" + this.name;
+  };
+
+  DataTable.prototype.loadHidden = function () {
+    try {
+      var raw = localStorage.getItem(this.storageKey());
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch (e) {
+      return new Set();
+    }
+  };
+
+  DataTable.prototype.saveHidden = function () {
+    try {
+      // Array.from, not slice.call: a Set has size but no length, so the
+      // array-like path silently produces an empty array and nothing persists.
+      localStorage.setItem(this.storageKey(), JSON.stringify(Array.from(this.hidden)));
+    } catch (e) { /* private mode; the choice just won't persist */ }
+  };
+
+  DataTable.prototype.computeVisible = function () {
+    var self = this;
+    this.visible = [];
+    this.cols.forEach(function (col, i) {
+      // The first column is the row's identity and stays pinned; hiding it
+      // would leave rows with nothing to identify them by.
+      if (i === 0 || !self.hidden.has(col.key)) self.visible.push(i);
+    });
+  };
+
+  DataTable.prototype.renderPicker = function (needle) {
+    var self = this;
+    var rows = this.cols.slice(1).filter(function (col) {
+      return !needle || col.label.toLowerCase().indexOf(needle) !== -1;
+    });
+
+    this.pickerList.innerHTML = rows.map(function (col) {
+      var on = !self.hidden.has(col.key);
       return (
-        '<th data-i="' + i + '"' +
+        '<label class="chart-picker__item">' +
+        '<input type="checkbox" value="' + esc(col.key) + '"' + (on ? " checked" : "") + ">" +
+        "<span>" + esc(col.label) + "</span></label>"
+      );
+    }).join("") || '<div class="search__empty">No matches</div>';
+
+    this.pickerCount.textContent =
+      "(" + this.visible.length + " of " + this.cols.length + ")";
+  };
+
+  DataTable.prototype.rebuildColumns = function () {
+    this.computeVisible();
+    this.saveHidden();
+
+    // The sort column may have just been hidden; fall back to the pinned one.
+    if (this.visible.indexOf(this.sortIndex) === -1) this.sortIndex = 0;
+
+    var thead = this.root.querySelector("thead tr");
+    thead.innerHTML = this.headHtml();
+    var span = this.visible.length;
+    this.spacerTop.firstElementChild.colSpan = span;
+    this.spacerBot.firstElementChild.colSpan = span;
+    if (this.emptyRow) this.emptyRow.firstElementChild.colSpan = span;
+
+    this.measured = false;
+    this.apply();
+  };
+
+  DataTable.prototype.headHtml = function () {
+    var self = this;
+    return this.visible.map(function (index) {
+      var col = self.cols[index];
+      return (
+        '<th data-i="' + index + '"' +
         (col.tip ? ' title="' + esc(col.tip) + '"' : "") +
         ">" + esc(col.label) + '<span class="sort-ind"></span></th>'
       );
     }).join("");
+  };
+
+  DataTable.prototype.buildShell = function () {
+    this.hidden = this.loadHidden();
+    this.computeVisible();
 
     this.root.innerHTML =
       '<div class="table-scroll">' +
         '<table class="data">' +
-          "<thead><tr>" + head + "</tr></thead>" +
-          '<tbody><tr class="spacer-top"><td colspan="' + this.cols.length + '"></td></tr>' +
-          '<tr class="spacer-bot"><td colspan="' + this.cols.length + '"></td></tr></tbody>' +
+          "<thead><tr>" + this.headHtml() + "</tr></thead>" +
+          '<tbody><tr class="spacer-top"><td colspan="' + this.visible.length + '"></td></tr>' +
+          '<tr class="spacer-bot"><td colspan="' + this.visible.length + '"></td></tr></tbody>' +
         "</table>" +
       "</div>" +
       '<div class="table-foot"><span class="row-count"></span>' +
       '<span class="spacer"></span>' +
+      '<div class="chart-picker col-picker">' +
+        '<button class="btn col-picker__toggle" type="button" aria-expanded="false">' +
+          'Columns <span class="chart-picker__count"></span>' +
+        "</button>" +
+        '<div class="chart-picker__menu col-picker__menu" hidden>' +
+          '<input class="input chart-picker__search" type="search" placeholder="Find a column…" aria-label="Find a column">' +
+          '<div class="chart-picker__actions">' +
+            '<button class="btn col-picker__all" type="button">Show all</button>' +
+            '<button class="btn col-picker__none" type="button">Hide all</button>' +
+          "</div>" +
+          '<div class="chart-picker__list"></div>' +
+        "</div>" +
+      "</div>" +
       '<button class="btn btn-csv" type="button">Export CSV</button></div>';
 
     this.scroller = this.root.querySelector(".table-scroll");
@@ -165,8 +258,56 @@
     this.spacerTop = this.root.querySelector(".spacer-top");
     this.spacerBot = this.root.querySelector(".spacer-bot");
     this.countEl = this.root.querySelector(".row-count");
+    this.pickerList = this.root.querySelector(".chart-picker__list");
+    this.pickerCount = this.root.querySelector(".chart-picker__count");
 
     var self = this;
+    var picker = this.root.querySelector(".col-picker");
+    var menu = this.root.querySelector(".col-picker__menu");
+    var toggle = this.root.querySelector(".col-picker__toggle");
+
+    toggle.addEventListener("click", function () {
+      var opening = menu.hidden;
+      menu.hidden = !opening;
+      toggle.setAttribute("aria-expanded", opening ? "true" : "false");
+      if (opening) {
+        self.renderPicker("");
+        picker.querySelector(".chart-picker__search").focus();
+      }
+    });
+
+    document.addEventListener("click", function (event) {
+      if (!picker.contains(event.target)) {
+        menu.hidden = true;
+        toggle.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    picker.querySelector(".chart-picker__search").addEventListener("input", function () {
+      self.renderPicker(this.value.trim().toLowerCase());
+    });
+
+    picker.querySelector(".col-picker__all").addEventListener("click", function () {
+      self.hidden.clear();
+      self.rebuildColumns();
+      self.renderPicker("");
+    });
+
+    picker.querySelector(".col-picker__none").addEventListener("click", function () {
+      self.hidden = new Set(self.cols.slice(1).map(function (c) { return c.key; }));
+      self.rebuildColumns();
+      self.renderPicker("");
+    });
+
+    this.pickerList.addEventListener("change", function (event) {
+      var box = event.target.closest("input[type=checkbox]");
+      if (!box) return;
+      if (box.checked) self.hidden.delete(box.value);
+      else self.hidden.add(box.value);
+      self.rebuildColumns();
+      self.pickerCount.textContent =
+        "(" + self.visible.length + " of " + self.cols.length + ")";
+    });
 
     this.root.querySelector("thead").addEventListener("click", function (event) {
       var th = event.target.closest("th");
@@ -256,11 +397,15 @@
       });
     }
 
-    this.root.querySelectorAll("thead th").forEach(function (th, i) {
-      var indicator = th.querySelector(".sort-ind");
-      indicator.textContent = i === self.sortIndex ? (self.sortDesc ? "▼" : "▲") : "";
+    // Headers carry the absolute column index in data-i, since hiding columns
+    // makes DOM position and column index diverge.
+    this.root.querySelectorAll("thead th").forEach(function (th) {
+      var index = Number(th.dataset.i);
+      var active = index === self.sortIndex;
+      th.querySelector(".sort-ind").textContent =
+        active ? (self.sortDesc ? "▼" : "▲") : "";
       th.setAttribute("aria-sort",
-        i === self.sortIndex ? (self.sortDesc ? "descending" : "ascending") : "none");
+        active ? (self.sortDesc ? "descending" : "ascending") : "none");
     });
 
     this.countEl.textContent =
@@ -283,7 +428,7 @@
       if (!this.emptyRow) {
         this.emptyRow = document.createElement("tr");
         this.emptyRow.innerHTML =
-          '<td colspan="' + this.cols.length + '">' +
+          '<td colspan="' + this.visible.length + '">' +
           '<div class="empty-state">Nothing matches these filters.</div></td>';
       }
       this.tbody.insertBefore(this.emptyRow, this.spacerBot);
@@ -310,7 +455,8 @@
     for (var i = first; i < last; i++) {
       var row = this.rows[this.view[i]];
       html += "<tr>";
-      for (var c = 0; c < this.cols.length; c++) {
+      for (var v = 0; v < this.visible.length; v++) {
+        var c = this.visible[v];
         html += "<td>" + renderCell(row[c], this.cols[c]) + "</td>";
       }
       html += "</tr>";
@@ -354,11 +500,17 @@
 
   DataTable.prototype.exportCsv = function () {
     var self = this;
-    var lines = [this.cols.map(function (col) { return '"' + col.label + '"'; }).join(",")];
 
-    this.view.forEach(function (index) {
-      var row = self.rows[index];
-      lines.push(row.map(function (value) {
+    // Exports what is on screen: the visible columns, filtered and sorted as
+    // shown. Downloading hidden columns would not match what was asked for.
+    var lines = [this.visible.map(function (index) {
+      return '"' + self.cols[index].label + '"';
+    }).join(",")];
+
+    this.view.forEach(function (rowIndex) {
+      var row = self.rows[rowIndex];
+      lines.push(self.visible.map(function (index) {
+        var value = row[index];
         if (value === null || value === undefined) return "";
         var text = String(value);
         return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;

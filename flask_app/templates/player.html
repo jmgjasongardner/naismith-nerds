@@ -86,11 +86,12 @@
 
   <section class="panel">
     <div role="tablist" class="tabs" aria-label="{{ player_name }} data">
-      <button class="tab" role="tab" id="tab-p-graphs"    data-key="graphs"    aria-controls="panel-p-graphs">Graphs</button>
+      <button class="tab" role="tab" id="tab-p-profile"   data-key="profile"   aria-controls="panel-p-profile">Full stats</button>
       <button class="tab" role="tab" id="tab-p-games"     data-key="games"     aria-controls="panel-p-games">Game log</button>
       <button class="tab" role="tab" id="tab-p-days"      data-key="days"      aria-controls="panel-p-days">By run</button>
       <button class="tab" role="tab" id="tab-p-teammates" data-key="teammates" aria-controls="panel-p-teammates">With</button>
       <button class="tab" role="tab" id="tab-p-opponents" data-key="opponents" aria-controls="panel-p-opponents">Against</button>
+      <button class="tab" role="tab" id="tab-p-graphs"    data-key="graphs"    aria-controls="panel-p-graphs">Graphs</button>
     </div>
 
     <div class="controls">
@@ -102,6 +103,27 @@
         Min games
         <input id="filterMinGames" class="input input--num" type="number" min="0" placeholder="0">
       </label>
+    </div>
+
+    <div role="tabpanel" id="panel-p-profile" aria-labelledby="tab-p-profile" hidden>
+      <div class="panel__body">
+        <div class="statsheet">
+          {% for group in profile %}
+          <section class="statsheet__group">
+            <h3 class="statsheet__title">{{ group.title }}</h3>
+            <dl class="statsheet__list">
+              {% for item in group['items'] %}
+              <div class="statsheet__row">
+                <dt>{{ item.label }}{% if item.tip %}<button type="button" class="statsheet__info"
+                      data-tip="{{ item.tip }}" aria-label="What is {{ item.label }}?">?</button>{% endif %}</dt>
+                <dd class="{{ item.tone }}">{{ item.value }}</dd>
+              </div>
+              {% endfor %}
+            </dl>
+          </section>
+          {% endfor %}
+        </div>
+      </div>
     </div>
 
     <div role="tabpanel" id="panel-p-graphs" aria-labelledby="tab-p-graphs" hidden>

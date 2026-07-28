@@ -11,6 +11,7 @@ keyed on DataStore.version, so a hot swap invalidates everything at once.
 """
 
 import gzip
+import hashlib
 import json
 import logging
 from typing import Callable, Dict
@@ -171,6 +172,18 @@ def _cached_payload(name: str, builder: Callable) -> bytes:
     return payload
 
 
+def payload_etag(payload: bytes) -> str:
+    """Validator derived from the bytes actually being sent.
+
+    This must not be built from DataStore.version. That counter starts at 1 in
+    every new process, so after a restart a completely different dataset would
+    reuse the previous ETag, browsers would revalidate, get a 304, and keep
+    rendering data and columns that no longer exist. Hashing the payload means
+    the validator can only match when the content genuinely matches.
+    """
+    return 'W/"%s"' % hashlib.sha1(payload).hexdigest()[:16]
+
+
 def _json_response(payload: bytes) -> Response:
     """Return JSON, gzipped when it is worth it and the client accepts it."""
     accepts_gzip = "gzip" in request.headers.get("Accept-Encoding", "")
@@ -183,8 +196,11 @@ def _json_response(payload: bytes) -> Response:
         response = Response(payload, mimetype="application/json")
 
     response.headers["Vary"] = "Accept-Encoding"
-    # Datasets change only on rebuild, and the version is in the ETag.
-    response.headers["Cache-Control"] = "public, max-age=60"
+    response.headers["ETag"] = payload_etag(payload)
+    # Always revalidate. The payload is small and gzipped, and a matching ETag
+    # still costs only a 304, so there is no reason to let a browser serve a
+    # stale table without asking.
+    response.headers["Cache-Control"] = "no-cache"
     return response
 
 
@@ -196,16 +212,13 @@ def table(name: str):
     if builder is None:
         return jsonify({"error": f"unknown dataset '{name}'"}), 404
 
-    store = current_app.config["DATA_STORE"]
     payload = _cached_payload(name, builder)
 
-    etag = f'W/"{name}-{store.version}"'
+    etag = payload_etag(payload)
     if request.headers.get("If-None-Match") == etag:
         return Response(status=304)
 
-    response = _json_response(payload)
-    response.headers["ETag"] = etag
-    return response
+    return _json_response(payload)
 
 
 def _player_game_log(data, name: str) -> pl.DataFrame:
