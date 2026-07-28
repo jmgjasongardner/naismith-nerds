@@ -944,6 +944,53 @@ table.data td a:hover { color: var(--accent); }
   white-space: nowrap;
 }
 
+/* Countable awards expand in place to the dates behind them. A <details>
+   rather than a modal: it works without JavaScript, keeps the dates next to
+   the number they explain, and behaves the same on touch. */
+.statsheet__row--expandable { display: block; padding: 0; }
+
+.statsheet__row--expandable > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.statsheet__row--expandable > summary::-webkit-details-marker { display: none; }
+.statsheet__row--expandable > summary:hover { color: var(--text); }
+
+.statsheet__label { color: var(--text-muted); font-size: 0.84rem; }
+.statsheet__row--expandable .statsheet__value {
+  margin-left: auto;
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.statsheet__chev {
+  color: var(--text-faint);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.statsheet__row--expandable[open] .statsheet__chev { transform: rotate(180deg); }
+
+.statsheet__dates {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 6px 0 0;
+  border-top: 1px dashed var(--line);
+  max-height: 200px;
+  overflow-y: auto;
+}
+.statsheet__dates li {
+  display: flex;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+.statsheet__dates li span { margin-left: auto; }
+
 .statsheet__info {
   display: inline-grid;
   place-items: center;

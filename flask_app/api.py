@@ -67,10 +67,18 @@ def _order(df: pl.DataFrame, first: list) -> pl.DataFrame:
 # -- dataset registry ------------------------------------------------------
 
 def _stats(data) -> pl.DataFrame:
+    """The Players table.
+
+    Rating is deliberately absent. Players under 20 games don't get their own
+    coefficient — they inherit their tier's — so publishing the column here
+    would broadcast the substituted value as if it were that player's own.
+    The Ratings tab still carries ratings, and only for players who earned one.
+    """
+    drop = [c for c in _PLAYER_BIO + ["rating"] if c in data.player_data.columns]
     return _order(
-        data.player_data.drop([c for c in _PLAYER_BIO if c in data.player_data.columns]),
-        ["player", "rating", "games_played", "wins", "losses", "win_pct"],
-    )
+        data.player_data.drop(drop),
+        ["player", "wins", "losses", "win_pct", "games_played"],
+    ).sort(["wins", "win_pct"], descending=[True, True])
 
 
 def _ratings(data) -> pl.DataFrame:

@@ -188,10 +188,13 @@ def _register_routes(app: Flask) -> None:
             birthday=birthday,
             is_active=bool(row.get("active_player")),
             rating_rank=rating_rank,
-            profile=_player_profile(data.player_data, row),
+            profile=_player_profile(
+                data.player_data, row, _player_awards(data.days, player_name)
+            ),
             image_exists=player_photo_path(player_name).exists(),
             stats={
-                "rating": row.get("rating"),
+                # Withheld for tiered players: the number is their tier's.
+                "rating": None if row.get("tiered_rating") else row.get("rating"),
                 "tiered": bool(row.get("tiered_rating")),
                 "wins": row.get("wins"),
                 "losses": row.get("losses"),
@@ -506,21 +509,47 @@ def _format_stat(key: str, value, dtype) -> dict:
     return entry
 
 
-def _player_profile(player_data, row: dict) -> list:
+def _player_profile(player_data, row: dict, awards: dict) -> list:
     """Group the player's columns into labelled sections for the stat sheet."""
     dtypes = dict(zip(player_data.columns, player_data.dtypes))
+
+    # A tiered player's rating belongs to their tier, not to them, so it is
+    # withheld here for the same reason it is absent from the Players table.
+    tiered = bool(row.get("tiered_rating"))
     groups = []
 
     for title, keys in PROFILE_GROUPS:
-        items = [
-            _format_stat(key, row.get(key), dtypes.get(key))
-            for key in keys
-            if key in row
-        ]
+        items = []
+        for key in keys:
+            if key not in row:
+                continue
+            if key == "rating" and tiered:
+                continue
+            item = _format_stat(key, row.get(key), dtypes.get(key))
+            # MVP/LVP counts expand to the dates they were earned.
+            if key in ("mvps", "lvps") and awards.get(key):
+                item["dates"] = awards[key]
+            items.append(item)
         if items:
             groups.append({"title": title, "items": items})
 
     return groups
+
+
+def _player_awards(days, player_name: str) -> dict:
+    """Dates this player took the day's MVP or LVP, most recent first."""
+    import polars as pl
+
+    def dates_for(column):
+        return (
+            days.filter(pl.col(column) == player_name)
+            .sort("game_date", descending=True)
+            .select(["game_date", f"{column}_gospel"])
+            .rename({f"{column}_gospel": "gospel"})
+            .to_dicts()
+        )
+
+    return {"mvps": dates_for("mvp"), "lvps": dates_for("lvp")}
 
 
 def ordinal(n: int) -> str:

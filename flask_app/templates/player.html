@@ -113,11 +113,35 @@
             <h3 class="statsheet__title">{{ group.title }}</h3>
             <dl class="statsheet__list">
               {% for item in group['items'] %}
+              {% if item.dates %}
+              {# Countable awards expand to the dates they were earned. #}
+              <details class="statsheet__row statsheet__row--expandable">
+                <summary>
+                  <span class="statsheet__label">{{ item.label }}</span>
+                  <span class="statsheet__value {{ item.tone }}">{{ item.value }}</span>
+                  <svg class="statsheet__chev" width="12" height="12" viewBox="0 0 24 24"
+                       fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </summary>
+                <ul class="statsheet__dates">
+                  {% for d in item.dates %}
+                  <li>
+                    <a href="{{ url_for('date_page', date=d.game_date) }}">{{ d.game_date }}</a>
+                    <span class="{{ 'pos' if (d.gospel or 0) > 0 else 'neg' }}">
+                      {{ '%+.2f'|format(d.gospel or 0) }}
+                    </span>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </details>
+              {% else %}
               <div class="statsheet__row">
                 <dt>{{ item.label }}{% if item.tip %}<button type="button" class="statsheet__info"
                       data-tip="{{ item.tip }}" aria-label="What is {{ item.label }}?">?</button>{% endif %}</dt>
                 <dd class="{{ item.tone }}">{{ item.value }}</dd>
               </div>
+              {% endif %}
               {% endfor %}
             </dl>
           </section>
