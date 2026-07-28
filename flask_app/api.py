@@ -289,6 +289,177 @@ DATE_SCOPED = {
 }
 
 
+# How lopsided the nine other players were. Bands are round numbers close to
+# the actual quintiles of other_9_players_quality_diff, so each holds a
+# meaningful share of games rather than being empty at the edges.
+# The cutoff is carried in the label so the bucket is self-explanatory without
+# needing the legend.
+ADVANTAGE_BANDS = [
+    (None, -3.0, "Much worse team (under −3)"),
+    (-3.0, -1.0, "Worse team (−3 to −1)"),
+    (-1.0, 1.0, "Even matchup (−1 to +1)"),
+    (1.0, 3.0, "Better team (+1 to +3)"),
+    (3.0, None, "Much better team (over +3)"),
+]
+
+# 1 -> 1st, 2 -> 2nd, and so on, for rank labels.
+ORDINALS = {
+    1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 5: "5th",
+    6: "6th", 7: "7th", 8: "8th", 9: "9th", 10: "10th",
+}
+
+# Total rating of the other nine on the floor. Other9 measures the gap between
+# the two sides; this measures the level both sides are playing at, which is a
+# separate question — the two correlate at only about -0.1. Bands sit near the
+# quintiles of the observed distribution.
+COURT_QUALITY_BANDS = [
+    (None, -1.0, "Weakest games (under −1)"),
+    (-1.0, 1.0, "Weak games (−1 to +1)"),
+    (1.0, 3.0, "Average games (+1 to +3)"),
+    (3.0, 5.0, "Strong games (+3 to +5)"),
+    (5.0, None, "Strongest games (over +5)"),
+]
+
+# How many of the five opponents out-rate the player.
+OPPONENTS_BETTER = {
+    0: "Better than all 5 opponents",
+    1: "Better than 4 of 5",
+    2: "Better than 3 of 5",
+    3: "Better than 2 of 5",
+    4: "Better than 1 of 5",
+    5: "Worse than all 5 opponents",
+}
+
+SPLIT_KINDS = {
+    "team_rank": ("team_rank", "Rank on own team"),
+    "court_rank": ("court_rank", "Rank among all ten"),
+    "vs_opponents": ("vs_opponents", "Rank versus opponents"),
+    "advantage": ("advantage", "Team advantage"),
+    "court_quality": ("court_quality", "Overall on-court quality"),
+}
+
+
+def _banded(column: str, bands) -> pl.Expr:
+    """Bucket a numeric column into labelled bands."""
+    expr = pl.when(pl.col(column) < bands[0][1]).then(pl.lit(bands[0][2]))
+    for low, high, label in bands[1:-1]:
+        expr = expr.when(
+            (pl.col(column) >= low) & (pl.col(column) < high)
+        ).then(pl.lit(label))
+    return expr.otherwise(pl.lit(bands[-1][2])).alias("split")
+
+
+def _split_label(kind: str) -> pl.Expr:
+    """Readable bucket name for each split."""
+    if kind == "team_rank":
+        return (
+            pl.when(pl.col("team_rank") == 1).then(pl.lit("1st — best on team"))
+            .when(pl.col("team_rank") == 2).then(pl.lit("2nd — second option"))
+            .when(pl.col("team_rank") == 3).then(pl.lit("3rd — middle option"))
+            .when(pl.col("team_rank") == 4).then(pl.lit("4th — fourth option"))
+            .when(pl.col("team_rank") == 5).then(pl.lit("5th — last option"))
+            .otherwise(pl.lit("Unranked"))
+            .alias("split")
+        )
+
+    if kind == "court_rank":
+        return (
+            pl.when(pl.col("court_rank") == 1).then(pl.lit("1st — best on court"))
+            .when(pl.col("court_rank") == 10).then(pl.lit("10th — last on court"))
+            .otherwise(
+                pl.col("court_rank").replace_strict(ORDINALS, default="?")
+                + pl.lit(" on court")
+            )
+            .alias("split")
+        )
+
+    if kind == "vs_opponents":
+        return (
+            pl.col("opps_better")
+            .replace_strict(OPPONENTS_BETTER, default="Roster error")
+            .alias("split")
+        )
+
+    if kind == "court_quality":
+        return _banded("court_quality", COURT_QUALITY_BANDS)
+
+    return _banded("other_9_players_quality_diff", ADVANTAGE_BANDS)
+
+
+def _player_splits(data, player_name: str, kind: str) -> pl.DataFrame:
+    """Aggregate a player's games into buckets, one row per bucket."""
+    sort_col = {
+        "team_rank": "team_rank",
+        "court_rank": "court_rank",
+        "vs_opponents": "opps_better",
+    }.get(kind)
+
+    games = data.player_games.filter(pl.col("player") == player_name).with_columns(
+        # Opponents who out-rate this player. court_rank counts everyone on the
+        # floor rated above them and team_rank counts just their own side, so
+        # the difference is exactly the opponents above them — no second join.
+        (pl.col("court_rank") - pl.col("team_rank")).alias("opps_better"),
+        # The talent level of the other nine, as opposed to the gap between
+        # the sides that other_9_players_quality_diff measures.
+        (pl.col("teammate_quality") + pl.col("opp_quality")).alias("court_quality"),
+    ).with_columns(_split_label(kind))
+
+    if sort_col:
+        games = games.with_columns(pl.col(sort_col).alias("_order"))
+    else:
+        # Order bands weakest-to-strongest, not alphabetically.
+        bands = COURT_QUALITY_BANDS if kind == "court_quality" else ADVANTAGE_BANDS
+        order = {label: i for i, (_, _, label) in enumerate(bands)}
+        games = games.with_columns(
+            pl.col("split").replace_strict(order, default=99).alias("_order")
+        )
+
+    return (
+        games.group_by(["split", "_order"])
+        .agg(
+            pl.len().alias("games_played"),
+            pl.col("winner").sum().cast(pl.Int32).alias("wins"),
+            pl.col("score_diff").mean().round(2).alias("avg_score_diff"),
+            pl.col("proj_score_diff").mean().round(2).alias("proj_score_diff"),
+            pl.col("result_vs_expectation").mean().round(2).alias("result_vs_expectation"),
+            pl.col("win_prob").mean().round(3).alias("win_prob"),
+            pl.col("teammate_quality").mean().round(2).alias("teammate_quality"),
+            pl.col("opp_quality").mean().round(2).alias("opp_quality"),
+            pl.col("other_9_players_quality_diff")
+            .mean()
+            .round(2)
+            .alias("other_9_players_quality_diff"),
+            pl.col("court_quality").mean().round(2).alias("court_quality"),
+        )
+        .with_columns(
+            (pl.col("games_played") - pl.col("wins")).cast(pl.Int64).alias("losses"),
+            (pl.col("wins") / pl.col("games_played")).round(4).alias("win_pct"),
+        )
+        .sort("_order")
+        .drop("_order")
+        .select(
+            [
+                "split", "games_played", "wins", "losses", "win_pct", "win_prob",
+                "result_vs_expectation", "avg_score_diff", "proj_score_diff",
+                "other_9_players_quality_diff", "court_quality",
+                "teammate_quality", "opp_quality",
+            ]
+        )
+    )
+
+
+@api.route("/player/<player_name>/splits/<kind>")
+def player_splits(player_name: str, kind: str):
+    if kind not in SPLIT_KINDS:
+        return jsonify({"error": f"unknown split '{kind}'"}), 404
+    return _json_response(
+        _cached_payload(
+            f"splits:{player_name}:{kind}",
+            lambda data: _player_splits(data, player_name, kind),
+        )
+    )
+
+
 @api.route("/player/<player_name>/<dataset>")
 def player_table(player_name: str, dataset: str):
     builder = PLAYER_SCOPED.get(dataset)

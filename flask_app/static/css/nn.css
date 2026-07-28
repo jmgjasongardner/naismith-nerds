@@ -944,6 +944,30 @@ table.data td a:hover { color: var(--accent); }
   white-space: nowrap;
 }
 
+/* Bucket legend under the role splits. */
+.legend__title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.legend__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2px 24px;
+  margin: 0 0 12px;
+}
+.legend__list > div {
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 0.82rem;
+}
+.legend__list dt { color: var(--text); font-weight: 600; white-space: nowrap; }
+.legend__list dd { margin: 0; color: var(--text-muted); }
+
 /* Countable awards expand in place to the dates behind them. A <details>
    rather than a modal: it works without JavaScript, keeps the dates next to
    the number they explain, and behaves the same on touch. */

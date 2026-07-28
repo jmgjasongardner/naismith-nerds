@@ -160,10 +160,39 @@ class BasketballData:
         """Computes win probabilities for games."""
         self.games = betting_games.calculate_moneylines_log_reg(self.games)
 
+    @staticmethod
+    def add_role_ranks(player_games: pl.DataFrame) -> pl.DataFrame:
+        """Where each player sat in the pecking order for a given game.
+
+        `team_rank` 1-5 is their rating's rank among their own five;
+        `court_rank` 1-10 is the rank among everyone on the floor.
+
+        Ranking is "min" (competition) style, so genuine ties share the better
+        rank and the next rank is skipped — two players tied at the top are
+        both 1st and nobody is 2nd. Ties are rare (about 4% of team-games) and
+        come almost entirely from players who share a tier rating, so forcing
+        an arbitrary winner would invent precision the model doesn't have.
+        """
+        game = ["game_date", "game_num"]
+        return player_games.with_columns(
+            pl.col("rating")
+            .rank(method="min", descending=True)
+            .over(game + ["team"])
+            .cast(pl.Int32)
+            .alias("team_rank"),
+            pl.col("rating")
+            .rank(method="min", descending=True)
+            .over(game)
+            .cast(pl.Int32)
+            .alias("court_rank"),
+        )
+
     def assemble_player_data(self):
         """Combines games & player data into one row per player-game."""
         player_data_instance = PlayerData(self.games, self.player_data)
-        self.player_games = player_data_instance.add_ratings_to_player_games()
+        self.player_games = self.add_role_ranks(
+            player_data_instance.add_ratings_to_player_games()
+        )
         self.player_days = player_data_instance.assemble_player_days()
         self.player_data = (
             player_data_instance.combine_player_stats_with_games_groupings()
