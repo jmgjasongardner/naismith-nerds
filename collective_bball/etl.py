@@ -93,7 +93,42 @@ def load_data(filepath: Union[str, IO]) -> Tuple[pl.DataFrame, pl.DataFrame]:
         pd.read_excel(filepath, sheet_name="Players", engine="openpyxl", dtype=str)
     ).with_columns(pl.col("birthday").cast(pl.Utf8), pl.col("resident").cast(pl.Int8))
 
+    tiers = dedupe_players(tiers)
+
     return raw_games_df, tiers
+
+
+def dedupe_players(tiers: pl.DataFrame) -> pl.DataFrame:
+    """Guarantee one row per player in the Players sheet.
+
+    A name listed twice there is not harmless. Player rows are joined onto
+    player-games to attach ratings, so a duplicate makes that join fan out and
+    silently doubles every game that player appeared in — inflating their game
+    count, their teammates' and opponents' pairing counts, and the rows the
+    RAPM model fits on. It has happened twice, both times going unnoticed
+    because nothing downstream complains.
+
+    The first row wins, and the collision is logged loudly so the workbook can
+    be fixed at source.
+    """
+    duplicates = (
+        tiers.group_by("player")
+        .agg(pl.len().alias("n"))
+        .filter(pl.col("n") > 1)
+        .sort("player")
+    )
+
+    if duplicates.height:
+        logger.warning(
+            "Players sheet lists %d name(s) more than once: %s. Keeping the "
+            "first row of each; fix the workbook to silence this.",
+            duplicates.height,
+            ", ".join(
+                f"{row['player']} (x{row['n']})" for row in duplicates.to_dicts()
+            ),
+        )
+
+    return tiers.unique(subset=["player"], keep="first", maintain_order=True)
 
 
 def clean_games_data(raw_games_df: pl.DataFrame) -> Tuple[pl.DataFrame, Dict]:

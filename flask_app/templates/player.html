@@ -89,6 +89,7 @@
       <button class="tab" role="tab" id="tab-p-profile"   data-key="profile"   aria-controls="panel-p-profile">Full stats</button>
       <button class="tab" role="tab" id="tab-p-games"     data-key="games"     aria-controls="panel-p-games">Game log</button>
       <button class="tab" role="tab" id="tab-p-days"      data-key="days"      aria-controls="panel-p-days">By run</button>
+      <button class="tab" role="tab" id="tab-p-splits"    data-key="splits"    aria-controls="panel-p-splits">Role splits</button>
       <button class="tab" role="tab" id="tab-p-teammates" data-key="teammates" aria-controls="panel-p-teammates">With</button>
       <button class="tab" role="tab" id="tab-p-opponents" data-key="opponents" aria-controls="panel-p-opponents">Against</button>
       <button class="tab" role="tab" id="tab-p-graphs"    data-key="graphs"    aria-controls="panel-p-graphs">Graphs</button>
@@ -174,6 +175,91 @@
     <div role="tabpanel" id="panel-p-days" aria-labelledby="tab-p-days" hidden>
       <div data-table="days" data-url="/api/player/{{ player_name | urlencode }}/days" data-sort="game_date"></div>
     </div>
+    <div role="tabpanel" id="panel-p-splits" aria-labelledby="tab-p-splits" hidden>
+      <div class="panel__head" style="border-top:none">
+        <span class="panel__title">By rank on own team</span>
+        <span class="panel__meta">1st is the highest-rated of the five. Ties share the better rank.</span>
+      </div>
+      <div data-table="splits_team"
+           data-url="/api/player/{{ player_name | urlencode }}/splits/team_rank"></div>
+
+      <div class="panel__head" style="border-top:1px solid var(--line)">
+        <span class="panel__title">By rank among all ten</span>
+        <span class="panel__meta">where they stood against everyone on the floor</span>
+      </div>
+      <div data-table="splits_court"
+           data-url="/api/player/{{ player_name | urlencode }}/splits/court_rank"></div>
+
+      <div class="panel__head" style="border-top:1px solid var(--line)">
+        <span class="panel__title">By rank versus opponents</span>
+        <span class="panel__meta">how many of the five they out-rated, ignoring their own side</span>
+      </div>
+      <div data-table="splits_vs_opp"
+           data-url="/api/player/{{ player_name | urlencode }}/splits/vs_opponents"></div>
+
+      <div class="panel__head" style="border-top:1px solid var(--line)">
+        <span class="panel__title">By team advantage</span>
+        <span class="panel__meta">the gap between the sides: teammates' ratings minus opponents'</span>
+      </div>
+      <div data-table="splits_adv"
+           data-url="/api/player/{{ player_name | urlencode }}/splits/advantage"></div>
+
+      <div class="panel__head" style="border-top:1px solid var(--line)">
+        <span class="panel__title">By overall on-court quality</span>
+        <span class="panel__meta">the talent level of the game itself, both sides combined</span>
+      </div>
+      <div data-table="splits_quality"
+           data-url="/api/player/{{ player_name | urlencode }}/splits/court_quality"></div>
+
+      <div class="panel__body">
+        <div class="legend">
+          <h3 class="legend__title">What the buckets mean</h3>
+          <dl class="legend__list">
+            <div><dt>1st — best on team</dt><dd>Highest-rated of their own five.</dd></div>
+            <div><dt>2nd–4th</dt><dd>Second, third or fourth option on their five.</dd></div>
+            <div><dt>5th — last option</dt><dd>Lowest-rated of their own five.</dd></div>
+            <div><dt>1st–10th on court</dt><dd>Same idea, ranked against all ten players in the game.</dd></div>
+          </dl>
+          <dl class="legend__list">
+            <div><dt>Better than all 5</dt><dd>Out-rated every opponent, whatever their own side looked like.</dd></div>
+            <div><dt>Better than 4 / 3 / 2 / 1 of 5</dt><dd>Out-rated that many of the opposing five.</dd></div>
+            <div><dt>Worse than all 5</dt><dd>Every opponent out-rated them.</dd></div>
+          </dl>
+          <dl class="legend__list">
+            <div><dt>Much worse team</dt><dd>Teammates rate more than 3 points below the opponents.</dd></div>
+            <div><dt>Worse team</dt><dd>Between 1 and 3 points below.</dd></div>
+            <div><dt>Even matchup</dt><dd>Within 1 point either way.</dd></div>
+            <div><dt>Better team</dt><dd>Between 1 and 3 points above.</dd></div>
+            <div><dt>Much better team</dt><dd>More than 3 points above.</dd></div>
+          </dl>
+          <dl class="legend__list">
+            <div><dt>Weakest → Strongest games</dt><dd>Combined rating of the other nine, in bands from under −1 to over +5.</dd></div>
+          </dl>
+          <p class="muted" style="font-size:.82rem;margin:6px 0 0;max-width:76ch">
+            <strong>Team advantage versus on-court quality:</strong> the first is the
+            <em>gap</em> between the sides, the second is the <em>level</em> both are
+            playing at. Opponents +5 against teammates +4, and opponents −4 against
+            teammates −5, are both a −1 gap but completely different games. Across
+            the whole dataset the two measures correlate at only about −0.1, so they
+            really are separate questions.
+          </p>
+          <p class="muted" style="font-size:.82rem;margin:14px 0 0;max-width:76ch">
+            Ranks use each player's rating, and genuine ties share the better rank —
+            two players tied at the top are both 1st and nobody is 2nd. Ties are
+            about 4% of team-games and come almost entirely from players who share
+            a tier rating.
+          </p>
+          <p class="muted" style="font-size:.82rem;margin:8px 0 0;max-width:76ch">
+            <strong>Reading these:</strong> Win% is what happened, Win Prob is what
+            the model expected going in. Gospel is the gap — positive means
+            outperforming expectation in that role. A player who wins a lot as the
+            1st option but posts a negative Gospel there is winning on the strength
+            of the teams they were given, not their own.
+          </p>
+        </div>
+      </div>
+    </div>
+
     <div role="tabpanel" id="panel-p-teammates" aria-labelledby="tab-p-teammates" hidden>
       <div data-table="teammates" data-url="/api/player/{{ player_name | urlencode }}/teammates" data-sort="games_played"></div>
     </div>

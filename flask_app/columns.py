@@ -79,6 +79,10 @@ LABELS: Dict[str, str] = {
     "a_win_prob": "A Win Prob",
     "win_prob": "Win Prob",
     "moneyline": "Moneyline",
+    "split": "Role",
+    "court_quality": "On-Court Quality",
+    "team_rank": "Rank on Team",
+    "court_rank": "Rank on Court",
     "num_players": "Players",
     "mvp": "MVP",
     "mvp_gospel": "MVP Gospel",
@@ -186,18 +190,42 @@ TIPS: Dict[str, str] = {
     "unique_winners_rate": "Share of players on the day who won at least one game.",
     "avg_parity_of_teams": "Spread of team strength across the day. Lower means more balanced.",
     "clock": "Whether the game was played to a running clock rather than a fixed score.",
-    "mvps": "Days this player was the run's MVP.",
-    "lvps": "Days this player was the run's LVP.",
-    "mvp_pct": "Share of the days played where this player was MVP.",
-    "lvp_pct": "Share of the days played where this player was LVP.",
+    "mvps": (
+        "Days this player had the best Gospel — result versus expectation — of "
+        "anyone at that run, among players with at least three games that day."
+    ),
+    "lvps": (
+        "Days this player had the worst Gospel — result versus expectation — of "
+        "anyone at that run, among players with at least three games that day."
+    ),
+    "mvp_pct": (
+        "Share of the days played where this player had the run's best Gospel "
+        "(minimum three games that day)."
+    ),
+    "lvp_pct": (
+        "Share of the days played where this player had the run's worst Gospel "
+        "(minimum three games that day)."
+    ),
+    "split": (
+        "The bucket this row summarizes. Rank splits use each player's rating; "
+        "ties share the better rank."
+    ),
+    "court_quality": (
+        "Combined rating of the other nine players. This is the talent level of "
+        "the game, not the gap between the sides — 'opponents +5, teammates +4' "
+        "and 'opponents −4, teammates −5' both give Other 9 Diff of −1, but very "
+        "different On-Court Quality."
+    ),
     "mvp": (
-        "Best result versus expectation that day, among players with at least "
-        "three games. Ties break alphabetically."
+        "Best Gospel — result versus expectation — of anyone at this run, among "
+        "players with at least three games that day. Ties break alphabetically."
     ),
     "lvp": (
-        "Worst result versus expectation that day, among players with at least "
-        "three games. Ties break alphabetically."
+        "Worst Gospel — result versus expectation — of anyone at this run, among "
+        "players with at least three games that day. Ties break alphabetically."
     ),
+    "mvp_gospel": "The MVP's Gospel for that day: actual minus projected score differential.",
+    "lvp_gospel": "The LVP's Gospel for that day: actual minus projected score differential.",
     "first_poss": "Which team started with the ball, inferred from who held the court.",
     "active_player": "Played within the last 90 days.",
     "resident": "Plays regularly at this run.",
