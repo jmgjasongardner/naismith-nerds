@@ -1092,6 +1092,26 @@ table.data td a:hover { color: var(--accent); }
 .chart-crosshair { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
 .chart-axis-title { fill: var(--text-muted); font-size: 11px; font-family: var(--font); }
 
+/* Player scatter: photos as points. */
+.scatter-dot { cursor: pointer; }
+.scatter-dot__ring {
+  fill: none;
+  stroke: var(--bg-elevated);
+  stroke-width: 2;
+}
+.scatter-dot:hover .scatter-dot__ring { stroke: var(--accent); stroke-width: 3; }
+.scatter-dot__fallback { fill: var(--panel-hover); }
+.scatter-dot__initials {
+  fill: var(--text-muted);
+  font-family: var(--font);
+  font-weight: 700;
+  pointer-events: none;
+}
+.scatter-note {
+  font-size: 0.78rem;
+  margin: 10px 0 0;
+}
+
 .chart-bubble {
   stroke: var(--bg-elevated);   /* 2px surface ring keeps overlaps readable */
   stroke-width: 2;

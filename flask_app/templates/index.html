@@ -122,6 +122,14 @@
 
     <div role="tabpanel" id="panel-graphs" aria-labelledby="tab-graphs" hidden>
       <div class="panel__head" style="border-top:none">
+        <span class="panel__title">Player explorer</span>
+        <span class="panel__meta">pick any two stats for the axes and a third for dot size</span>
+      </div>
+      <div class="panel__body">
+        <div data-chart="player-scatter" data-url="/api/charts/player-scatter"></div>
+      </div>
+
+      <div class="panel__head" style="border-top:1px solid var(--line)">
         <span class="panel__title">Ratings over time</span>
         <span class="panel__meta">pick any players to color; the rest stay as context</span>
       </div>

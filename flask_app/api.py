@@ -20,7 +20,7 @@ import polars as pl
 from flask import Blueprint, Response, current_app, jsonify, request
 
 from collective_bball.paths import player_thumb_path
-from flask_app.columns import round_floats, spec_for
+from flask_app.columns import label_for, round_floats, spec_for, type_for
 
 logger = logging.getLogger(__name__)
 
@@ -571,6 +571,90 @@ def chart_ratings_history():
                 "series": [{"name": name, "v": values} for name, values in ordered],
             },
             separators=(",", ":"),
+        ).encode("utf-8")
+
+    return _json_response(cache[key])
+
+
+# Every numeric field worth putting on an axis of the player scatter. Order
+# matters: it is the order of the dropdowns.
+SCATTER_FIELDS = [
+    "rating",
+    "win_pct",
+    "games_played",
+    "wins",
+    "losses",
+    "days_played",
+    "result_vs_expectation",
+    "avg_score_diff",
+    "proj_score_diff",
+    "expected_win_pct",
+    "other_9_players_quality_diff",
+    "team_quality",
+    "teammate_quality",
+    "opp_quality",
+    "mvps",
+    "lvps",
+    "mvp_pct",
+    "lvp_pct",
+    "games_played_per_day",
+    "pct_games_favorite",
+    "pct_games_better_teammates",
+    "pct_positive_teammates",
+    "pct_total_games_played",
+    "pct_total_days_played",
+    "first_game_of_day_rate",
+    "last_game_of_day_rate",
+    "mon_rate",
+    "wed_rate",
+    "sat_rate",
+]
+
+
+@api.route("/charts/player-scatter")
+def chart_player_scatter():
+    """Every rated player as a point, with any field selectable per axis.
+
+    Restricted to players carrying their own rating. Tiered players share a
+    group estimate, so plotting them against rating would cluster them at
+    identical x-values that describe the tier rather than the player.
+    """
+    store = current_app.config["DATA_STORE"]
+    cache = current_app.config.setdefault("API_CACHE", {})
+    key = _cache_key("__scatter", store.version)
+
+    if key not in cache:
+        data = store.data
+        available = [f for f in SCATTER_FIELDS if f in data.player_data.columns]
+
+        rated = round_floats(
+            data.player_data.filter(pl.col("tiered_rating") == 0).select(
+                ["player"] + available
+            )
+        )
+
+        dtypes = dict(zip(rated.columns, rated.dtypes))
+        fields = [
+            {
+                "key": f,
+                "label": label_for(f),
+                "type": type_for(f, dtypes[f]),
+                "dp": 1 if type_for(f, dtypes[f]) == "pct" else 2,
+            }
+            for f in available
+        ]
+
+        players = [
+            {
+                "n": row["player"],
+                "i": player_thumb_path(row["player"]).exists(),
+                "v": [row[f] for f in available],
+            }
+            for row in rated.to_dicts()
+        ]
+
+        cache[key] = json.dumps(
+            {"fields": fields, "players": players}, separators=(",", ":"), default=str
         ).encode("utf-8")
 
     return _json_response(cache[key])

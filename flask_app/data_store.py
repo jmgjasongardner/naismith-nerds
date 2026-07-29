@@ -46,14 +46,20 @@ class DataStore:
 
     @contextmanager
     def db(self):
-        """Yield the process-wide DuckDB connection, serialized.
+        """Open a DuckDB connection for the duration of one operation.
 
-        DuckDB permits only one read-write handle to a file at a time, and the
-        scheduled rebuild writes while pages are being served, so every caller
-        shares one connection rather than opening its own. The connection is
-        opened lazily and deliberately never closed.
+        Serialized, because DuckDB permits a single read-write handle per file
+        and the scheduled rebuild writes while pages are being served.
+
+        Deliberately opened and closed per use rather than held for the
+        lifetime of the process. A long-lived handle keeps the file locked, so
+        a rebuild from the CLI — `python -m collective_bball.main` — fails with
+        "Could not set lock on file" for as long as any server is running.
+        Holding it saved a millisecond and cost the ability to rebuild.
         """
         with self._conn_lock:
-            if self._conn is None:
-                self._conn = duckdb.connect(str(db_path()))
-            yield self._conn
+            conn = duckdb.connect(str(db_path()))
+            try:
+                yield conn
+            finally:
+                conn.close()

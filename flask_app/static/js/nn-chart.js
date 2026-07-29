@@ -325,9 +325,21 @@
       return d;
     }
 
+    /* Everything data-bearing is clipped to the plot rectangle.
+       The y-domain covers only the selected series, so unselected context
+       lines routinely fall outside it — without clipping they render past the
+       axis and wash over the x-labels. Zoomed selections overflow the same
+       way. */
+    var clipId = "nn-plot-clip-" + (LineChart._seq = (LineChart._seq || 0) + 1);
+    var defs = el("defs", {}, svg);
+    var clipPath = el("clipPath", { id: clipId }, defs);
+    el("rect", { x: pad.l, y: pad.t, width: plotW, height: plotH }, clipPath);
+
+    var dataLayer = el("g", { "clip-path": "url(#" + clipId + ")" }, svg);
+
     // Context lines first so selected series draw over them.
     if (config.selectable) {
-      var group = el("g", {}, svg);
+      var group = el("g", {}, dataLayer);
       config.series.forEach(function (s) {
         if (selectedSet[s.name] !== undefined) return;
         el("path", { d: path(s), class: "chart-line-context" }, group);
@@ -341,7 +353,7 @@
       var style = styleFor(idx);
       var attrs = { d: path(series), class: "chart-line", stroke: style.color };
       if (style.dash) attrs["stroke-dasharray"] = style.dash;
-      el("path", attrs, svg);
+      el("path", attrs, dataLayer);
       drawn.push({ name: name, series: series, style: style });
     });
 
@@ -544,6 +556,339 @@
   }
 
   /* ======================================================================
+     Player scatter
+
+     One point per rated player, drawn as their photo. Which field goes on
+     each axis and which drives the dot size are all chosen by the viewer,
+     so this is really a small exploration tool rather than a fixed chart.
+     ====================================================================== */
+
+  function PlayerScatter(host, data) {
+    this.host = host;
+    this.fields = data.fields;
+    this.players = data.players;
+
+    var keys = data.fields.map(function (f) { return f.key; });
+    var pick = function (wanted, fallback) {
+      return keys.indexOf(wanted) !== -1 ? wanted : keys[fallback] || keys[0];
+    };
+    this.x = pick("rating", 0);
+    this.y = pick("win_pct", 1);
+    this.size = pick("games_played", 2);
+
+    // Null means "fit to the data"; a pair means the viewer zoomed to a box.
+    this.xDomain = null;
+    this.yDomain = null;
+
+    host.innerHTML = "";
+    this.buildControls();
+    this.plot = document.createElement("div");
+    this.plot.className = "chart";
+    host.appendChild(this.plot);
+    this.render();
+  }
+
+  PlayerScatter.prototype.buildControls = function () {
+    var self = this;
+    var options = this.fields.map(function (f) {
+      return '<option value="' + esc(f.key) + '">' + esc(f.label) + "</option>";
+    }).join("");
+
+    var bar = document.createElement("div");
+    bar.className = "chart-toolbar";
+    bar.innerHTML =
+      ["x", "y", "size"].map(function (axis) {
+        var label = axis === "size" ? "Dot size" : axis.toUpperCase() + " axis";
+        return (
+          '<label class="field">' + label +
+          '<select class="select scatter-' + axis + '">' + options + "</select></label>"
+        );
+      }).join("") +
+      '<button class="btn scatter-reset" type="button" hidden>Reset zoom</button>' +
+      '<span class="chart-hint muted">Drag a box to zoom · double-click to reset · 20+ games</span>';
+    this.host.appendChild(bar);
+
+    ["x", "y", "size"].forEach(function (axis) {
+      var select = bar.querySelector(".scatter-" + axis);
+      select.value = self[axis];
+      select.addEventListener("change", function () {
+        self[axis] = this.value;
+        // A zoom is expressed in the old field's units, so it cannot survive
+        // an axis change.
+        self.resetZoom(true);
+      });
+    });
+
+    this.resetBtn = bar.querySelector(".scatter-reset");
+    this.resetBtn.addEventListener("click", function () { self.resetZoom(); });
+  };
+
+  PlayerScatter.prototype.resetZoom = function (skipRenderGuard) {
+    this.xDomain = null;
+    this.yDomain = null;
+    if (this.resetBtn) this.resetBtn.hidden = true;
+    this.render();
+  };
+
+  PlayerScatter.prototype.zoomTo = function (xd, yd) {
+    this.xDomain = xd;
+    this.yDomain = yd;
+    if (this.resetBtn) this.resetBtn.hidden = false;
+    this.render();
+  };
+
+  PlayerScatter.prototype.field = function (key) {
+    return this.fields.filter(function (f) { return f.key === key; })[0];
+  };
+
+  PlayerScatter.prototype.render = function () {
+    var self = this;
+    var keys = this.fields.map(function (f) { return f.key; });
+    var xi = keys.indexOf(this.x), yi = keys.indexOf(this.y), si = keys.indexOf(this.size);
+    var xf = this.field(this.x), yf = this.field(this.y), sf = this.field(this.size);
+
+    var points = this.players.filter(function (p) {
+      return p.v[xi] !== null && p.v[yi] !== null;
+    });
+
+    this.plot.innerHTML = "";
+    this.plot.style.position = "relative";
+
+    var width = Math.max(this.plot.clientWidth || this.host.clientWidth || 700, 300);
+    var height = 520;
+    var pad = { t: 16, r: 20, b: 52, l: 62 };
+    var plotW = width - pad.l - pad.r;
+    var plotH = height - pad.t - pad.b;
+
+    var svg = el("svg", {
+      viewBox: "0 0 " + width + " " + height, width: "100%", height: height,
+      role: "img", "aria-label": yf.label + " versus " + xf.label
+    }, this.plot);
+
+    // One reusable clip so each photo renders as a circle.
+    var defs = el("defs", {}, svg);
+    var clip = el("clipPath", { id: "nn-dot-clip", clipPathUnits: "objectBoundingBox" }, defs);
+    el("circle", { cx: 0.5, cy: 0.5, r: 0.5 }, clip);
+
+    var tip = document.createElement("div");
+    tip.className = "chart-tooltip";
+    this.plot.appendChild(tip);
+
+    function extent(index) {
+      var lo = Infinity, hi = -Infinity;
+      points.forEach(function (p) {
+        var v = p.v[index];
+        if (v === null || v === undefined) return;
+        if (v < lo) lo = v;
+        if (v > hi) hi = v;
+      });
+      if (!isFinite(lo)) { lo = 0; hi = 1; }
+      if (lo === hi) { lo -= 1; hi += 1; }
+      var padding = (hi - lo) * 0.08;
+      return [lo - padding, hi + padding];
+    }
+
+    var xd = this.xDomain || extent(xi);
+    var yd = this.yDomain || extent(yi);
+
+    function sx(v) { return pad.l + ((v - xd[0]) / (xd[1] - xd[0])) * plotW; }
+    function sy(v) { return pad.t + (1 - (v - yd[0]) / (yd[1] - yd[0])) * plotH; }
+    function invX(px) { return xd[0] + ((px - pad.l) / plotW) * (xd[1] - xd[0]); }
+    function invY(py) { return yd[0] + (1 - (py - pad.t) / plotH) * (yd[1] - yd[0]); }
+
+    function fmt(value, field) {
+      if (value === null || value === undefined) return "—";
+      if (field.type === "pct") return (value * 100).toFixed(field.dp) + "%";
+      if (field.type === "int") return String(value);
+      return Number(value).toFixed(field.dp);
+    }
+
+    /* Grid and axes */
+    niceTicks(yd[0], yd[1], 5).forEach(function (t) {
+      el("line", { x1: pad.l, x2: pad.l + plotW, y1: sy(t), y2: sy(t), class: "chart-grid" }, svg);
+      el("text", { x: pad.l - 8, y: sy(t) + 3, "text-anchor": "end", class: "chart-label" },
+        svg).textContent = fmt(t, yf);
+    });
+    niceTicks(xd[0], xd[1], 6).forEach(function (t) {
+      el("line", { x1: sx(t), x2: sx(t), y1: pad.t, y2: pad.t + plotH, class: "chart-grid" }, svg);
+      el("text", { x: sx(t), y: height - 30, "text-anchor": "middle", class: "chart-label" },
+        svg).textContent = fmt(t, xf);
+    });
+
+    if (xd[0] < 0 && xd[1] > 0) {
+      el("line", { x1: sx(0), x2: sx(0), y1: pad.t, y2: pad.t + plotH, class: "chart-zero" }, svg);
+    }
+    if (yd[0] < 0 && yd[1] > 0) {
+      el("line", { x1: pad.l, x2: pad.l + plotW, y1: sy(0), y2: sy(0), class: "chart-zero" }, svg);
+    }
+
+    /* Dot radius. Min-max normalised rather than proportional, because a
+       size field can be negative (rating) or near-constant, and area scaling
+       on raw values would then break or collapse. */
+    var sLo = Infinity, sHi = -Infinity;
+    points.forEach(function (p) {
+      var v = p.v[si];
+      if (v === null || v === undefined) return;
+      if (v < sLo) sLo = v;
+      if (v > sHi) sHi = v;
+    });
+    var MIN_R = 9, MAX_R = 30;
+    function radius(v) {
+      if (v === null || v === undefined || sHi === sLo) return (MIN_R + MAX_R) / 2;
+      // sqrt so the *area* tracks the value, which is how people read bubbles.
+      var frac = Math.sqrt((v - sLo) / (sHi - sLo));
+      return MIN_R + frac * (MAX_R - MIN_R);
+    }
+
+    // Points are clipped to the plot box so a zoom doesn't scatter photos
+    // across the axes and margins.
+    var clipId = "nn-scatter-clip-" + (PlayerScatter._seq = (PlayerScatter._seq || 0) + 1);
+    var clipPath = el("clipPath", { id: clipId }, defs);
+    el("rect", { x: pad.l, y: pad.t, width: plotW, height: plotH }, clipPath);
+    var dataLayer = el("g", { "clip-path": "url(#" + clipId + ")" }, svg);
+
+    function hideTip() { tip.setAttribute("data-visible", "false"); }
+
+    // Biggest first, so small dots land on top and stay clickable.
+    var ordered = points.slice().sort(function (a, b) {
+      return radius(b.v[si]) - radius(a.v[si]);
+    });
+
+    ordered.forEach(function (p) {
+      var r = radius(p.v[si]);
+      var cx = sx(p.v[xi]), cy = sy(p.v[yi]);
+
+      var g = el("a", {
+        class: "scatter-dot", href: "/player/" + encodeURIComponent(p.n)
+      }, dataLayer);
+
+      if (p.i) {
+        el("image", {
+          href: "/static/player_pics_thumbs/" + encodeURIComponent(p.n) + ".webp",
+          x: cx - r, y: cy - r, width: r * 2, height: r * 2,
+          preserveAspectRatio: "xMidYMid slice",
+          "clip-path": "url(#nn-dot-clip)"
+        }, g);
+      } else {
+        el("circle", { cx: cx, cy: cy, r: r, class: "scatter-dot__fallback" }, g);
+        el("text", {
+          x: cx, y: cy + r * 0.3, "text-anchor": "middle",
+          class: "scatter-dot__initials", "font-size": Math.max(9, r * 0.75)
+        }, g).textContent = p.n.slice(0, 2).toUpperCase();
+      }
+
+      el("circle", { cx: cx, cy: cy, r: r, class: "scatter-dot__ring" }, g);
+
+      g.addEventListener("mouseenter", function (event) {
+        g.parentNode.appendChild(g);   // bring to front while hovered
+        var box = svg.getBoundingClientRect();
+        tip.innerHTML =
+          '<div class="chart-tooltip__head">' + esc(p.n) + "</div>" +
+          "<div>" + esc(xf.label) + " <strong>" + fmt(p.v[xi], xf) + "</strong></div>" +
+          "<div>" + esc(yf.label) + " <strong>" + fmt(p.v[yi], yf) + "</strong></div>" +
+          "<div>" + esc(sf.label) + " <strong>" + fmt(p.v[si], sf) + "</strong></div>";
+        tip.setAttribute("data-visible", "true");
+        var tb = tip.getBoundingClientRect();
+        tip.style.left = Math.min(Math.max(event.clientX - box.left - tb.width / 2, 4),
+          self.plot.clientWidth - tb.width - 4) + "px";
+        tip.style.top = Math.max(event.clientY - box.top - tb.height - 14, 4) + "px";
+      });
+      g.addEventListener("mouseleave", hideTip);
+    });
+
+    /* The tooltip used to hang around until another dot was hovered, because
+       only the dots dismissed it. Anything that means "I'm done looking"
+       now clears it. */
+    this.plot.addEventListener("mouseleave", hideTip);
+    svg.addEventListener("mouseleave", hideTip);
+
+    // Every axis change re-renders, so document-level listeners have to be
+    // torn down or they pile up, each holding a detached tooltip.
+    if (this._cleanup) this._cleanup();
+    document.addEventListener("click", hideTip);
+    window.addEventListener("scroll", hideTip, { passive: true });
+    this._cleanup = function () {
+      document.removeEventListener("click", hideTip);
+      window.removeEventListener("scroll", hideTip);
+    };
+
+    /* Drag a box to zoom into it; double-click anywhere to zoom back out. */
+    var band = el("rect", { class: "chart-band", opacity: 0 }, svg);
+    var surface = el("rect", {
+      x: pad.l, y: pad.t, width: plotW, height: plotH,
+      fill: "transparent", style: "cursor:crosshair"
+    }, svg);
+    // Behind the dots, so clicking a player still opens their page.
+    svg.insertBefore(surface, dataLayer);
+    svg.insertBefore(band, dataLayer);
+
+    var from = null;
+
+    function pointAt(event) {
+      var box = svg.getBoundingClientRect();
+      var scale = width / box.width;
+      return {
+        px: Math.min(Math.max((event.clientX - box.left) * scale, pad.l), pad.l + plotW),
+        py: Math.min(Math.max((event.clientY - box.top) * scale, pad.t), pad.t + plotH)
+      };
+    }
+
+    function finish(event) {
+      if (!from) return;
+      var to = pointAt(event);
+      var x0 = Math.min(from.px, to.px), x1 = Math.max(from.px, to.px);
+      var y0 = Math.min(from.py, to.py), y1 = Math.max(from.py, to.py);
+      from = null;
+      band.setAttribute("opacity", 0);
+      window.removeEventListener("mousemove", drag);
+      window.removeEventListener("mouseup", finish);
+
+      // Ignore an accidental nudge; a real box needs some area.
+      if (x1 - x0 < 12 || y1 - y0 < 12) return;
+      self.zoomTo([invX(x0), invX(x1)], [invY(y1), invY(y0)]);
+    }
+
+    function drag(event) {
+      if (!from) return;
+      var to = pointAt(event);
+      band.setAttribute("x", Math.min(from.px, to.px));
+      band.setAttribute("y", Math.min(from.py, to.py));
+      band.setAttribute("width", Math.abs(to.px - from.px));
+      band.setAttribute("height", Math.abs(to.py - from.py));
+      band.setAttribute("opacity", 1);
+    }
+
+    svg.addEventListener("mousedown", function (event) {
+      if (event.button !== 0) return;
+      from = pointAt(event);
+      hideTip();
+      window.addEventListener("mousemove", drag);
+      window.addEventListener("mouseup", finish);
+      event.preventDefault();
+    });
+
+    svg.addEventListener("dblclick", function () { self.resetZoom(); });
+
+    /* Axis titles */
+    el("text", {
+      x: pad.l + plotW / 2, y: height - 8, "text-anchor": "middle", class: "chart-axis-title"
+    }, svg).textContent = xf.label;
+    el("text", {
+      x: 14, y: pad.t + plotH / 2, "text-anchor": "middle", class: "chart-axis-title",
+      transform: "rotate(-90 14 " + (pad.t + plotH / 2) + ")"
+    }, svg).textContent = yf.label;
+
+    var note = this.host.querySelector(".scatter-note");
+    if (!note) {
+      note = document.createElement("p");
+      note.className = "scatter-note muted";
+      this.host.appendChild(note);
+    }
+    note.textContent =
+      points.length + " players · dot size is " + sf.label + " · click any player to open their page";
+  };
+
+  /* ======================================================================
      Loaders
      ====================================================================== */
 
@@ -558,6 +903,12 @@
           label: "Player ratings over time",
           formatX: function (d) { return String(d).slice(0, 7); }
         });
+      });
+    },
+
+    "player-scatter": function (host, url) {
+      return fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+        new PlayerScatter(host, data);
       });
     },
 
