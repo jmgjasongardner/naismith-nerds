@@ -242,6 +242,36 @@ button, input, select { font: inherit; color: inherit; }
 .site-nav a:hover { background: var(--panel); color: var(--text); }
 .site-nav a[aria-current="page"] { color: var(--text); background: var(--panel); }
 
+/* Below the breakpoint the same links become a drawer under the header, opened
+   by the hamburger. One list of links, two layouts — nothing is duplicated. */
+@media (max-width: 999px) {
+  .site-nav[data-open] {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 8px;
+    gap: 2px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--line-strong);
+    box-shadow: var(--shadow-lg);
+    /* Long enough lists scroll rather than run off the bottom of the phone. */
+    max-height: calc(100dvh - var(--header-h));
+    overflow-y: auto;
+    /* Safe area for the notch/home indicator when the drawer reaches the edge. */
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .site-nav[data-open] a {
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -267,6 +297,19 @@ button, input, select { font: inherit; color: inherit; }
   border-color: var(--line-strong);
 }
 .icon-btn svg { width: 17px; height: 17px; }
+
+/* Opens the nav drawer; pointless once the links sit in the header themselves.
+   Declared after .icon-btn so the breakpoint wins over its display: grid. */
+@media (min-width: 1000px) { .nav-toggle { display: none; } }
+
+.nav-toggle .icon-close { display: none; }
+.nav-toggle[aria-expanded="true"] .icon-bars { display: none; }
+.nav-toggle[aria-expanded="true"] .icon-close { display: block; }
+.nav-toggle[aria-expanded="true"] {
+  background: var(--panel);
+  color: var(--text);
+  border-color: var(--line-strong);
+}
 
 /* Jason's own photo, linking to his player page. */
 .header-me {

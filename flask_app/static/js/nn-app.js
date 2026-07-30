@@ -264,6 +264,46 @@
     window.addEventListener("scroll", hide, { passive: true });
   }
 
+  /* -- mobile nav -------------------------------------------------------- */
+
+  /* The header links are hidden below 1000px, where they become a drawer.
+     Without this the phone had no way to reach Team Builder or the Glossary. */
+  function initNav() {
+    var toggle = document.getElementById("navToggle");
+    var nav = document.getElementById("siteNav");
+    if (!toggle || !nav) return;
+
+    function setOpen(open) {
+      if (open) nav.setAttribute("data-open", "");
+      else nav.removeAttribute("data-open");
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+
+    toggle.addEventListener("click", function (event) {
+      event.stopPropagation();
+      setOpen(toggle.getAttribute("aria-expanded") !== "true");
+    });
+
+    /* A tap on a link that only changes the hash fires no navigation, so the
+       drawer would otherwise stay open on top of the table it just revealed. */
+    nav.addEventListener("click", function (event) {
+      if (event.target.closest("a")) setOpen(false);
+    });
+
+    document.addEventListener("click", function (event) {
+      if (!event.target.closest("#siteNav")) setOpen(false);
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") setOpen(false);
+    });
+
+    // Rotating to landscape can cross the breakpoint; don't strand the state.
+    window.matchMedia("(min-width: 1000px)").addEventListener("change", function () {
+      setOpen(false);
+    });
+  }
+
   /* -- search ------------------------------------------------------------ */
 
   function initSearch() {
@@ -426,6 +466,7 @@
     });
 
     wireFilters();
+    initNav();
     initSearch();
     initTooltips();
   });

@@ -28,7 +28,7 @@
       <span class="brand__text">Naismith Nerds</span>
     </a>
 
-    <nav class="site-nav">
+    <nav class="site-nav" id="siteNav">
       <a href="{{ url_for('home') }}#ratings">Ratings</a>
       <a href="{{ url_for('home') }}#stats">Players</a>
       <a href="{{ url_for('home') }}#games">Games</a>
@@ -48,6 +48,16 @@
     </div>
 
     <div class="header-actions">
+      <button id="navToggle" class="icon-btn nav-toggle" type="button"
+              aria-label="Menu" aria-controls="siteNav" aria-expanded="false">
+        <svg class="icon-bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18M3 12h18M3 18h18"/>
+        </svg>
+        <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 5l14 14M19 5L5 19"/>
+        </svg>
+      </button>
+
       <button id="themeToggle" class="icon-btn" type="button" aria-label="Toggle light and dark theme">
         <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="4"/>
