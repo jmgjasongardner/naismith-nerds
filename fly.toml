@@ -6,22 +6,20 @@ primary_region = 'iad'
 [processes]
   app = "gunicorn -w 1 -b 0.0.0.0:8080 --timeout 120 --graceful-timeout 30 flask_app.app:app"
 
-# NO VOLUME — deliberately, to avoid any extra Fly charge.
+# State that must outlive a deploy lives on this volume, not on the machine's
+# own filesystem. Running without it cost $0.15/mo and broke two things on
+# every single deploy:
 #
-# State therefore lives on the machine's own filesystem (see paths.py, which
-# falls back to ./data when /data is absent). That persists across restarts and
-# suspends, but is replaced on every deploy. Consequences:
-#
-#   * uploaded workbooks and rebuilt artifacts survive until the next deploy
-#   * artifacts rebuild automatically on first boot after a deploy
-#   * a rotated OneDrive token would not survive a deploy
-#
-# If a volume is ever wanted (~$0.15/mo for 1 GB), add back:
-#   [mounts]
-#     source = 'naismith_data'
-#     destination = '/data'
-#     initial_size = '1gb'
-# and set NN_DATA_DIR = '/data' under [env].
+#   * the rotated OneDrive refresh token was discarded, so the app fell back to
+#     the REFRESH_TOKEN secret — a value production had already redeemed, and
+#     Microsoft invalidates a refresh token the moment it is redeemed. Result:
+#     AADSTS70000 and a manual device-code sign-in after every push.
+#   * ratings snapshots written to DuckDB since the last commit were lost. They
+#     accumulate one game-day at a time and cannot be recomputed. See db_path().
+[mounts]
+  source = 'naismith_data'
+  destination = '/data'
+  initial_size = '1gb'
 
 [http_service]
   internal_port = 8080
@@ -38,7 +36,13 @@ primary_region = 'iad'
   timeout = '10s'
   path = '/health'
 
+# 512MB, not 1GB. A measured rebuild peaks at ~364MB resident and the rest of
+# the machine (gunicorn master, hallpass, init) is ~60MB, so 1GB was paying
+# roughly $2.50/mo for headroom nothing used. Swap covers the margin: the
+# rebuild runs on a background thread, so paging there is invisible to requests.
+swap_size_mb = 512
+
 [[vm]]
-  memory = '1gb'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1

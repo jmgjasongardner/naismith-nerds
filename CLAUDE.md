@@ -241,7 +241,7 @@ All heavy computation happens **before** rendering.
 
 ### 9.1 Hosting Platform
 
-* **Fly.io** — app `naismith-nerds`, region `iad`, 1 shared CPU / 1 GB
+* **Fly.io** — app `naismith-nerds`, region `iad`, 1 shared CPU / 512 MB + 512 MB swap
 * Custom domain `naismith-nerds.com` (+ `www`), certs managed by Fly
 * Deployed by GitHub Actions on push to `main` (`.github/workflows/fly-deploy.yml`)
 
@@ -268,6 +268,13 @@ Fly secrets:
 
 * `CLIENT_ID`, `TENANT_ID` — Microsoft app registration
 * `REFRESH_TOKEN` — seed only; once `/data/onedrive_token.json` exists it wins
+
+> The seed is single-use. Microsoft invalidates a refresh token the instant it
+> is redeemed, so the value in this secret is dead the moment production first
+> uses it. It is only ever good for bootstrapping an empty volume. Do not treat
+> it as a recovery copy, and do not run
+> `python -m collective_bball.utils.onedrive_client` locally while production is
+> healthy — that rotates the shared token and breaks the deployed app.
 * `UPLOAD_PASSWORD` — guards `/upload` and `/admin/refresh`
 
 Optional: `REFRESH_INTERVAL_SECONDS` (default 1800), `DISABLE_AUTO_REFRESH`,

@@ -26,12 +26,13 @@ WORKDIR /naismith-nerds
 COPY --from=builder /naismith-nerds/.venv /naismith-nerds/.venv
 COPY . .
 
-# State (DuckDB, prebuilt artifacts, any uploaded workbook) lives here. With no
-# Fly volume attached this is the machine's own filesystem: it survives restarts
-# and suspends, but is replaced on deploy, after which artifacts rebuild on
-# first boot. Point NN_DATA_DIR at a mount if a volume is ever added.
-ENV NN_DATA_DIR=/naismith-nerds/data
-RUN mkdir -p /naismith-nerds/data
+# State (DuckDB, the rotating OneDrive token, prebuilt artifacts, any uploaded
+# workbook) lives here. This is the Fly volume declared in fly.toml, so it
+# survives deploys — which is the whole point: the token rotates on every
+# refresh and the ratings history accumulates one game-day at a time, and both
+# were previously wiped by each deploy.
+ENV NN_DATA_DIR=/data
+RUN mkdir -p /data
 
 EXPOSE 8080
 
