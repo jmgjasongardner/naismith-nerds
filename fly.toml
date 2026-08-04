@@ -1,6 +1,14 @@
 app = 'naismith-nerds'
 primary_region = 'iad'
 
+# Must stay above every section header: a bare key after a [table] belongs to
+# that table, so parking this next to [[vm]] silently made it
+# http_service.checks.swap_size_mb and enabled no swap at all.
+#
+# Headroom for the rebuild, which peaks around 364MB resident on a 512MB
+# machine. It runs on a background thread, so paging never delays a request.
+swap_size_mb = 512
+
 [build]
 
 [processes]
@@ -38,10 +46,7 @@ primary_region = 'iad'
 
 # 512MB, not 1GB. A measured rebuild peaks at ~364MB resident and the rest of
 # the machine (gunicorn master, hallpass, init) is ~60MB, so 1GB was paying
-# roughly $2.50/mo for headroom nothing used. Swap covers the margin: the
-# rebuild runs on a background thread, so paging there is invisible to requests.
-swap_size_mb = 512
-
+# roughly $2.50/mo for headroom nothing used. See swap_size_mb at the top.
 [[vm]]
   memory = '512mb'
   cpu_kind = 'shared'

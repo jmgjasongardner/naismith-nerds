@@ -250,13 +250,25 @@ class BasketballData:
         return combined.select(rest[:at] + added + rest[at:])
 
     def write_to_db(self, conn, date_to_filter=None):
+        """Snapshot the current ratings under the workbook's latest game date.
+
+        DO UPDATE, not DO NOTHING. Games get logged over the couple of hours a
+        run is happening, so a rebuild that fires mid-session would otherwise
+        pin that day's snapshot to a partial slate and never revise it — one
+        game in, and the ratings-over-time chart carries that forever.
+
+        Overwriting cannot corrupt older history: every rebuild writes exactly
+        one date, the newest in the workbook, so earlier snapshots are never
+        touched. Only the day still in progress moves, which is the point.
+        """
         ratings_df = self.ratings.with_columns(
             pl.lit(
                 date_to_filter or self.games["game_date"].unique().sort().last()
             ).alias("date")
         ).to_pandas()
         conn.execute(
-            "INSERT INTO ratings BY NAME SELECT * FROM ratings_df ON CONFLICT(player, date) DO NOTHING"
+            "INSERT INTO ratings BY NAME SELECT * FROM ratings_df "
+            "ON CONFLICT(player, date) DO UPDATE SET rating = EXCLUDED.rating"
         )
 
     @staticmethod
