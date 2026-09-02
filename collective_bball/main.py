@@ -33,7 +33,14 @@ def parse_args(argv=None):
         nargs="*",
         default=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
     )
-    parser.add_argument("--decay_half_life", default=270, type=int)
+    parser.add_argument("--decay_half_life", default=365, type=int)
+    # Bandwidth of the two-sided kernel used for per-game historical ratings.
+    # Chosen to match decay_half_life so that at the most recent game day --
+    # where the kernel has nothing to its right -- it collapses to the same
+    # one-sided decay the leaderboard rating uses. Leave-one-day-out CV shows
+    # narrower is worse out of sample (60d costs 2.1% RMSE, 365d costs 0.19%)
+    # while 365d still removes 43% of the drift in a historical spread.
+    parser.add_argument("--time_centered_half_life", default=365, type=int)
     parser.add_argument("--save_csv", action="store_true")
     parser.add_argument("--loop_through_ratings_dates", action="store_true")
     parser.add_argument(

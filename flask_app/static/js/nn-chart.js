@@ -80,6 +80,18 @@
     return ticks;
   }
 
+  // Blend two hex colors. Used for the diverging ring on the quadrant chart,
+  // where the encoded value runs either side of a neutral midpoint.
+  function mix(a, b, t) {
+    function part(hex, i) { return parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16); }
+    var out = "#";
+    for (var i = 0; i < 3; i++) {
+      var v = Math.round(part(a, i) + (part(b, i) - part(a, i)) * t);
+      out += ("0" + Math.max(0, Math.min(255, v)).toString(16)).slice(-2);
+    }
+    return out;
+  }
+
   /* ======================================================================
      Line chart
 
@@ -96,6 +108,13 @@
     this.selected = config.selectable
       ? names.slice(0, Math.min(DEFAULT_SELECTED, names.length))
       : names;
+
+    /* Toggle mode: a handful of named series rather than a roster, so the
+       legend itself is the control. Click hides one, double-click isolates
+       it — the Plotly gesture people already know. Distinct from `selectable`,
+       which pairs a search picker with a context layer because it has to cope
+       with 86 players. */
+    this.toggle = !!config.toggle;
 
     this.x0 = 0;
     this.x1 = config.x.length - 1;
@@ -346,34 +365,88 @@
       });
     }
 
+    /* In toggle mode a series keeps the colour it was born with, so hiding
+       one does not recolour the others. In selectable mode the palette is
+       assigned by selection order, which is what makes the top eight read as
+       slots 1-8. */
+    var order = config.series.map(function (s) { return s.name; });
+    function styleOf(name, idx) {
+      return styleFor(self.toggle ? order.indexOf(name) : idx);
+    }
+
     var drawn = [];
     this.selected.forEach(function (name, idx) {
       var series = config.series.filter(function (s) { return s.name === name; })[0];
       if (!series) return;
-      var style = styleFor(idx);
+      var style = styleOf(name, idx);
       var attrs = { d: path(series), class: "chart-line", stroke: style.color };
       if (style.dash) attrs["stroke-dasharray"] = style.dash;
       el("path", attrs, dataLayer);
       drawn.push({ name: name, series: series, style: style });
     });
 
-    /* Legend: always present, names in ink with a color swatch beside them. */
-    this.legendBox.innerHTML = drawn.length
-      ? drawn.map(function (d) {
+    /* Legend: always present, names in ink with a color swatch beside them.
+       Toggle mode lists every series, dimming the hidden ones, so a hidden
+       line still has somewhere to be clicked back on. */
+    var legendItems = this.toggle ? order : drawn.map(function (d) { return d.name; });
+    this.legendBox.innerHTML = legendItems.length
+      ? legendItems.map(function (name, idx) {
+          var on = self.selected.indexOf(name) !== -1;
+          var style = styleOf(name, idx);
           return (
-            '<button class="chart-legend__item" type="button" data-name="' + esc(d.name) +
-            '" title="Click to remove">' +
-            '<span class="chart-legend__swatch" style="background:' + d.style.color + '"></span>' +
-            "<span>" + esc(d.name) + "</span></button>"
+            '<button class="chart-legend__item" type="button" data-name="' + esc(name) +
+            '"' + (self.toggle && !on ? ' data-off="true"' : "") +
+            ' title="' + (self.toggle
+              ? "Click to " + (on ? "hide" : "show") + " · double-click to isolate"
+              : "Click to remove") + '">' +
+            '<span class="chart-legend__swatch" style="background:' + style.color + '"></span>' +
+            "<span>" + esc(name) + "</span></button>"
           );
         }).join("")
       : '<span class="muted" style="font-size:.8rem">No players selected</span>';
 
+    if (this.toggle && legendItems.length) {
+      this.legendBox.insertAdjacentHTML(
+        "beforeend",
+        '<span class="chart-legend__hint">click to hide · double-click to isolate</span>'
+      );
+    }
+
     this.legendBox.onclick = function (event) {
       var btn = event.target.closest(".chart-legend__item");
-      if (!btn || !config.selectable) return;
+      if (!btn) return;
+
+      if (self.toggle) {
+        // Let a double-click land before acting, or the first click of the
+        // pair would hide the very series being isolated.
+        clearTimeout(self._legendTimer);
+        var name = btn.dataset.name;
+        self._legendTimer = setTimeout(function () {
+          var next = self.selected.filter(function (n) { return n !== name; });
+          if (next.length === self.selected.length) next.push(name);
+          // Never leave the plot empty; clicking the last one restores all.
+          self.selected = next.length ? order.filter(function (n) {
+            return next.indexOf(n) !== -1;
+          }) : order.slice();
+          self.scheduleRender();
+        }, 220);
+        return;
+      }
+
+      if (!config.selectable) return;
       self.selected = self.selected.filter(function (n) { return n !== btn.dataset.name; });
       if (self.pickerList) self.renderPickerList("");
+      self.scheduleRender();
+    };
+
+    this.legendBox.ondblclick = function (event) {
+      var btn = event.target.closest(".chart-legend__item");
+      if (!btn || !self.toggle) return;
+      clearTimeout(self._legendTimer);
+      var name = btn.dataset.name;
+      // Isolate, or restore everything if this one is already alone.
+      var alone = self.selected.length === 1 && self.selected[0] === name;
+      self.selected = alone ? order.slice() : [name];
       self.scheduleRender();
     };
 
@@ -563,10 +636,10 @@
      so this is really a small exploration tool rather than a fixed chart.
      ====================================================================== */
 
-  function PlayerScatter(host, data) {
+  function PlayerScatter(host, data, url) {
     this.host = host;
-    this.fields = data.fields;
-    this.players = data.players;
+    this.url = (url || "").split("?")[0];
+    this.adopt(data);
 
     var keys = data.fields.map(function (f) { return f.key; });
     var pick = function (wanted, fallback) {
@@ -588,6 +661,17 @@
     this.render();
   }
 
+  /* Take a fresh payload. Called on construction and again whenever the
+     window changes, since a window is a different set of aggregates. */
+  PlayerScatter.prototype.adopt = function (data) {
+    this.fields = data.fields;
+    this.players = data.players;
+    this.window = data.window || "all";
+    this.windows = data.windows || [["all", "All time"]];
+    this.since = data.since;
+    this.minGames = data.minGames;
+  };
+
   PlayerScatter.prototype.buildControls = function () {
     var self = this;
     var options = this.fields.map(function (f) {
@@ -604,9 +688,16 @@
           '<select class="select scatter-' + axis + '">' + options + "</select></label>"
         );
       }).join("") +
+      '<label class="field">Time span<select class="select scatter-window">' +
+      this.windows.map(function (w) {
+        return '<option value="' + esc(w[0]) + '"' +
+          (w[0] === self.window ? " selected" : "") + ">" + esc(w[1]) + "</option>";
+      }).join("") +
+      "</select></label>" +
       '<button class="btn scatter-reset" type="button" hidden>Reset zoom</button>' +
-      '<span class="chart-hint muted">Drag a box to zoom · double-click to reset · 20+ games</span>';
+      '<span class="chart-hint muted">Drag a box to zoom · double-click to reset</span>';
     this.host.appendChild(bar);
+    this.bar = bar;
 
     ["x", "y", "size"].forEach(function (axis) {
       var select = bar.querySelector(".scatter-" + axis);
@@ -617,6 +708,25 @@
         // an axis change.
         self.resetZoom(true);
       });
+    });
+
+    // Same reason as the quadrant threshold: the browser may restore a stale
+    // value, and the payload decides what is actually on screen.
+    var windowSelect = bar.querySelector(".scatter-window");
+    windowSelect.value = this.window;
+
+    windowSelect.addEventListener("change", function () {
+      var chosen = this.value;
+      self.plot.innerHTML = '<div class="loading">Loading chart</div>';
+      fetch(self.url + "?window=" + encodeURIComponent(chosen))
+        .then(function (r) { return r.json(); })
+        .then(function (fresh) {
+          self.adopt(fresh);
+          // The axis picks are field keys, and every window exposes the same
+          // fields, so the selections survive. The zoom does not: the same
+          // field spans a different range over a different window.
+          self.resetZoom(true);
+        });
     });
 
     this.resetBtn = bar.querySelector(".scatter-reset");
@@ -885,7 +995,365 @@
       this.host.appendChild(note);
     }
     note.textContent =
-      points.length + " players · dot size is " + sf.label + " · click any player to open their page";
+      points.length + " players · dot size is " + sf.label +
+      (this.since
+        ? " · games since " + this.since + ", " + this.minGames + "+ in the window"
+        : " · all time") +
+      " · ratings are always full-history · click any player to open their page";
+  };
+
+  /* ======================================================================
+     With / against quadrant
+
+     For one player: everyone they have shared enough court time with, placed
+     by how the pair does as teammates (x) and how the player does against
+     them (y).
+
+     Both axes come off the server already adjusted for the *other* player's
+     rating. Without that the two axes are near mirror images — the raw pair
+     numbers contain both players' individual value, so the chart collapses
+     into a diagonal that just re-reads the leaderboard. See the docstring on
+     /api/player/<name>/quadrant for the numbers.
+
+     The dotted cross sits at the player's own Gospel, which after the
+     adjustment is where an average partner lands. That, not zero, is the line
+     that splits the quadrants: zero means "met expectation", the dotted cross
+     means "typical for me".
+     ====================================================================== */
+
+  // Corner labels, clockwise from top-right. Swap in NBA archetypes here if
+  // you'd rather name them that way; nothing else reads these strings.
+  var QUADRANT_LABELS = {
+    tr: "Thrives around them",
+    br: "Better as allies",
+    bl: "Can't get going",
+    tl: "Better as rivals"
+  };
+
+  function QuadrantChart(host, data, url) {
+    this.host = host;
+    this.url = url;
+    this.data = data;
+    this.minGames = data.minGames;
+
+    host.innerHTML = "";
+    this.buildControls();
+    this.plot = document.createElement("div");
+    this.plot.className = "chart";
+    host.appendChild(this.plot);
+    this.render();
+  }
+
+  QuadrantChart.prototype.buildControls = function () {
+    var self = this;
+    var bar = document.createElement("div");
+    bar.className = "chart-toolbar";
+    bar.innerHTML =
+      '<label class="field">Min games with &amp; against' +
+      '<select class="select quad-min">' +
+      [4, 6, 8, 10, 15, 20, 25].map(function (n) {
+        return '<option value="' + n + '"' +
+          (n === self.minGames ? " selected" : "") + ">" + n + "</option>";
+      }).join("") +
+      "</select></label>" +
+      '<span class="chart-hint muted">Adjusted for the other player\'s rating</span>';
+    this.host.insertBefore(bar, this.host.firstChild);
+
+    // Chrome restores a select's value across reloads and back-navigation,
+    // which would leave the control claiming one threshold while the chart
+    // draws another. The payload is the source of truth, so stamp it back.
+    var minSelect = bar.querySelector(".quad-min");
+    minSelect.value = String(this.minGames);
+
+    minSelect.addEventListener("change", function () {
+      var n = this.value;
+      self.plot.innerHTML = '<div class="loading">Loading chart</div>';
+      fetch(self.url + (self.url.indexOf("?") === -1 ? "?" : "&") + "min_games=" + n)
+        .then(function (r) { return r.json(); })
+        .then(function (fresh) {
+          self.data = fresh;
+          self.minGames = fresh.minGames;
+          self.render();
+        });
+    });
+  };
+
+  QuadrantChart.prototype.render = function () {
+    var self = this;
+    var points = this.data.points || [];
+    var gospel = this.data.gospel;
+
+    this.plot.innerHTML = "";
+    this.plot.style.position = "relative";
+
+    if (points.length < 3) {
+      this.plot.innerHTML =
+        '<div class="empty-state">Not enough shared court time yet.<br>' +
+        '<span class="muted">No one clears ' + this.minGames +
+        " games both with and against " + esc(this.data.player) +
+        ". Try a lower threshold.</span></div>";
+      return;
+    }
+
+    var width = Math.max(this.plot.clientWidth || this.host.clientWidth || 700, 300);
+    var height = 540;
+    var pad = { t: 18, r: 22, b: 54, l: 62 };
+    var plotW = width - pad.l - pad.r;
+    var plotH = height - pad.t - pad.b;
+
+    var svg = el("svg", {
+      viewBox: "0 0 " + width + " " + height, width: "100%", height: height,
+      role: "img",
+      "aria-label": "How " + this.data.player + " performs with versus against each player"
+    }, this.plot);
+
+    var defs = el("defs", {}, svg);
+    var clip = el("clipPath", { id: "nn-quad-clip", clipPathUnits: "objectBoundingBox" }, defs);
+    el("circle", { cx: 0.5, cy: 0.5, r: 0.5 }, clip);
+
+    var tip = document.createElement("div");
+    tip.className = "chart-tooltip";
+    this.plot.appendChild(tip);
+
+    // Domains include the reference cross, so the dotted lines are always on
+    // screen even when every dot sits to one side of them.
+    function extent(key) {
+      var lo = Infinity, hi = -Infinity;
+      points.forEach(function (p) {
+        if (p[key] < lo) lo = p[key];
+        if (p[key] > hi) hi = p[key];
+      });
+      [0, gospel].forEach(function (v) {
+        if (v === null || v === undefined) return;
+        if (v < lo) lo = v;
+        if (v > hi) hi = v;
+      });
+      if (lo === hi) { lo -= 1; hi += 1; }
+      var padding = (hi - lo) * 0.1;
+      return [lo - padding, hi + padding];
+    }
+
+    var xd = extent("x"), yd = extent("y");
+    function sx(v) { return pad.l + ((v - xd[0]) / (xd[1] - xd[0])) * plotW; }
+    function sy(v) { return pad.t + (1 - (v - yd[0]) / (yd[1] - yd[0])) * plotH; }
+    function sign(v) { return (v > 0 ? "+" : "") + v.toFixed(2); }
+
+    /* Grid */
+    niceTicks(yd[0], yd[1], 5).forEach(function (t) {
+      el("line", { x1: pad.l, x2: pad.l + plotW, y1: sy(t), y2: sy(t), class: "chart-grid" }, svg);
+      el("text", { x: pad.l - 8, y: sy(t) + 3, "text-anchor": "end", class: "chart-label" },
+        svg).textContent = t;
+    });
+    niceTicks(xd[0], xd[1], 6).forEach(function (t) {
+      el("line", { x1: sx(t), x2: sx(t), y1: pad.t, y2: pad.t + plotH, class: "chart-grid" }, svg);
+      el("text", { x: sx(t), y: height - 34, "text-anchor": "middle", class: "chart-label" },
+        svg).textContent = t;
+    });
+
+    /* Bold cross at zero — met expectation. */
+    el("line", { x1: sx(0), x2: sx(0), y1: pad.t, y2: pad.t + plotH, class: "chart-zero" }, svg);
+    el("line", { x1: pad.l, x2: pad.l + plotW, y1: sy(0), y2: sy(0), class: "chart-zero" }, svg);
+
+    /* Dotted cross at this player's own Gospel — their personal average. */
+    var hasRef = gospel !== null && gospel !== undefined;
+    if (hasRef) {
+      el("line", {
+        x1: sx(gospel), x2: sx(gospel), y1: pad.t, y2: pad.t + plotH,
+        class: "chart-ref", "stroke-dasharray": "4 4"
+      }, svg);
+      el("line", {
+        x1: pad.l, x2: pad.l + plotW, y1: sy(gospel), y2: sy(gospel),
+        class: "chart-ref", "stroke-dasharray": "4 4"
+      }, svg);
+    }
+
+    /* Corner labels for the four quadrants formed by the dotted cross. */
+    var corners = [
+      ["tr", pad.l + plotW - 8, pad.t + 16, "end"],
+      ["br", pad.l + plotW - 8, pad.t + plotH - 8, "end"],
+      ["bl", pad.l + 8, pad.t + plotH - 8, "start"],
+      ["tl", pad.l + 8, pad.t + 16, "start"]
+    ];
+    corners.forEach(function (c) {
+      el("text", {
+        x: c[1], y: c[2], "text-anchor": c[3], class: "chart-quadrant-label"
+      }, svg).textContent = QUADRANT_LABELS[c[0]];
+    });
+
+    /* Dot size by total shared games. */
+    var gLo = Infinity, gHi = -Infinity;
+    points.forEach(function (p) {
+      if (p.g < gLo) gLo = p.g;
+      if (p.g > gHi) gHi = p.g;
+    });
+    var MIN_R = 10, MAX_R = 28;
+    function radius(g) {
+      if (gHi === gLo) return (MIN_R + MAX_R) / 2;
+      return MIN_R + Math.sqrt((g - gLo) / (gHi - gLo)) * (MAX_R - MIN_R);
+    }
+
+    /* Ring hue by teammate/opponent mix. A game gives 4 teammates and 5
+       opponents, so an even split is 4/9 — that, not 1/2, is the neutral
+       point, or every single dot would read as opponent-heavy. */
+    var baseline = this.data.shareBaseline || 4 / 9;
+    var hues = palette();
+    var WITH_HUE = hues[1], AGAINST_HUE = hues[0], NEUTRAL = isDark() ? "#6b7280" : "#9aa3ad";
+    var maxSkew = 0.001;
+    points.forEach(function (p) {
+      maxSkew = Math.max(maxSkew, Math.abs(p.s - baseline));
+    });
+    function ringColor(share) {
+      var t = Math.min(Math.abs(share - baseline) / maxSkew, 1);
+      return mix(NEUTRAL, share >= baseline ? WITH_HUE : AGAINST_HUE, t);
+    }
+
+    var clipId = "nn-quad-box-" + (QuadrantChart._seq = (QuadrantChart._seq || 0) + 1);
+    var box = el("clipPath", { id: clipId }, defs);
+    el("rect", { x: pad.l, y: pad.t, width: plotW, height: plotH }, box);
+    var layer = el("g", { "clip-path": "url(#" + clipId + ")" }, svg);
+
+    function hideTip() { tip.setAttribute("data-visible", "false"); }
+
+    // Biggest first so the small dots stay reachable on top.
+    points.slice().sort(function (a, b) { return b.g - a.g; }).forEach(function (p) {
+      var r = radius(p.g);
+      var cx = sx(p.x), cy = sy(p.y);
+
+      var g = el("a", {
+        class: "scatter-dot", href: "/player/" + encodeURIComponent(p.n)
+      }, layer);
+
+      if (p.i) {
+        el("image", {
+          href: "/static/player_pics_thumbs/" + encodeURIComponent(p.n) + ".webp",
+          x: cx - r, y: cy - r, width: r * 2, height: r * 2,
+          preserveAspectRatio: "xMidYMid slice",
+          "clip-path": "url(#nn-quad-clip)"
+        }, g);
+      } else {
+        el("circle", { cx: cx, cy: cy, r: r, class: "scatter-dot__fallback" }, g);
+        el("text", {
+          x: cx, y: cy + r * 0.3, "text-anchor": "middle",
+          class: "scatter-dot__initials", "font-size": Math.max(9, r * 0.75)
+        }, g).textContent = p.n.slice(0, 2).toUpperCase();
+      }
+
+      el("circle", {
+        cx: cx, cy: cy, r: r, fill: "none",
+        stroke: ringColor(p.s), "stroke-width": 3, class: "quad-dot__ring"
+      }, g);
+
+      g.addEventListener("mouseenter", function (event) {
+        g.parentNode.appendChild(g);
+        var rect = svg.getBoundingClientRect();
+        var share = Math.round(p.s * 100);
+        tip.innerHTML =
+          '<div class="chart-tooltip__head">' + esc(p.n) + "</div>" +
+          "<div>With them <strong>" + sign(p.x) + "</strong> " +
+          '<span class="muted">(raw ' + sign(p.rx) + ")</span></div>" +
+          "<div>Against them <strong>" + sign(p.y) + "</strong> " +
+          '<span class="muted">(raw ' + sign(p.ry) + ")</span></div>" +
+          '<div class="muted">' + p.tg + " together · " + p.og + " opposed · " +
+          share + "% teammate</div>" +
+          '<div class="muted">their rating ' + sign(p.r) + "</div>";
+        tip.setAttribute("data-visible", "true");
+        var tb = tip.getBoundingClientRect();
+        tip.style.left = Math.min(Math.max(event.clientX - rect.left - tb.width / 2, 4),
+          self.plot.clientWidth - tb.width - 4) + "px";
+        tip.style.top = Math.max(event.clientY - rect.top - tb.height - 14, 4) + "px";
+      });
+      g.addEventListener("mouseleave", hideTip);
+    });
+
+    this.plot.addEventListener("mouseleave", hideTip);
+    svg.addEventListener("mouseleave", hideTip);
+    if (this._cleanup) this._cleanup();
+    document.addEventListener("click", hideTip);
+    window.addEventListener("scroll", hideTip, { passive: true });
+    this._cleanup = function () {
+      document.removeEventListener("click", hideTip);
+      window.removeEventListener("scroll", hideTip);
+    };
+
+    /* Axis titles */
+    el("text", {
+      x: pad.l + plotW / 2, y: height - 10, "text-anchor": "middle", class: "chart-axis-title"
+    }, svg).textContent = "Gospel as teammates →";
+    el("text", {
+      x: 14, y: pad.t + plotH / 2, "text-anchor": "middle", class: "chart-axis-title",
+      transform: "rotate(-90 14 " + (pad.t + plotH / 2) + ")"
+    }, svg).textContent = "Gospel against them →";
+
+    /* Legend. Both encodings are continuous, so each gets a drawn sample
+       rather than a swatch: three circles at the real radii the chart uses,
+       and a ring ramp annotated with the actual extremes in the data. */
+    var legend = this.host.querySelector(".quad-legend");
+    if (!legend) {
+      legend = document.createElement("div");
+      legend.className = "quad-legend";
+      this.host.appendChild(legend);
+    }
+
+    var sizeStops = [gLo, Math.round((gLo + gHi) / 2), gHi];
+    var sizeW = 168, sizeH = 2 * MAX_R + 20;
+    var sizeSvg =
+      '<svg width="' + sizeW + '" height="' + sizeH + '" viewBox="0 0 ' + sizeW + " " +
+      sizeH + '" role="img" aria-label="Dot size scale">' +
+      sizeStops.map(function (g, i) {
+        var r = radius(g);
+        var cx = 6 + r + i * ((sizeW - 12 - 2 * radius(gHi)) / 2);
+        return '<circle cx="' + cx + '" cy="' + (MAX_R + 2) + '" r="' + r +
+          '" class="quad-legend__bubble"/>' +
+          '<text x="' + cx + '" y="' + (sizeH - 3) +
+          '" text-anchor="middle" class="quad-legend__tick">' + g + "</text>";
+      }).join("") + "</svg>";
+
+    // Wide enough that the two end labels never meet in the middle; the ring
+    // row is centred inside that width rather than left-aligned under them.
+    var ringStops = [-1, -0.5, 0, 0.5, 1];
+    var ringW = 210, ringSpan = (ringStops.length - 1) * 29 + 22;
+    var ringX0 = (ringW - ringSpan) / 2 + 11;
+    var ringSvg =
+      '<svg width="' + ringW + '" height="46" viewBox="0 0 ' + ringW + ' 46" role="img" ' +
+      'aria-label="Ring colour scale from mostly opponent to mostly teammate">' +
+      ringStops.map(function (t, i) {
+        var share = baseline + t * maxSkew;
+        return '<circle cx="' + (ringX0 + i * 29) + '" cy="17" r="11" fill="none" ' +
+          'stroke-width="3" stroke="' + ringColor(share) + '"/>';
+      }).join("") +
+      '<text x="2" y="42" class="quad-legend__tick" text-anchor="start">more opponent</text>' +
+      '<text x="' + (ringW - 2) + '" y="42" class="quad-legend__tick" ' +
+      'text-anchor="end">more teammate</text>' +
+      "</svg>";
+
+    legend.innerHTML =
+      '<div class="quad-legend__block"><span class="quad-legend__title">' +
+      "Dot size — games shared</span>" + sizeSvg + "</div>" +
+      '<div class="quad-legend__block"><span class="quad-legend__title">' +
+      "Ring — teammate vs opponent mix</span>" + ringSvg + "</div>" +
+      '<div class="quad-legend__block quad-legend__block--lines">' +
+      '<span class="quad-legend__title">Reference lines</span>' +
+      '<svg width="150" height="46" viewBox="0 0 150 46" role="img" aria-label="Line key">' +
+      '<line x1="4" y1="12" x2="40" y2="12" class="chart-zero"/>' +
+      '<text x="48" y="16" class="quad-legend__tick">met expectation (0)</text>' +
+      '<line x1="4" y1="30" x2="40" y2="30" class="chart-ref" stroke-dasharray="4 4"/>' +
+      '<text x="48" y="34" class="quad-legend__tick">' + esc(this.data.player) +
+      "'s Gospel " + (hasRef ? sign(gospel) : "n/a") + "</text></svg></div>";
+
+    var note = this.host.querySelector(".quad-note");
+    if (!note) {
+      note = document.createElement("p");
+      note.className = "quad-note muted";
+      this.host.appendChild(note);
+    }
+    note.innerHTML =
+      points.length + " players with " + this.minGames +
+      "+ games both with and against " + esc(this.data.player) +
+      ". Right of the dotted line means the pair beats " + esc(this.data.player) +
+      "'s own average as teammates; above it means " + esc(this.data.player) +
+      " beats them by more than usual when they're on the other side. " +
+      "A game hands out 4 teammates and 5 opponents, so an even mix sits at 44% " +
+      "teammate, not 50%.";
   };
 
   /* ======================================================================
@@ -908,8 +1376,55 @@
 
     "player-scatter": function (host, url) {
       return fetch(url).then(function (r) { return r.json(); }).then(function (data) {
-        new PlayerScatter(host, data);
+        new PlayerScatter(host, data, url);
       });
+    },
+
+    "player-quadrant": function (host, url) {
+      return fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+        new QuadrantChart(host, data, url);
+      });
+    },
+
+    /* The same chart, league-wide, with a picker in front of it. Reuses the
+       per-player endpoint rather than shipping every player's pairings. */
+    "quadrant-picker": function (host, url) {
+      return fetch(url).then(function (r) { return r.json(); })
+        .then(function (index) {
+          var players = index.players || [];
+          if (!players.length) {
+            host.innerHTML = '<div class="empty-state">No one has enough shared court time yet.</div>';
+            return;
+          }
+
+          host.innerHTML = "";
+          var bar = document.createElement("div");
+          bar.className = "chart-toolbar";
+          bar.innerHTML =
+            '<label class="field">Player<select class="select quad-player">' +
+            players.map(function (row) {
+              return '<option value="' + esc(row[0]) + '">' + esc(row[0]) +
+                " (" + row[1] + ")</option>";
+            }).join("") +
+            "</select></label>" +
+            '<span class="chart-hint muted">Count is how many players clear the threshold with them</span>';
+          host.appendChild(bar);
+
+          var mount = document.createElement("div");
+          host.appendChild(mount);
+
+          function show(name) {
+            mount.innerHTML = '<div class="loading">Loading chart</div>';
+            var target = "/api/player/" + encodeURIComponent(name) + "/quadrant";
+            return fetch(target).then(function (r) { return r.json(); })
+              .then(function (data) { new QuadrantChart(mount, data, target); });
+          }
+
+          bar.querySelector(".quad-player").addEventListener("change", function () {
+            show(this.value);
+          });
+          return show(players[0][0]);
+        });
     },
 
     "rapm-apm": function (host, url) {
@@ -929,6 +1444,7 @@
           x: data.x,
           series: data.series,
           height: 360,
+          toggle: true,
           label: "Rolling averages",
           formatX: function (v) { return "G" + v; }
         });

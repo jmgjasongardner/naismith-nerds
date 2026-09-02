@@ -4,9 +4,18 @@ from collective_bball.utils import util_code
 
 
 class PlayerData:
-    def __init__(self, games: pl.DataFrame, player_data: pl.DataFrame):
+    def __init__(
+        self,
+        games: pl.DataFrame,
+        player_data: pl.DataFrame,
+        ratings_by_date: pl.DataFrame = None,
+    ):
         self.games = games
         self.player_data = player_data
+        # (player, game_date) -> rating, used so a game is scored against the
+        # ratings that applied when it was played. See
+        # BasketballData.compute_time_centered_ratings.
+        self.ratings_by_date = ratings_by_date
         self.player_stats = None
         self.player_games = None
         self.player_days = None
@@ -411,10 +420,19 @@ class PlayerData:
                     "b_opponents",
                 ]
             )
+            # The player's own rating must be the one that applied on the
+            # night. team_quality above is built from the per-date ratings, so
+            # subtracting a career rating here would leave teammate_quality
+            # measuring partly the player's own drift since. `resident` is a
+            # fixed attribute and still comes off player_data.
             .join(
-                self.player_data.select(["player", "rating", "resident"]),
-                left_on="player",
-                right_on="player",
+                self.ratings_by_date,
+                on=["player", "game_date"],
+                how="left",
+            )
+            .join(
+                self.player_data.select(["player", "resident"]),
+                on="player",
                 how="left",
             )
             .with_columns(

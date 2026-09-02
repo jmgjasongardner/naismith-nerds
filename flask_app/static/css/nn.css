@@ -1155,6 +1155,48 @@ table.data td a:hover { color: var(--accent); }
   margin: 10px 0 0;
 }
 
+/* With/against quadrant. The ring carries the teammate-versus-opponent mix,
+   so its stroke is set per dot in JS and must not be overridden here — only
+   the hover state takes the ring back. */
+.chart-quadrant-label {
+  fill: var(--text-faint);
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.7;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+.scatter-dot:hover .quad-dot__ring { stroke: var(--accent) !important; }
+.quad-note {
+  font-size: 0.78rem;
+  margin: 10px 0 0;
+  max-width: 78ch;
+}
+
+/* Legend for the two continuous encodings. Both are drawn at the radii and
+   colours the chart actually uses, so the key is the chart's own output
+   rather than a hand-kept copy of it. */
+.quad-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.quad-legend__block { display: flex; flex-direction: column; gap: 2px; }
+.quad-legend__title {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.quad-legend__bubble { fill: var(--panel-hover); stroke: var(--line-strong); stroke-width: 1; }
+.quad-legend__tick { fill: var(--text-faint); font-family: var(--font); font-size: 10px; }
+
 .chart-bubble {
   stroke: var(--bg-elevated);   /* 2px surface ring keeps overlaps readable */
   stroke-width: 2;
@@ -1238,10 +1280,20 @@ table.data td a:hover { color: var(--accent); }
   cursor: pointer;
 }
 .chart-legend__item:hover { background: var(--panel); color: var(--text); }
+/* Toggled-off series stay listed so they can be clicked back on. Struck
+   through as well as faded, so the state survives a grayscale print or a
+   viewer who can't separate the two opacities. */
+.chart-legend__item[data-off="true"] { opacity: 0.45; text-decoration: line-through; }
+.chart-legend__item[data-off="true"] .chart-legend__swatch { background: var(--text-faint) !important; }
 .chart-legend__swatch {
   width: 10px; height: 10px;
   border-radius: 2px;
   flex-shrink: 0;
+}
+.chart-legend__hint {
+  align-self: center;
+  color: var(--text-faint);
+  font-size: 0.74rem;
 }
 
 .chart-tooltip__head {

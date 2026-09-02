@@ -8,7 +8,13 @@ class BettingGames:
 
     @staticmethod
     def calculate_spreads(games: pl.DataFrame, ratings: pl.DataFrame) -> pl.DataFrame:
-        """Calculate the spreads of games just using algebra"""
+        """Calculate the spreads of games just using algebra.
+
+        `ratings` is keyed on (player, game_date), so each game is priced with
+        the ratings that applied when it was played rather than with today's.
+        Joining on player alone let a finished game's spread keep moving for
+        years afterwards as the people in it improved or drifted away.
+        """
         games_long = (
             games.unpivot(
                 index=["game_date", "game_num"],
@@ -16,7 +22,7 @@ class BettingGames:
                 variable_name="team_role",
                 value_name="player",
             )
-            .join(ratings, on="player", how="left")
+            .join(ratings, on=["player", "game_date"], how="left")
             .with_columns(
                 (pl.col("team_role").str.starts_with("A") * pl.col("rating")).alias(
                     "a_rating"

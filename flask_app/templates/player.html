@@ -167,6 +167,22 @@
         <div data-chart="player-rolling"
              data-url="/api/player/{{ player_name | urlencode }}/rolling"></div>
       </div>
+
+      <div class="panel__head" style="border-top:1px solid var(--line)">
+        <span class="panel__title">With and against</span>
+        <span class="panel__meta">who {{ player_name }} clicks with, and who they beat</span>
+      </div>
+      <div class="panel__body">
+        <div data-chart="player-quadrant"
+             data-url="/api/player/{{ player_name | urlencode }}/quadrant"></div>
+        <p class="muted" style="font-size:.82rem;margin:12px 0 0;max-width:70ch">
+          Both axes subtract out the other player's own rating, so a dot's
+          position is about the pairing rather than about how good the other
+          player is. Left to itself the raw version is a diagonal smear that
+          just re-reads the leaderboard. Treat single dots gently: split any
+          pair's games in half and the halves only agree at about r = 0.2.
+        </p>
+      </div>
     </div>
 
     <div role="tabpanel" id="panel-p-games" aria-labelledby="tab-p-games" hidden>
