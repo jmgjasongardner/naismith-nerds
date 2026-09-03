@@ -130,6 +130,22 @@
       </div>
 
       <div class="panel__head" style="border-top:1px solid var(--line)">
+        <span class="panel__title">With and against</span>
+        <span class="panel__meta">pick a player to see who they click with and who they beat</span>
+      </div>
+      <div class="panel__body">
+        <div data-chart="quadrant-picker" data-url="/api/players/quadrant-eligible"></div>
+        <p class="muted" style="font-size:.82rem;margin:12px 0 0;max-width:70ch">
+          Both axes are adjusted for the other player's own rating. Without that
+          they would be mirror images — the raw pair numbers carry both players'
+          individual value, so the chart would collapse onto a diagonal that
+          just re-reads the leaderboard. Even adjusted, a single dot is noisy:
+          split each pair's games in half and the two halves agree at about
+          r = 0.2. Read the spread, not any one player.
+        </p>
+      </div>
+
+      <div class="panel__head" style="border-top:1px solid var(--line)">
         <span class="panel__title">Ratings over time</span>
         <span class="panel__meta">pick any players to color; the rest stay as context</span>
       </div>

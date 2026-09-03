@@ -184,12 +184,42 @@ DuckDB is preferred because:
 * Player dummy variables
 * Team context captured implicitly
 * Alpha tuned via k‑fold CV
+* Games weighted by recency, 365‑day half‑life
 
 Key goals:
 
 * Stability over interpretability
 * Reasonable out‑of‑sample behavior
 * Extendable to interactions later
+
+**Two ratings, one estimator.** The model is fit twice:
+
+* `ratings` — the leaderboard number. One‑sided decay from today: "how good
+  is this player now".
+* `ratings_by_date` — one rating per player per game day, refit with a
+  **two‑sided** kernel centred on that day (`|t_i − D|`, same 365‑day
+  half‑life). Everything per‑game is priced off this: `a_quality`/`b_quality`,
+  `spread`, `moneyline`, `win_prob`, `teammate_quality`, `opp_quality` and so
+  the Gospel.
+
+Why two‑sided rather than "what we knew by then": a one‑sided as‑of rating is
+starved early in a career and would misprice a newcomer's first months in the
+opposite direction. Two‑sided uses the surrounding season.
+
+Why per‑date at all: scoring a 2025 game against today's leaderboard means the
+game keeps being re‑interpreted as people improve or stop showing up. Before
+this, only 11 of the 20 biggest‑spread games survived that drift, and one 2025
+mismatch had flattened from a genuine blowout to a coin flip. Career
+aggregates barely move (median 0.012) — the per‑game numbers are what this
+protects.
+
+Cost is one design‑matrix build and N cheap refits (the matrix does not depend
+on the target day, only the weights do): ~2s for 171 game days.
+
+The decay weights must stay aligned with the sorted design matrix. They were
+not, and since `games` arrives reverse‑chronological the decay ran exactly
+backwards — the oldest game carried the newest game's weight. See the comment
+in `rapm_model.py::preprocess_data`.
 
 ### 7.2 Win Probability Model
 

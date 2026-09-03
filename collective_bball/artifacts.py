@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Bump when the set of persisted frames or their columns changes, so a deploy
 # carrying new code rebuilds instead of loading artifacts it can't understand.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # Frames persisted as parquet and restored onto the loaded dataset.
 FRAMES = (
@@ -38,6 +38,7 @@ FRAMES = (
     "days",
     "days_of_week",
     "ratings",
+    "ratings_by_date",
     "teammates",
     "opponents",
 )
@@ -59,7 +60,8 @@ def default_args():
         min_games_to_not_tier=20,
         default_lambda=True,
         lambda_params=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
-        decay_half_life=270,
+        decay_half_life=365,
+        time_centered_half_life=365,
         save_csv=False,
         loop_through_ratings_dates=False,
     )
@@ -105,8 +107,14 @@ def build(source: Union[str, Path, IO], args=None):
         data.compute_player_stats()
         data.compute_fatigue()
 
-        data.compute_rapm(RAPMModel())
+        model = RAPMModel()
+        data.compute_rapm(model)
         data.write_to_db(conn=conn)
+
+        # Per-game-day ratings, so spreads and gospel describe the night they
+        # were played instead of being re-scored against today's leaderboard.
+        # Reuses the fitted model's lambda; ~2s for 171 game days.
+        data.compute_time_centered_ratings(model)
 
         data.merge_player_data()
 

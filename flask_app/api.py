@@ -14,6 +14,7 @@ import gzip
 import hashlib
 import json
 import logging
+from datetime import datetime, timedelta
 from typing import Callable, Dict
 
 import polars as pl
@@ -611,6 +612,121 @@ SCATTER_FIELDS = [
 ]
 
 
+# Preset horizons for the explore scatter, in days back from the most recent
+# game. Anchored to the last game rather than to today on purpose: the run is
+# seasonal, and a wall-clock "last month" is empty for weeks at a stretch.
+SCATTER_WINDOWS = {"all": None, "12m": 365, "6m": 182, "3m": 91, "1m": 30}
+
+# Order matters: it is the order of the window dropdown.
+WINDOW_LABELS = [
+    ["all", "All time"],
+    ["12m", "Last 12 months"],
+    ["6m", "Last 6 months"],
+    ["3m", "Last 3 months"],
+    ["1m", "Last month"],
+]
+
+# A window shrinks everybody's sample, and a 2-game win_pct is not a data
+# point. Players below this many games inside the window are dropped.
+WINDOW_MIN_GAMES = 5
+
+
+def _window_cutoff(data, window: str):
+    """Inclusive lower bound for a window, or None for all-time."""
+    days = SCATTER_WINDOWS.get(window)
+    if not days:
+        return None
+    latest = datetime.strptime(data.games["game_date"].max(), "%Y-%m-%d").date()
+    return (latest - timedelta(days=days)).isoformat()
+
+
+def _windowed_player_data(data, cutoff: str) -> pl.DataFrame:
+    """Recompute the scatter fields over a date window.
+
+    Only the aggregates move. Ratings stay as fitted over the whole history,
+    so a window changes what a player *did* lately, not what the model thinks
+    they are worth. Refitting the ridge per window would put the modeling
+    stack back on the request path, which is the one thing serving must never
+    do (see collective_bball/artifacts.py).
+    """
+    games = data.games.filter(pl.col("game_date") >= cutoff)
+    pgames = data.player_games.filter(pl.col("game_date") >= cutoff)
+    pdays = data.player_days.filter(pl.col("game_date") >= cutoff)
+    days = data.days.filter(pl.col("game_date") >= cutoff)
+
+    total_games = max(games.height, 1)
+    total_days = max(games["game_date"].n_unique(), 1)
+
+    per_game = pgames.group_by("player").agg(
+        pl.len().alias("games_played"),
+        pl.n_unique("game_date").alias("days_played"),
+        pl.sum("winner").alias("wins"),
+        (pl.len() - pl.sum("winner")).alias("losses"),
+        (pl.sum("winner") / pl.len()).alias("win_pct"),
+        pl.mean("score_diff").alias("avg_score_diff"),
+        pl.mean("proj_score_diff").alias("proj_score_diff"),
+        pl.mean("win_prob").alias("expected_win_pct"),
+        pl.mean("result_vs_expectation").alias("result_vs_expectation"),
+        pl.mean("other_9_players_quality_diff").alias("other_9_players_quality_diff"),
+        pl.mean("team_quality").alias("team_quality"),
+        pl.mean("teammate_quality").alias("teammate_quality"),
+        pl.mean("opp_quality").alias("opp_quality"),
+        pl.col("teammate_quality").gt(0).mean().alias("pct_positive_teammates"),
+        pl.col("proj_score_diff").gt(0).mean().alias("pct_games_favorite"),
+        (pl.col("opp_quality") < pl.col("teammate_quality"))
+        .mean()
+        .alias("pct_games_better_teammates"),
+        (pl.len() / total_games).alias("pct_total_games_played"),
+        (pl.n_unique("game_date") / total_days).alias("pct_total_days_played"),
+    )
+
+    # Weekday rates are "share of this weekday's runs attended", so each needs
+    # its own denominator from the window, not the player's own day count.
+    weekday_totals = {
+        code: max(days.filter(pl.col("day") == code).height, 1)
+        for code in ("Mon", "Wed", "Sat")
+    }
+    per_day = pdays.group_by("player").agg(
+        pl.mean("games_played").alias("games_played_per_day"),
+        (pl.sum("played_first_game") / pl.len()).alias("first_game_of_day_rate"),
+        (pl.sum("played_last_game") / pl.len()).alias("last_game_of_day_rate"),
+        *[
+            (pl.col("day").eq(code).sum() / weekday_totals[code]).alias(
+                f"{code.lower()}_rate"
+            )
+            for code in ("Mon", "Wed", "Sat")
+        ],
+    )
+
+    awards = (
+        days.group_by("mvp")
+        .agg(pl.len().alias("mvps"))
+        .rename({"mvp": "player"})
+        .join(
+            days.group_by("lvp").agg(pl.len().alias("lvps")).rename({"lvp": "player"}),
+            on="player",
+            how="full",
+            coalesce=True,
+        )
+    )
+
+    return (
+        data.player_data.select(["player", "rating", "tiered_rating"])
+        .join(per_game, on="player", how="inner")
+        .join(per_day, on="player", how="left")
+        .join(awards, on="player", how="left")
+        .with_columns(
+            pl.col("mvps").fill_null(0),
+            pl.col("lvps").fill_null(0),
+        )
+        .with_columns(
+            (pl.col("mvps") / pl.col("days_played")).alias("mvp_pct"),
+            (pl.col("lvps") / pl.col("days_played")).alias("lvp_pct"),
+        )
+        .filter(pl.col("games_played") >= WINDOW_MIN_GAMES)
+    )
+
+
 @api.route("/charts/player-scatter")
 def chart_player_scatter():
     """Every rated player as a point, with any field selectable per axis.
@@ -618,19 +734,27 @@ def chart_player_scatter():
     Restricted to players carrying their own rating. Tiered players share a
     group estimate, so plotting them against rating would cluster them at
     identical x-values that describe the tier rather than the player.
+
+    `?window=` narrows the aggregates to a recent slice; see SCATTER_WINDOWS.
     """
     store = current_app.config["DATA_STORE"]
     cache = current_app.config.setdefault("API_CACHE", {})
-    key = _cache_key("__scatter", store.version)
+
+    window = request.args.get("window", "all")
+    if window not in SCATTER_WINDOWS:
+        window = "all"
+    key = _cache_key(f"__scatter:{window}", store.version)
 
     if key not in cache:
         data = store.data
-        available = [f for f in SCATTER_FIELDS if f in data.player_data.columns]
+        cutoff = _window_cutoff(data, window)
+        frame = (
+            data.player_data if cutoff is None else _windowed_player_data(data, cutoff)
+        )
+        available = [f for f in SCATTER_FIELDS if f in frame.columns]
 
         rated = round_floats(
-            data.player_data.filter(pl.col("tiered_rating") == 0).select(
-                ["player"] + available
-            )
+            frame.filter(pl.col("tiered_rating") == 0).select(["player"] + available)
         )
 
         dtypes = dict(zip(rated.columns, rated.dtypes))
@@ -654,11 +778,198 @@ def chart_player_scatter():
         ]
 
         cache[key] = json.dumps(
-            {"fields": fields, "players": players}, separators=(",", ":"), default=str
+            {
+                "fields": fields,
+                "players": players,
+                "window": window,
+                "windows": WINDOW_LABELS,
+                "since": cutoff,
+                "latest": data.games["game_date"].max(),
+                "minGames": None if cutoff is None else WINDOW_MIN_GAMES,
+            },
+            separators=(",", ":"),
+            default=str,
         ).encode("utf-8")
 
     return _json_response(cache[key])
 
+
+# Shared-court threshold for the quadrant chart: a pair must have this many
+QUADRANT_DEFAULT_GAMES = 10
+QUADRANT_MIN_GAMES = 4
+QUADRANT_MAX_GAMES = 40
+
+# Fewer dots than this is not a scatter; the chart shows an empty state and
+# the league-wide picker leaves the player out.
+QUADRANT_MIN_POINTS = 3
+
+# Each game gives a player 4 teammates and 5 opponents, so an even split of
+# shared court time sits at 4/9, not 1/2. The ring encoding centres here.
+TEAMMATE_SHARE_BASELINE = 4 / 9
+
+
+@api.route("/player/<player_name>/quadrant")
+def player_quadrant(player_name: str):
+    """With-versus-against chart for one player.
+
+    Both axes are adjusted for the *other* player's own rating. The raw pair
+    metrics carry both players' individual value:
+
+        gospel_as_teammates(A,B) ~ value(A) + value(B) + chemistry
+        gospel_vs_opponent(A,B)  ~ value(A) - value(B) + edge
+
+    On one player's page value(A) is a constant, so the raw axes are near
+    mirror images -- measured across the roster, corr(x, y) is -0.57 and each
+    axis correlates ~0.73 with the other player's rating. The chart would be a
+    diagonal smear reading "good players sit bottom-right", which is a rating
+    chart, not a chemistry chart. Adding back the other player's rating on y
+    and removing it on x drops that correlation to -0.11 and frees the
+    quadrants to mean what they claim.
+
+    What survives is modest but real: splitting each pair's games odd/even,
+    the adjusted values reproduce at r ~ 0.21 per half (~0.35 corrected).
+    """
+    store = current_app.config["DATA_STORE"]
+    cache = current_app.config.setdefault("API_CACHE", {})
+
+    try:
+        min_games = int(request.args.get("min_games", QUADRANT_DEFAULT_GAMES))
+    except ValueError:
+        min_games = QUADRANT_DEFAULT_GAMES
+    min_games = max(QUADRANT_MIN_GAMES, min(QUADRANT_MAX_GAMES, min_games))
+
+    key = _cache_key(f"__quadrant:{player_name}:{min_games}", store.version)
+    if key not in cache:
+        data = store.data
+
+        if data.player_data.filter(pl.col("player") == player_name).height == 0:
+            return jsonify({"error": f"unknown player '{player_name}'"}), 404
+
+        with_them = data.teammates.filter(pl.col("player") == player_name).select(
+            pl.col("teammate").alias("other"),
+            pl.col("games_played").alias("tm_games"),
+            pl.col("days_played").alias("tm_days"),
+            pl.col("gospel_as_teammates").alias("raw_with"),
+        )
+        against_them = data.opponents.filter(pl.col("player") == player_name).select(
+            pl.col("opponent").alias("other"),
+            pl.col("games_played").alias("opp_games"),
+            pl.col("days_played").alias("opp_days"),
+            pl.col("gospel_vs_opponent").alias("raw_against"),
+        )
+
+        # Tiered players are excluded as the *other* side: their rating is a
+        # group estimate, and the adjustment is only as good as that number.
+        others = data.player_data.filter(pl.col("tiered_rating") == 0).select(
+            pl.col("player").alias("other"), pl.col("rating").alias("other_rating")
+        )
+
+        pairs = (
+            with_them.join(against_them, on="other", how="inner")
+            .filter(
+                (pl.col("tm_games") >= min_games) & (pl.col("opp_games") >= min_games)
+            )
+            .join(others, on="other", how="inner")
+            .with_columns(
+                (pl.col("raw_with") - pl.col("other_rating")).alias("x"),
+                (pl.col("raw_against") + pl.col("other_rating")).alias("y"),
+                (pl.col("tm_games") + pl.col("opp_games")).alias("total_games"),
+                (pl.col("tm_games") / (pl.col("tm_games") + pl.col("opp_games"))).alias(
+                    "tm_share"
+                ),
+            )
+            .sort("total_games", descending=True)
+        )
+
+        own = data.player_data.filter(pl.col("player") == player_name).row(
+            0, named=True
+        )
+
+        points = [
+            {
+                "n": row["other"],
+                "i": player_thumb_path(row["other"]).exists(),
+                "x": round(row["x"], 3),
+                "y": round(row["y"], 3),
+                "rx": round(row["raw_with"], 3),
+                "ry": round(row["raw_against"], 3),
+                "r": round(row["other_rating"], 3),
+                "g": row["total_games"],
+                "tg": row["tm_games"],
+                "og": row["opp_games"],
+                "td": row["tm_days"],
+                "od": row["opp_days"],
+                "s": round(row["tm_share"], 4),
+            }
+            for row in pairs.to_dicts()
+        ]
+
+        cache[key] = json.dumps(
+            {
+                "player": player_name,
+                "gospel": own.get("result_vs_expectation"),
+                "rating": own.get("rating"),
+                "minGames": min_games,
+                "shareBaseline": round(TEAMMATE_SHARE_BASELINE, 4),
+                "points": points,
+            },
+            separators=(",", ":"),
+            default=str,
+        ).encode("utf-8")
+
+    return _json_response(cache[key])
+
+
+@api.route("/players/quadrant-eligible")
+def quadrant_eligible():
+    """Players who have enough shared court time with anyone to draw a chart.
+
+    Feeds the dropdown on the league-wide version, so it must use the same
+    threshold the chart itself defaults to.
+    """
+    store = current_app.config["DATA_STORE"]
+    cache = current_app.config.setdefault("API_CACHE", {})
+    key = _cache_key("__quadrant_eligible", store.version)
+
+    if key not in cache:
+        data = store.data
+        rated = data.player_data.filter(pl.col("tiered_rating") == 0).select("player")
+
+        counts = (
+            data.teammates.select(
+                "player",
+                pl.col("teammate").alias("other"),
+                pl.col("games_played").alias("tm_games"),
+            )
+            .join(
+                data.opponents.select(
+                    "player",
+                    pl.col("opponent").alias("other"),
+                    pl.col("games_played").alias("opp_games"),
+                ),
+                on=["player", "other"],
+                how="inner",
+            )
+            .join(rated.select(pl.col("player").alias("other")), on="other")
+            .filter(
+                (pl.col("tm_games") >= QUADRANT_DEFAULT_GAMES)
+                & (pl.col("opp_games") >= QUADRANT_DEFAULT_GAMES)
+            )
+            .group_by("player")
+            .agg(pl.len().alias("n"))
+            .join(rated, on="player", how="inner")
+            # Below this the chart shows its empty state, so offering the name
+            # in the picker only leads somewhere blank.
+            .filter(pl.col("n") >= QUADRANT_MIN_POINTS)
+            .sort("n", descending=True)
+        )
+
+        cache[key] = json.dumps(
+            {"players": [[r["player"], r["n"]] for r in counts.to_dicts()]},
+            separators=(",", ":"),
+        ).encode("utf-8")
+
+    return _json_response(cache[key])
 
 @api.route("/charts/rapm-apm")
 def chart_rapm_apm():

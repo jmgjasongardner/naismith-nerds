@@ -33,6 +33,7 @@ class BasketballData:
         self.args = args
         self.player_stats = None
         self.ratings = None
+        self.ratings_by_date = None
         self.best_lambda = None
         self.teammate_games = None
         self.opponent_games = None
@@ -129,6 +130,35 @@ class BasketballData:
             games_df, self.tiers, self.args
         )
 
+    def compute_time_centered_ratings(self, rapm_model: RAPMModel):
+        """Per-game-day ratings, so a historical game keeps its own context.
+
+        The model works in tier space: players under the games threshold are
+        substituted for their tier before fitting, so a coefficient comes back
+        for "Tier3" and not for them. This expands that back out, exactly as
+        merge_player_data does for the career rating -- own coefficient if the
+        player earned one, otherwise their tier's.
+        """
+        raw = rapm_model.run_time_centered(self.games, self.tiers, self.args)
+
+        own = raw.rename({"rating": "own_rating"})
+        via_tier = raw.rename({"player": "tier", "rating": "tier_rating"})
+
+        # Every real player on every game day, then coalesce.
+        grid = self.tiers.select(["player", "tier"]).join(
+            raw.select("game_date").unique(), how="cross"
+        )
+        self.ratings_by_date = (
+            grid.join(own, on=["player", "game_date"], how="left")
+            .join(via_tier, on=["tier", "game_date"], how="left")
+            .with_columns(
+                pl.col("own_rating").fill_null(pl.col("tier_rating")).alias("rating")
+            )
+            .drop_nulls("rating")
+            .select(["game_date", "player", pl.col("rating").round(4)])
+        )
+        return self.ratings_by_date
+
     def merge_player_data(self):
         """Merges stats and RAPM ratings into a single DataFrame."""
         if self.player_stats is None or self.ratings is None:
@@ -153,8 +183,13 @@ class BasketballData:
         )
 
     def compute_spreads(self, betting_games: BettingGames):
-        """Computes win probabilities for games."""
-        self.games = betting_games.calculate_spreads(self.games, self.player_data)
+        """Computes win probabilities for games.
+
+        Fed the per-date ratings, not the career ones: a game's spread should
+        describe the teams that actually took the floor that night, and stay
+        put once it has been played.
+        """
+        self.games = betting_games.calculate_spreads(self.games, self.ratings_by_date)
 
     def compute_moneylines(self, betting_games: BettingGames):
         """Computes win probabilities for games."""
@@ -189,7 +224,9 @@ class BasketballData:
 
     def assemble_player_data(self):
         """Combines games & player data into one row per player-game."""
-        player_data_instance = PlayerData(self.games, self.player_data)
+        player_data_instance = PlayerData(
+            self.games, self.player_data, self.ratings_by_date
+        )
         self.player_games = self.add_role_ranks(
             player_data_instance.add_ratings_to_player_games()
         )
