@@ -11,6 +11,7 @@ from collective_bball.player_data import PlayerData
 from collective_bball.rapm_model import RAPMModel
 from collective_bball.moneyline_model import BettingGames
 from collective_bball.plots import Plots
+from collective_bball.utils import util_code
 from typing import Tuple, List, Union, IO
 
 # Minimum games in a day to be eligible for that day's MVP or LVP, so one
@@ -145,9 +146,33 @@ class BasketballData:
         via_tier = raw.rename({"player": "tier", "rating": "tier_rating"})
 
         # Every real player on every game day, then coalesce.
-        grid = self.tiers.select(["player", "tier"]).join(
-            raw.select("game_date").unique(), how="cross"
+        #
+        # The roster sheet alone is not the right key. Someone can turn up and
+        # play a full run before ever being added to the Players sheet, and
+        # because they are not in the sheet they are never tiered either -- so
+        # the model fits them their own coefficient and the career leaderboard
+        # shows it. Keying this grid off the sheet dropped exactly those
+        # players, leaving their per-date rating null, and a null rating makes
+        # teammate_quality and so the Gospel null all the way down. Nulls sort
+        # first, so an unmeasurable newcomer was handed the day's MVP with a
+        # blank Gospel beside it. Union the sheet with everyone who has
+        # actually played.
+        played = (
+            self.games.select(util_code.player_columns)
+            .unpivot(value_name="player")
+            .select("player")
+            .drop_nulls()
+            .unique()
         )
+        roster = pl.concat(
+            [
+                self.tiers.select(["player", "tier"]),
+                played.join(self.tiers, on="player", how="anti").with_columns(
+                    pl.lit(None, dtype=pl.Utf8).alias("tier")
+                ),
+            ]
+        )
+        grid = roster.join(raw.select("game_date").unique(), how="cross")
         self.ratings_by_date = (
             grid.join(own, on=["player", "game_date"], how="left")
             .join(via_tier, on=["tier", "game_date"], how="left")
@@ -315,8 +340,20 @@ class BasketballData:
         Requires at least three games so a single lucky or unlucky game cannot
         take the award. Ties break alphabetically, which is arbitrary but
         stable across rebuilds.
+
+        A null Gospel is not a score, it is the absence of one, and it must
+        never win either award. Polars sorts nulls first whatever the
+        direction, so a player the model could not rate used to land at the top
+        of the descending sort and take MVP outright, with "--" printed where
+        their Gospel should be. That is fixed upstream in
+        compute_time_centered_ratings, but the award has no business depending
+        on that: if we cannot measure the night, we do not hand out a prize
+        for it.
         """
-        eligible = player_days.filter(pl.col("games_played") >= MVP_MIN_GAMES).sort(
+        eligible = player_days.filter(
+            pl.col("games_played") >= MVP_MIN_GAMES,
+            pl.col("result_vs_expectation_avg").is_not_null(),
+        ).sort(
             ["game_date", "result_vs_expectation_avg", "player"],
             descending=[False, True, False],
         )
