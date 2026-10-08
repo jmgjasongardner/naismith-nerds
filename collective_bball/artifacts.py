@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Bump when the set of persisted frames or their columns changes, so a deploy
 # carrying new code rebuilds instead of loading artifacts it can't understand.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Frames persisted as parquet and restored onto the loaded dataset.
 FRAMES = (

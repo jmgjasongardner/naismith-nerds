@@ -36,6 +36,7 @@ def format_stats_for_site(df: pl.DataFrame, does_player_image_exist_row=False):
         "b_score": "B Score",
         "winner": "Winner",
         "game_num": "Game Number",
+        "game_quality": "Game Quality",
         "a_quality": "Team A Quality",
         "b_quality": "Team B Quality",
         "spread": "Spread",

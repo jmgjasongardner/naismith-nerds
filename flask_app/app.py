@@ -470,7 +470,7 @@ PROFILE_GROUPS = [
         "pct_total_games_played", "pct_total_days_played",
     ]),
     ("Company kept", [
-        "team_quality", "teammate_quality", "opp_quality",
+        "game_quality", "team_quality", "teammate_quality", "opp_quality",
         "other_9_players_quality_diff",
         "pct_positive_teammates", "pct_positive_opponents",
         "pct_games_favorite", "pct_games_better_teammates",

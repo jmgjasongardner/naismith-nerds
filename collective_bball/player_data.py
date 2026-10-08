@@ -304,6 +304,7 @@ class PlayerData:
             "winner",
             "a_score",
             "b_score",
+            "game_quality",
             "a_quality",
             "b_quality",
             "spread",
@@ -487,6 +488,7 @@ class PlayerData:
                     "moneyline",
                     "proj_score_diff",
                     "diff_from_spread",
+                    "game_quality",
                     "team_quality",
                     "teammate_quality",
                     "opp_quality",
@@ -659,6 +661,7 @@ class PlayerData:
                 .round(3)
                 .alias("pct_total_days_played"),
                 pl.max("game_date").alias("most_recent_game"),
+                pl.mean("game_quality").round(3),
                 pl.mean("teammate_quality").round(3),
                 pl.mean("team_quality").round(3),
                 pl.mean("opp_quality").round(3),

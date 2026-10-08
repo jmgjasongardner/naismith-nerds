@@ -37,7 +37,15 @@ class BettingGames:
                 pl.sum("b_rating").round(3).alias("b_quality"),
             )
             .with_columns(
-                (pl.col("b_quality") - pl.col("a_quality")).round(3).alias("spread")
+                (pl.col("a_quality") + pl.col("b_quality"))
+                .round(3)
+                .alias("game_quality"),
+                (pl.col("b_quality") - pl.col("a_quality")).round(3).alias("spread"),
+            )
+            # game_quality leads the trio so the tables read level-then-sides:
+            # how much talent was on the floor, then how it was split.
+            .select(
+                ["game_date", "game_num", "game_quality", "a_quality", "b_quality", "spread"]
             )
         )
 

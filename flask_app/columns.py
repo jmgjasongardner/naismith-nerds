@@ -62,6 +62,7 @@ LABELS: Dict[str, str] = {
     "b_score": "B",
     "winner": "Winner",
     "game_num": "Game #",
+    "game_quality": "Game Quality",
     "a_quality": "A Quality",
     "b_quality": "B Quality",
     "team_quality": "Team Quality",
@@ -150,6 +151,11 @@ TIPS: Dict[str, str] = {
     "gospel_vs_opponent": "Result versus expectation when these two play against each other.",
     "spread": "Pregame spread relative to team A. Positive means A is the underdog.",
     "diff_from_spread": "Score differential minus the spread. How much the spread was beaten by.",
+    "game_quality": (
+        "Sum of all ten players' ratings, averaged over games where the row is "
+        "a player rather than a game. The talent level of the game as a whole, "
+        "not the gap between the sides."
+    ),
     "a_quality": "Sum of team A player ratings. 0 is an average five.",
     "b_quality": "Sum of team B player ratings. 0 is an average five.",
     "team_quality": "Sum of team ratings, including the player.",
@@ -249,7 +255,8 @@ SIGNED_COLUMNS = {
     "gospel_as_teammates", "gospel_vs_opponent", "wins_over_exp",
     "mvp_gospel", "lvp_gospel",
     "other_8_players_quality_diff", "other_9_players_quality_diff",
-    "a_quality", "b_quality", "team_quality", "teammate_quality",
+    "game_quality", "a_quality", "b_quality", "team_quality",
+    "teammate_quality",
     "opp_quality", "opp_teammate_quality", "teammates_avg", "opps_avg",
     "other_9_player_avg", "mean_rating_players", "mean_rating_player_games",
 }
