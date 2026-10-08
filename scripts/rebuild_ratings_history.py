@@ -16,8 +16,9 @@ What it writes
 For each game day D, the rating fit on games up to and including D, decayed
 one-sidedly from D. That is a genuine as-of number -- what the leaderboard
 would have said that night -- which is what a ratings-over-time chart should
-show. It is deliberately *not* the two-sided `ratings_by_date` used to price
-individual games; those answer different questions and both are kept.
+show. These are the same numbers `ratings_by_date` prices each game with
+(RAPMModel.run_as_of), which recomputes them from the workbook on every build
+rather than reading this table.
 
 Anchoring the decay at D rather than at the wall clock is what makes this
 reproducible: re-running it next month produces identical rows.

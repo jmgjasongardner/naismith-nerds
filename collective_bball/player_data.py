@@ -14,7 +14,7 @@ class PlayerData:
         self.player_data = player_data
         # (player, game_date) -> rating, used so a game is scored against the
         # ratings that applied when it was played. See
-        # BasketballData.compute_time_centered_ratings.
+        # BasketballData.compute_as_of_ratings.
         self.ratings_by_date = ratings_by_date
         self.player_stats = None
         self.player_games = None

@@ -1,6 +1,10 @@
 """
 Prototype: time-centered ratings, and what they would change.
 
+SUPERSEDED. The two-sided kernel shipped, then was replaced by one-sided as-of
+ratings (RAPMModel.run_as_of): it kept rewriting past days' MVPs and spreads
+every time new games arrived. Kept for the reasoning, not wired in.
+
 Not wired into the pipeline. Run it, read the numbers, decide.
 
     python -m scripts.prototype_time_centered

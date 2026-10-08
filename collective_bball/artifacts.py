@@ -25,9 +25,10 @@ from collective_bball.paths import artifacts_dir
 
 logger = logging.getLogger(__name__)
 
-# Bump when the set of persisted frames or their columns changes, so a deploy
-# carrying new code rebuilds instead of loading artifacts it can't understand.
-SCHEMA_VERSION = 3
+# Bump when the set of persisted frames or their columns changes, or when what
+# they mean changes, so a deploy carrying new code rebuilds instead of serving
+# artifacts built by the old logic. 4: per-date ratings became as-of.
+SCHEMA_VERSION = 4
 
 # Frames persisted as parquet and restored onto the loaded dataset.
 FRAMES = (
@@ -61,7 +62,6 @@ def default_args():
         default_lambda=True,
         lambda_params=[0.1, 0.5, 1, 5, 10, 25, 50, 100],
         decay_half_life=365,
-        time_centered_half_life=365,
         save_csv=False,
         loop_through_ratings_dates=False,
     )
@@ -111,10 +111,10 @@ def build(source: Union[str, Path, IO], args=None):
         data.compute_rapm(model)
         data.write_to_db(conn=conn)
 
-        # Per-game-day ratings, so spreads and gospel describe the night they
-        # were played instead of being re-scored against today's leaderboard.
-        # Reuses the fitted model's lambda; ~2s for 171 game days.
-        data.compute_time_centered_ratings(model)
+        # Per-game-day ratings as they stood that night, so spreads and gospel
+        # describe the night they were played and stop moving once it is over.
+        # Reuses the fitted model's lambda; ~5s for 171 game days.
+        data.compute_as_of_ratings(model)
 
         data.merge_player_data()
 

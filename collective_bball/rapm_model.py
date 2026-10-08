@@ -7,6 +7,14 @@ from sklearn.linear_model import Ridge
 from typing import Tuple, List
 from collective_bball.utils import util_code
 
+# Ridge's default for sparse input is sparse_cg, an iterative solver that stops
+# at a tolerance about 0.001 short of the exact answer, and where it stops
+# depends on row order. Polars does not promise a stable row order through the
+# joins upstream, so two builds of the same games disagreed by up to 0.0013:
+# enough to flip a near-tie MVP on a day long finished. Cholesky solves exactly
+# and is order-independent. The system is ~100 columns, so it costs nothing.
+EXACT_SOLVER = "cholesky"
+
 
 class RAPMModel:
     def __init__(self):
@@ -26,67 +34,53 @@ class RAPMModel:
 
         return self.ratings, self.best_lambda
 
-    def run_time_centered(self, games, tiers, args) -> pl.DataFrame:
-        """A rating for every player on every game day.
+    def run_as_of(self, games, tiers, args) -> pl.DataFrame:
+        """A rating for every player on every game day, as it stood that night.
 
         Why this exists: the ordinary rating answers "how good is this player
-        now", and scoring a game from 2025 against it means the game keeps
-        being reinterpreted as people improve or stop showing up. Measured on
-        this dataset, only 11 of the 20 biggest-spread games survived that
-        drift, and one 2025 mismatch of -2.20 had already flattened to +0.17.
+        now", and scoring a 2025 game against it means the game keeps being
+        reinterpreted as people improve or stop showing up.
 
-        So for a game on day D we refit with games weighted by distance from D
-        in *both* directions:
+        For day D this is exactly the leaderboard as it read at the end of D:
+        fit only on games up to and including D, players tiered by how many
+        games they had played by D, decay running one way from D. Nothing
+        after D enters, so once a later day is logged, D never moves again.
+        The day still being played keeps updating with every game logged.
 
-            w_i = exp(-ln2 / half_life * |t_i - D|)
+        This replaced a two-sided kernel (|t_i - D|) that also weighted games
+        after D. It priced a newcomer's first weeks with hindsight, but every
+        new game day rewrote about 2.6 past MVPs and 2.2 past LVPs, a median
+        of 55 game days back, and Jalen's Oct 2025 peak games were priced at
+        2.02 instead of the 2.30 he was rated at the time. Past results should
+        reflect what we believed then and stay put; a newcomer's thin early
+        rating is the honest cost of that.
 
-        Two-sided matters. A one-sided "what we knew by then" rating is starved
-        early in a career — Jalen's stood at +0.60 in early 2025, well under
-        what his play deserved — so it would misprice his early games in the
-        opposite direction.
+        Stays immutable only while lambda is fixed (default_lambda). A tuned
+        lambda depends on every game and would move all of history.
 
-        The design matrix does not depend on D, only the weights do, so this is
-        one matrix build and N cheap refits: about 2 seconds for 171 game days.
+        Each day needs its own design matrix because tiering changes as
+        players cross the games threshold: ~5s for 171 game days.
         """
-        y, players, sparse_matrix, _dense, _w = self.preprocess_data(
-            games=games, tiers=tiers, args=args
-        )
-        names = players["player"].unique().sort().to_list()
-        player_to_idx = {p: i for i, p in enumerate(names)}
-
-        ordered_days = (
-            games.select("game_date")
-            .unique()
-            .sort("game_date")["game_date"]
-            .to_list()
-        )
-        # Row i of the design is the i-th game in (game_date, game_num) order.
-        row_days = (
-            games.sort(["game_date", "game_num"])
-            .select(
-                pl.col("game_date").str.strptime(pl.Date, "%Y-%m-%d").alias("d")
-            )["d"]
-            .to_list()
-        )
-        offsets = np.array([d.toordinal() for d in row_days], dtype=float)
-
         alpha = self.best_lambda or (25 if args.use_tier_data else 100)
-        lam = np.log(2) / args.time_centered_half_life
+        days = games["game_date"].unique().sort().to_list()
 
         frames = []
-        for day in ordered_days:
-            target = float(
-                pl.Series([day]).str.strptime(pl.Date, "%Y-%m-%d")[0].toordinal()
+        for day in days:
+            y, players, sparse_matrix, _dense, decay_weights = self.preprocess_data(
+                games=games.filter(pl.col("game_date") <= day), tiers=tiers, args=args
             )
-            weights = np.exp(-lam * np.abs(offsets - target))
-            model = Ridge(alpha=alpha, fit_intercept=False)
-            model.fit(sparse_matrix, y, sample_weight=weights)
+            model = Ridge(alpha=alpha, fit_intercept=False, solver=EXACT_SOLVER)
+            model.fit(sparse_matrix, y, sample_weight=decay_weights.ravel())
+
+            # Player columns come first, in sorted order; the fatigue and
+            # possession covariates follow and are not ratings.
+            names = players["player"].unique().sort().to_list()
             frames.append(
                 pl.DataFrame(
                     {
                         "game_date": [day] * len(names),
                         "player": names,
-                        "rating": [float(model.coef_[player_to_idx[p]]) for p in names],
+                        "rating": model.coef_[: len(names)].astype(float),
                     }
                 )
             )
@@ -104,7 +98,7 @@ class RAPMModel:
         }
 
         # Train final model on all data with the best lambda
-        model = Ridge(alpha=best_lambda, fit_intercept=False)
+        model = Ridge(alpha=best_lambda, fit_intercept=False, solver=EXACT_SOLVER)
         model.fit(sparse_matrix, y, sample_weight=decay_weights.ravel())
 
         # Get player ratings
@@ -279,9 +273,8 @@ class RAPMModel:
         # Anchored to the most recent game in this set, not to the wall clock.
         # date.today() made the ratings drift every day even when no basketball
         # had been played, so two builds of identical data disagreed and the
-        # history could never be reproduced. Anchoring here also makes the
-        # leaderboard rating identical to the time-centered rating on the last
-        # game day, where the two-sided kernel has no future to look at.
+        # history could never be reproduced. It is also what makes run_as_of
+        # work: filter to games up to D and the decay runs one way from D.
         anchor = games["game_date"].max()
         days_since_today = (
             games.sort(["game_date", "game_num"], descending=[False, False])

@@ -196,25 +196,44 @@ Key goals:
 
 * `ratings` — the leaderboard number. One‑sided decay from today: "how good
   is this player now".
-* `ratings_by_date` — one rating per player per game day, refit with a
-  **two‑sided** kernel centred on that day (`|t_i − D|`, same 365‑day
-  half‑life). Everything per‑game is priced off this: `a_quality`/`b_quality`,
-  `spread`, `moneyline`, `win_prob`, `teammate_quality`, `opp_quality` and so
-  the Gospel.
+* `ratings_by_date` — one rating per player per game day, **as it stood that
+  night**: fit only on games up to and including D, players tiered by the
+  games they had by D, decay running one way from D. Everything per‑game is
+  priced off this: `game_quality`, `a_quality`/`b_quality`, `spread`,
+  `moneyline`, `win_prob`, `teammate_quality`, `opp_quality`, the Gospel and
+  so each day's MVP/LVP.
 
-Why two‑sided rather than "what we knew by then": a one‑sided as‑of rating is
-starved early in a career and would misprice a newcomer's first months in the
-opposite direction. Two‑sided uses the surrounding season.
+The rule this enforces: **a past day's results stop changing once the day is
+over; the day being played updates with every game logged.** Jason logs a game
+every ~15 minutes during a run, so the current day must keep moving, but
+nothing played after D may reach back and re‑price D. Past days change only if
+their own rows, or the Players sheet tiers, are edited. Nothing is persisted
+to achieve this; it falls out of recomputing from the workbook.
 
 Why per‑date at all: scoring a 2025 game against today's leaderboard means the
-game keeps being re‑interpreted as people improve or stop showing up. Before
-this, only 11 of the 20 biggest‑spread games survived that drift, and one 2025
-mismatch had flattened from a genuine blowout to a coin flip. Career
-aggregates barely move (median 0.012) — the per‑game numbers are what this
-protects.
+game keeps being re‑interpreted as people improve or stop showing up. Jalen
+peaked around 2.3 in Oct 2025 and is ~1.7 now; his Oct 2025 games should
+still be priced at 2.3.
 
-Cost is one design‑matrix build and N cheap refits (the matrix does not depend
-on the target day, only the weights do): ~2s for 171 game days.
+Why not two‑sided: until Oct 2026 this used a kernel centred on D
+(`|t_i − D|`) so a newcomer's early games got hindsight. But anything that
+uses games after D must change when they arrive: each new game day rewrote
+~2.6 past MVPs and ~2.2 past LVPs, a median of 55 game days back, and spreads
+moved a median 0.47 points after the fact. The accepted cost of as‑of is that
+a newcomer's first weeks are priced off thin, shrunk data. That is what we
+believed at the time.
+
+Immutability holds only while lambda is fixed (`default_lambda`, 25). Tuning
+it on all games would move all of history. It also needs the exact `cholesky`
+Ridge solver (`rapm_model.EXACT_SOLVER`): sklearn's default for sparse input
+is iterative, stops ~0.001 short, and lands differently with row order, which
+was enough to flip a near‑tie MVP on a long‑finished day. The
+win‑probability logistic is still refit on all games, so old
+`win_prob`/`moneyline` drift slightly (< 0.01).
+
+Cost is one design‑matrix build and fit per game day, because tiering changes
+as players cross the threshold: ~5s for 171 game days. This is the same fit
+the DuckDB ratings history records for each date.
 
 The decay weights must stay aligned with the sorted design matrix. They were
 not, and since `games` arrives reverse‑chronological the decay ran exactly
@@ -353,7 +372,7 @@ The single most important structural rule.
 
 **Build** (`collective_bball/artifacts.py::build`) reads the workbook, fits the
 ridge model and renders charts. It needs pandas, openpyxl, scikit-learn and
-plotly, and takes ~9 seconds. It runs from the CLI or on the refresh thread.
+plotly, and takes ~10 seconds. It runs from the CLI or on the refresh thread.
 
 **Serve** (`flask_app/app.py`) loads prebuilt parquet and starts in under a
 second. It must never import the modeling stack at module scope, directly or

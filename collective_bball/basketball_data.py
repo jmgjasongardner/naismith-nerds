@@ -131,16 +131,17 @@ class BasketballData:
             games_df, self.tiers, self.args
         )
 
-    def compute_time_centered_ratings(self, rapm_model: RAPMModel):
-        """Per-game-day ratings, so a historical game keeps its own context.
+    def compute_as_of_ratings(self, rapm_model: RAPMModel):
+        """Per-game-day ratings as they stood that night, so a historical game
+        keeps its own context and stops changing once the day is over.
 
         The model works in tier space: players under the games threshold are
         substituted for their tier before fitting, so a coefficient comes back
         for "Tier3" and not for them. This expands that back out, exactly as
         merge_player_data does for the career rating -- own coefficient if the
-        player earned one, otherwise their tier's.
+        player had earned one by that day, otherwise their tier's.
         """
-        raw = rapm_model.run_time_centered(self.games, self.tiers, self.args)
+        raw = rapm_model.run_as_of(self.games, self.tiers, self.args)
 
         own = raw.rename({"rating": "own_rating"})
         via_tier = raw.rename({"player": "tier", "rating": "tier_rating"})
@@ -346,7 +347,7 @@ class BasketballData:
         direction, so a player the model could not rate used to land at the top
         of the descending sort and take MVP outright, with "--" printed where
         their Gospel should be. That is fixed upstream in
-        compute_time_centered_ratings, but the award has no business depending
+        compute_as_of_ratings, but the award has no business depending
         on that: if we cannot measure the night, we do not hand out a prize
         for it.
         """
